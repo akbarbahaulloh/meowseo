@@ -1,0 +1,364 @@
+/**
+ * MeowSEO Editor Styles
+ *
+ * Styles for the Gutenberg sidebar and components.
+ *
+ * @package MeowSEO
+ * @since 1.0.0
+ */
+
+/* Sidebar Container */
+.meowseo-sidebar {
+	padding: 16px;
+}
+
+/* Tab Panel */
+.meowseo-tab-panel {
+	margin-top: 16px;
+}
+
+.meowseo-tab-content {
+	padding: 16px 0;
+}
+
+/* Meta Tab */
+.meowseo-meta-tab .components-base-control {
+	margin-bottom: 16px;
+}
+
+/* Analysis Tab */
+.meowseo-analysis-tab {
+	padding: 0;
+}
+
+.meowseo-analysis-section {
+	margin-bottom: 24px;
+}
+
+.meowseo-analysis-section h3 {
+	margin-top: 0;
+	margin-bottom: 12px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+/* Score Indicator */
+.meowseo-score-indicator {
+	padding: 16px;
+	border-radius: 4px;
+	margin-bottom: 16px;
+	background: #f0f0f0;
+}
+
+.meowseo-score-label {
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	margin-bottom: 8px;
+	color: #757575;
+}
+
+.meowseo-score-value {
+	font-size: 32px;
+	font-weight: 700;
+	margin-bottom: 8px;
+}
+
+.meowseo-score-bar {
+	height: 8px;
+	background: #e0e0e0;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.meowseo-score-bar-fill {
+	height: 100%;
+	transition: width 0.3s ease;
+}
+
+/* Score Colors */
+.meowseo-score-green .meowseo-score-value {
+	color: #46b450;
+}
+
+.meowseo-score-green .meowseo-score-bar-fill {
+	background: #46b450;
+}
+
+.meowseo-score-orange .meowseo-score-value {
+	color: #f0b849;
+}
+
+.meowseo-score-orange .meowseo-score-bar-fill {
+	background: #f0b849;
+}
+
+.meowseo-score-red .meowseo-score-value {
+	color: #dc3232;
+}
+
+.meowseo-score-red .meowseo-score-bar-fill {
+	background: #dc3232;
+}
+
+/* Check List */
+.meowseo-check-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.meowseo-check-item {
+	display: flex;
+	align-items: center;
+	padding: 8px 0;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.meowseo-check-item:last-child {
+	border-bottom: none;
+}
+
+.meowseo-check-icon {
+	margin-right: 8px;
+	flex-shrink: 0;
+}
+
+.meowseo-check-pass .meowseo-check-icon {
+	color: #46b450;
+}
+
+.meowseo-check-fail .meowseo-check-icon {
+	color: #dc3232;
+}
+
+.meowseo-check-label {
+	font-size: 13px;
+}
+
+.meowseo-no-checks {
+	color: #757575;
+	font-style: italic;
+}
+
+/* Social Tab */
+.meowseo-social-tab h3 {
+	margin-top: 0;
+	margin-bottom: 8px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.meowseo-social-tab .description {
+	margin-bottom: 16px;
+	color: #757575;
+	font-size: 13px;
+}
+
+.meowseo-social-image {
+	margin-top: 16px;
+}
+
+.meowseo-social-image-preview {
+	margin: 12px 0;
+}
+
+.meowseo-social-image-preview img {
+	max-width: 100%;
+	height: auto;
+	border-radius: 4px;
+	margin-bottom: 8px;
+}
+
+/* Schema Tab */
+.meowseo-schema-tab h3 {
+	margin-top: 0;
+	margin-bottom: 8px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.meowseo-schema-tab .description {
+	margin-bottom: 16px;
+	color: #757575;
+	font-size: 13px;
+}
+
+.meowseo-schema-info {
+	margin-top: 24px;
+	padding: 16px;
+	background: #f0f0f0;
+	border-radius: 4px;
+}
+
+.meowseo-schema-info h4 {
+	margin-top: 0;
+	margin-bottom: 12px;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.meowseo-schema-info ul {
+	margin: 0;
+	padding-left: 20px;
+}
+
+.meowseo-schema-info li {
+	margin-bottom: 8px;
+	font-size: 13px;
+}
+
+/* Links Tab */
+.meowseo-links-tab.meowseo-loading,
+.meowseo-links-tab.meowseo-error,
+.meowseo-links-tab.meowseo-empty {
+	text-align: center;
+	padding: 32px 16px;
+}
+
+.meowseo-link-section {
+	margin-bottom: 24px;
+}
+
+.meowseo-link-section h3 {
+	margin-top: 0;
+	margin-bottom: 8px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.meowseo-link-section .description {
+	margin-bottom: 12px;
+	color: #757575;
+	font-size: 13px;
+}
+
+.meowseo-link-suggestions,
+.meowseo-link-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.meowseo-link-suggestion,
+.meowseo-link-item {
+	padding: 8px 0;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.meowseo-link-suggestion:last-child,
+.meowseo-link-item:last-child {
+	border-bottom: none;
+}
+
+.meowseo-suggestion-score {
+	display: inline-block;
+	margin-left: 8px;
+	padding: 2px 6px;
+	background: #f0f0f0;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.meowseo-link-url {
+	display: block;
+	font-size: 13px;
+	word-break: break-all;
+}
+
+.meowseo-link-anchor,
+.meowseo-link-http-status {
+	display: block;
+	margin-top: 4px;
+	font-size: 12px;
+	color: #757575;
+}
+
+.meowseo-link-actions {
+	margin-top: 16px;
+}
+
+/* GSC Tab */
+.meowseo-gsc-tab.meowseo-loading,
+.meowseo-gsc-tab.meowseo-error,
+.meowseo-gsc-tab.meowseo-empty {
+	text-align: center;
+	padding: 32px 16px;
+}
+
+.meowseo-gsc-tab h3 {
+	margin-top: 0;
+	margin-bottom: 8px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.meowseo-gsc-tab .description {
+	margin-bottom: 16px;
+	color: #757575;
+	font-size: 13px;
+}
+
+.meowseo-gsc-summary {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 12px;
+	margin-bottom: 24px;
+}
+
+.meowseo-gsc-metric {
+	padding: 12px;
+	background: #f0f0f0;
+	border-radius: 4px;
+	text-align: center;
+}
+
+.meowseo-gsc-metric-label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: #757575;
+	margin-bottom: 4px;
+}
+
+.meowseo-gsc-metric-value {
+	font-size: 20px;
+	font-weight: 700;
+	color: #1e1e1e;
+}
+
+.meowseo-gsc-recent h4 {
+	margin-top: 0;
+	margin-bottom: 12px;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.meowseo-gsc-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+}
+
+.meowseo-gsc-table th {
+	text-align: left;
+	padding: 8px 4px;
+	border-bottom: 2px solid #e0e0e0;
+	font-weight: 600;
+}
+
+.meowseo-gsc-table td {
+	padding: 8px 4px;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.meowseo-gsc-actions {
+	margin-top: 16px;
+}
+
+/* Error State */
+.meowseo-error .error {
+	color: #dc3232;
+	font-weight: 600;
+}

@@ -53,6 +53,14 @@ class Meta implements Module {
 	private Options $options;
 
 	/**
+	 * Gutenberg integration instance
+	 *
+	 * @since 1.0.0
+	 * @var Gutenberg
+	 */
+	private Gutenberg $gutenberg;
+
+	/**
 	 * Constructor
 	 *
 	 * @since 1.0.0
@@ -60,6 +68,11 @@ class Meta implements Module {
 	 */
 	public function __construct( Options $options ) {
 		$this->options = $options;
+
+		// Initialize Gutenberg integration
+		$plugin_dir = dirname( dirname( dirname( __DIR__ ) ) );
+		$plugin_url = plugins_url( '', $plugin_dir . '/meowseo.php' );
+		$this->gutenberg = new Gutenberg( $plugin_dir, $plugin_url );
 	}
 
 	/**
@@ -79,6 +92,9 @@ class Meta implements Module {
 
 		// Register REST API fields.
 		add_action( 'rest_api_init', array( $this, 'register_rest_fields' ) );
+
+		// Initialize Gutenberg integration.
+		$this->gutenberg->init();
 	}
 
 	/**
