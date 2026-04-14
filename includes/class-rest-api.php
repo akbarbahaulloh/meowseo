@@ -179,6 +179,7 @@ class REST_API {
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'update_settings' ),
 				'permission_callback' => array( $this, 'manage_options_permission' ),
+				'args'                => $this->get_settings_schema(),
 			)
 		);
 	}
@@ -333,6 +334,9 @@ class REST_API {
 	/**
 	 * Update plugin settings
 	 *
+	 * Validates settings via REST API with nonce checks.
+	 * Requirements: 2.3, 2.5, 15.2, 15.3
+	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $request REST request object.
 	 * @return \WP_REST_Response REST response.
@@ -361,8 +365,21 @@ class REST_API {
 			);
 		}
 
+		// Validate and sanitize settings (Requirement 2.3).
+		$validated_settings = $this->validate_settings( $settings );
+
+		if ( is_wp_error( $validated_settings ) ) {
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => $validated_settings->get_error_message(),
+				),
+				400
+			);
+		}
+
 		// Update settings (excluding sensitive fields).
-		foreach ( $settings as $key => $value ) {
+		foreach ( $validated_settings as $key => $value ) {
 			// Skip sensitive fields.
 			if ( in_array( $key, array( 'gsc_credentials' ), true ) ) {
 				continue;
@@ -464,5 +481,193 @@ class REST_API {
 		}
 
 		return wp_verify_nonce( $nonce, 'wp_rest' );
+	}
+
+	/**
+	 * Get settings schema for validation
+	 *
+	 * Defines validation rules for all settings.
+	 * Requirement: 2.3
+	 *
+	 * @since 1.0.0
+	 * @return array Settings schema.
+	 */
+	private function get_settings_schema(): array {
+		$schema = array(
+			'enabled_modules' => array(
+				'type'              => 'array',
+				'items'             => array(
+					'type' => 'string',
+					'enum' => array(
+						'meta',
+						'schema',
+						'sitemap',
+						'redirects',
+						'monitor_404',
+						'internal_links',
+						'gsc',
+						'social',
+						'woocommerce',
+					),
+				),
+				'sanitize_callback' => array( $this, 'sanitize_enabled_modules' ),
+			),
+			'separator' => array(
+				'type'              => 'string',
+				'enum'              => array( '|', '-', '–', '—', '·', '•' ),
+				'sanitize_callback' => 'sanitize_text_field',
+			),
+			'default_social_image' => array(
+				'type'              => 'integer',
+				'sanitize_callback' => 'absint',
+			),
+			'delete_on_uninstall' => array(
+				'type'              => 'boolean',
+				'sanitize_callback' => 'rest_sanitize_boolean',
+			),
+			'has_regex_rules' => array(
+				'type'              => 'boolean',
+				'sanitize_callback' => 'rest_sanitize_boolean',
+			),
+		);
+
+		// Add WooCommerce-specific settings if WooCommerce is active (Requirement 2.5).
+		if ( class_exists( 'WooCommerce' ) ) {
+			$schema['woocommerce_exclude_out_of_stock'] = array(
+				'type'              => 'boolean',
+				'sanitize_callback' => 'rest_sanitize_boolean',
+			);
+		}
+
+		return $schema;
+	}
+
+	/**
+	 * Validate settings
+	 *
+	 * Validates all settings against schema.
+	 * Requirement: 2.3
+	 *
+	 * @since 1.0.0
+	 * @param array $settings Settings to validate.
+	 * @return array|\WP_Error Validated settings or error.
+	 */
+	private function validate_settings( array $settings ) {
+		$schema = $this->get_settings_schema();
+		$validated = array();
+
+		foreach ( $settings as $key => $value ) {
+			// Skip unknown settings.
+			if ( ! isset( $schema[ $key ] ) ) {
+				continue;
+			}
+
+			$field_schema = $schema[ $key ];
+
+			// Validate type.
+			if ( isset( $field_schema['type'] ) ) {
+				$valid = $this->validate_type( $value, $field_schema['type'] );
+				if ( ! $valid ) {
+					return new \WP_Error(
+						'invalid_type',
+						sprintf(
+							/* translators: %s: setting key */
+							__( 'Invalid type for setting: %s', 'meowseo' ),
+							$key
+						)
+					);
+				}
+			}
+
+			// Validate enum.
+			if ( isset( $field_schema['enum'] ) && ! in_array( $value, $field_schema['enum'], true ) ) {
+				return new \WP_Error(
+					'invalid_enum',
+					sprintf(
+						/* translators: %s: setting key */
+						__( 'Invalid value for setting: %s', 'meowseo' ),
+						$key
+					)
+				);
+			}
+
+			// Validate array items.
+			if ( 'array' === $field_schema['type'] && isset( $field_schema['items'] ) ) {
+				foreach ( $value as $item ) {
+					if ( isset( $field_schema['items']['enum'] ) && ! in_array( $item, $field_schema['items']['enum'], true ) ) {
+						return new \WP_Error(
+							'invalid_array_item',
+							sprintf(
+								/* translators: %s: setting key */
+								__( 'Invalid array item for setting: %s', 'meowseo' ),
+								$key
+							)
+						);
+					}
+				}
+			}
+
+			// Sanitize value.
+			if ( isset( $field_schema['sanitize_callback'] ) && is_callable( $field_schema['sanitize_callback'] ) ) {
+				$value = call_user_func( $field_schema['sanitize_callback'], $value );
+			}
+
+			$validated[ $key ] = $value;
+		}
+
+		return $validated;
+	}
+
+	/**
+	 * Validate type
+	 *
+	 * @since 1.0.0
+	 * @param mixed  $value Value to validate.
+	 * @param string $type  Expected type.
+	 * @return bool True if valid.
+	 */
+	private function validate_type( $value, string $type ): bool {
+		switch ( $type ) {
+			case 'string':
+				return is_string( $value );
+			case 'integer':
+				return is_int( $value );
+			case 'boolean':
+				return is_bool( $value );
+			case 'array':
+				return is_array( $value );
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * Sanitize enabled modules
+	 *
+	 * Ensures only valid module IDs are enabled.
+	 * Requirement: 2.3
+	 *
+	 * @since 1.0.0
+	 * @param array $modules Module IDs.
+	 * @return array Sanitized module IDs.
+	 */
+	public function sanitize_enabled_modules( $modules ): array {
+		if ( ! is_array( $modules ) ) {
+			return array();
+		}
+
+		$valid_modules = array(
+			'meta',
+			'schema',
+			'sitemap',
+			'redirects',
+			'monitor_404',
+			'internal_links',
+			'gsc',
+			'social',
+			'woocommerce',
+		);
+
+		return array_values( array_intersect( $modules, $valid_modules ) );
 	}
 }

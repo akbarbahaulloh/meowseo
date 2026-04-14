@@ -12,6 +12,7 @@ import { registerPlugin } from '@wordpress/plugins';
 import { useEffect } from '@wordpress/element';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { useEntityProp } from '@wordpress/core-data';
+import { render } from '@wordpress/element';
 
 // Import styles
 import './editor.css';
@@ -21,6 +22,9 @@ import './store/index';
 
 // Import sidebar component
 import MeowSeoSidebar from './sidebar/MeowSeoSidebar';
+
+// Import settings app
+import SettingsApp from './settings/SettingsApp';
 
 /**
  * MeowSEO Plugin Component
@@ -79,8 +83,16 @@ function MeowSeoPlugin() {
 	return <MeowSeoSidebar />;
 }
 
-// Register the plugin
-registerPlugin( 'meowseo', {
-	render: MeowSeoPlugin,
-	icon: 'search',
-} );
+// Check if we're on the settings page or in the editor
+const settingsRoot = document.getElementById( 'meowseo-settings-root' );
+
+if ( settingsRoot ) {
+	// Render settings app on admin page
+	render( <SettingsApp />, settingsRoot );
+} else {
+	// Register the Gutenberg plugin
+	registerPlugin( 'meowseo', {
+		render: MeowSeoPlugin,
+		icon: 'search',
+	} );
+}

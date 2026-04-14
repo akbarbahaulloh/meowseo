@@ -55,6 +55,13 @@ class Plugin {
 	private ?WPGraphQL $wpgraphql = null;
 
 	/**
+	 * Admin instance.
+	 *
+	 * @var Admin|null
+	 */
+	private ?Admin $admin = null;
+
+	/**
 	 * Private constructor to prevent direct instantiation.
 	 */
 	private function __construct() {
@@ -97,6 +104,12 @@ class Plugin {
 		if ( class_exists( 'WPGraphQL' ) ) {
 			$this->wpgraphql = new WPGraphQL( $this->module_manager );
 			add_action( 'graphql_register_types', array( $this->wpgraphql, 'register_fields' ) );
+		}
+
+		// Initialize Admin interface (only in admin context).
+		if ( is_admin() ) {
+			$this->admin = new Admin( $this->options );
+			$this->admin->boot();
 		}
 	}
 

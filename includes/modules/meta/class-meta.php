@@ -431,15 +431,15 @@ class Meta implements Module {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'rest_get_analysis' ),
-				'permission_callback' => function ( $request ) {
-					$post_id = (int) $request['post_id'];
-					return current_user_can( 'edit_post', $post_id );
-				},
+				'permission_callback' => array( $this, 'check_analysis_permission' ),
 				'args'                => array(
 					'post_id'       => array(
 						'required'          => true,
 						'type'              => 'integer',
 						'sanitize_callback' => 'absint',
+						'validate_callback' => function ( $param ) {
+							return $param > 0 && get_post( $param ) !== null;
+						},
 					),
 					'content'       => array(
 						'required'          => true,
@@ -589,11 +589,24 @@ class Meta implements Module {
 	/**
 	 * REST API callback for analysis endpoint
 	 *
+	 * Requirements 15.2, 15.3: Verify nonce and capability
+	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $request REST request object.
 	 * @return \WP_REST_Response REST response.
 	 */
 	public function rest_get_analysis( $request ): \WP_REST_Response {
+		// Verify nonce (Requirement 15.2).
+		if ( ! $this->verify_nonce( $request ) ) {
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Invalid nonce.', 'meowseo' ),
+				),
+				403
+			);
+		}
+
 		$post_id       = (int) $request['post_id'];
 		$content       = $request['content'];
 		$focus_keyword = $request->get_param( 'focus_keyword' ) ?? '';
@@ -611,6 +624,39 @@ class Meta implements Module {
 		);
 
 		return new \WP_REST_Response( $response, 200 );
+	}
+
+	/**
+	 * Permission callback for analysis endpoint
+	 *
+	 * Requirement 15.3: Verify user capability
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $request REST request object.
+	 * @return bool True if user has permission.
+	 */
+	public function check_analysis_permission( \WP_REST_Request $request ): bool {
+		$post_id = (int) $request['post_id'];
+		return current_user_can( 'edit_post', $post_id );
+	}
+
+	/**
+	 * Verify nonce from request
+	 *
+	 * Requirement 15.2
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $request REST request object.
+	 * @return bool True if nonce is valid.
+	 */
+	private function verify_nonce( \WP_REST_Request $request ): bool {
+		$nonce = $request->get_header( 'X-WP-Nonce' );
+
+		if ( empty( $nonce ) ) {
+			return false;
+		}
+
+		return wp_verify_nonce( $nonce, 'wp_rest' );
 	}
 
 	/**
