@@ -202,6 +202,7 @@ class Sitemap_Generator {
 	 * Get posts for sitemap
 	 *
 	 * Excludes noindex posts (Requirement 6.8).
+	 * Applies WooCommerce product filtering (Requirement 12.3).
 	 *
 	 * @param string $post_type Post type name.
 	 * @return array Array of WP_Post objects.
@@ -225,7 +226,12 @@ class Sitemap_Generator {
 			)
 		);
 
-		return $posts ? $posts : array();
+		$posts = $posts ? $posts : array();
+
+		// Apply WooCommerce product filtering if applicable (Requirement 12.3)
+		$posts = apply_filters( 'meowseo_sitemap_posts', $posts, $post_type );
+
+		return $posts;
 	}
 
 	/**

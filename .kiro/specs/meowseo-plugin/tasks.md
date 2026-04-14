@@ -239,13 +239,13 @@ This implementation plan breaks down the MeowSEO WordPress SEO plugin developmen
     - Expose social meta fields via REST API
     - _Requirements: 11.4, 11.5_
 
-- [-] 14. Implement WooCommerce Module (conditional)
-  - [ ] 14.1 Create WooCommerce-specific SEO enhancements
+- [x] 14. Implement WooCommerce Module (conditional)
+  - [x] 14.1 Create WooCommerce-specific SEO enhancements
     - Extend Meta module for product post type support
     - Add SEO score columns to WooCommerce product list
     - _Requirements: 12.1, 12.4_
 
-  - [ ] 14.2 Add WooCommerce Product schema support
+  - [x] 14.2 Add WooCommerce Product schema support
     - Output Product JSON-LD with price, availability, reviews
     - Include product URLs in sitemaps with stock filtering
     - _Requirements: 12.2, 12.3_
