@@ -73,8 +73,8 @@ This implementation plan transforms the current basic meta tag implementation in
     - Test parser with valid and invalid patterns
     - _Requirements: 8.1, 8.2, 12.1_
 
-- [ ] 4. Implement Meta_Resolver with all fallback chains
-  - [ ] 4.1 Implement title resolution with fallback chain
+- [x] 4. Implement Meta_Resolver with all fallback chains
+  - [x] 4.1 Implement title resolution with fallback chain
     - Implement `resolve_title(post_id)` method
     - Check `_meowseo_title` postmeta first
     - Fall back to title pattern via Title_Patterns
@@ -82,7 +82,7 @@ This implementation plan transforms the current basic meta tag implementation in
     - Ensure never returns empty string
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
   
-  - [ ] 4.2 Implement description resolution with fallback chain
+  - [x] 4.2 Implement description resolution with fallback chain
     - Implement `resolve_description(post_id)` method
     - Check `_meowseo_description` postmeta first
     - Fall back to excerpt (160 chars, HTML stripped)
@@ -91,7 +91,7 @@ This implementation plan transforms the current basic meta tag implementation in
     - Return empty string when no source available
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
   
-  - [ ] 4.3 Implement Open Graph image resolution with fallback chain
+  - [x] 4.3 Implement Open Graph image resolution with fallback chain
     - Implement `resolve_og_image(post_id)` method
     - Check `_meowseo_og_image` postmeta (attachment ID) first
     - Fall back to featured image if width >= 1200px
@@ -102,7 +102,7 @@ This implementation plan transforms the current basic meta tag implementation in
     - Return array with URL and dimensions (width, height)
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7_
   
-  - [ ] 4.4 Implement canonical URL resolution with pagination stripping
+  - [x] 4.4 Implement canonical URL resolution with pagination stripping
     - Implement `resolve_canonical(post_id)` method
     - Check `_meowseo_canonical` postmeta first
     - Fall back to `get_permalink()` for singular
@@ -112,7 +112,7 @@ This implementation plan transforms the current basic meta tag implementation in
     - Ensure always returns non-empty URL
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7_
   
-  - [ ] 4.5 Implement robots directive resolution with merging
+  - [x] 4.5 Implement robots directive resolution with merging
     - Implement `resolve_robots(post_id)` method
     - Start with base directives: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1
     - Check `_meowseo_robots_noindex` and `_meowseo_robots_nofollow` postmeta
@@ -121,73 +121,73 @@ This implementation plan transforms the current basic meta tag implementation in
     - Always include Google Discover directives
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7_
   
-  - [ ] 4.6 Implement Twitter Card field resolution
+  - [x] 4.6 Implement Twitter Card field resolution
     - Implement `resolve_twitter_title(post_id)` method
     - Implement `resolve_twitter_description(post_id)` method
     - Implement `resolve_twitter_image(post_id)` method
     - Ensure independence from Open Graph values
     - _Requirements: 2.8_
   
-  - [ ] 4.7 Implement hreflang alternates resolution
+  - [x] 4.7 Implement hreflang alternates resolution
     - Implement `get_hreflang_alternates()` method
     - Implement `is_wpml_active()` helper checking ICL_SITEPRESS_VERSION
     - Implement `is_polylang_active()` helper checking pll_the_languages
     - Return array of language => URL mappings
     - _Requirements: 2.9_
   
-  - [ ] 4.8 Write property test for title fallback chain completeness
+  - [x] 4.8 Write property test for title fallback chain completeness
     - **Property 10: Title Fallback Chain Completeness**
     - **Validates: Requirements 3.1, 3.2, 3.3, 3.5, 3.6**
   
-  - [ ] 4.9 Write property test for description fallback chain completeness
+  - [x] 4.9 Write property test for description fallback chain completeness
     - **Property 11: Description Fallback Chain Completeness**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.6**
   
-  - [ ] 4.10 Write property test for description truncation with HTML stripping
+  - [x] 4.10 Write property test for description truncation with HTML stripping
     - **Property 12: Description Truncation with HTML Stripping**
     - **Validates: Requirements 4.5**
   
-  - [ ] 4.11 Write property test for OG image fallback chain completeness
+  - [x] 4.11 Write property test for OG image fallback chain completeness
     - **Property 13: OG Image Fallback Chain Completeness**
     - **Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5, 5.6**
   
-  - [ ] 4.12 Write property test for OG image dimension validation
+  - [x] 4.12 Write property test for OG image dimension validation
     - **Property 14: OG Image Dimension Validation**
     - **Validates: Requirements 5.3, 5.4**
   
-  - [ ] 4.13 Write property test for OG image return structure
+  - [x] 4.13 Write property test for OG image return structure
     - **Property 15: OG Image Return Structure**
     - **Validates: Requirements 5.7**
   
-  - [ ] 4.14 Write property test for canonical fallback chain completeness
+  - [x] 4.14 Write property test for canonical fallback chain completeness
     - **Property 16: Canonical Fallback Chain Completeness**
     - **Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5**
   
-  - [ ] 4.15 Write property test for canonical pagination stripping
+  - [x] 4.15 Write property test for canonical pagination stripping
     - **Property 4: Canonical Pagination Stripping**
     - **Validates: Requirements 2.5, 6.6**
   
-  - [ ] 4.16 Write property test for canonical always present
+  - [x] 4.16 Write property test for canonical always present
     - **Property 5: Canonical Always Present**
     - **Validates: Requirements 2.5, 6.7**
   
-  - [ ] 4.17 Write property test for robots directive merging
+  - [x] 4.17 Write property test for robots directive merging
     - **Property 17: Robots Directive Merging**
     - **Validates: Requirements 7.1, 7.3, 7.4, 7.5, 7.6**
   
-  - [ ] 4.18 Write property test for Google Discover directives always present
+  - [x] 4.18 Write property test for Google Discover directives always present
     - **Property 3: Google Discover Directives Always Present**
     - **Validates: Requirements 2.4, 7.2, 7.7**
   
-  - [ ] 4.19 Write property test for Twitter Card independence
+  - [x] 4.19 Write property test for Twitter Card independence
     - **Property 8: Twitter Card Independence**
     - **Validates: Requirements 2.8**
   
-  - [ ] 4.20 Write property test for conditional hreflang output
+  - [x] 4.20 Write property test for conditional hreflang output
     - **Property 9: Conditional Hreflang Output**
     - **Validates: Requirements 2.9**
   
-  - [ ] 4.21 Write unit tests for Meta_Resolver
+  - [x] 4.21 Write unit tests for Meta_Resolver
     - Test each fallback chain with specific examples
     - Test edge cases: empty strings, null values, invalid IDs
     - Test helper methods: truncate_text, strip_pagination_params
