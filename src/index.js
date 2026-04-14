@@ -26,6 +26,9 @@ import MeowSeoSidebar from './sidebar/MeowSeoSidebar';
 // Import settings app
 import SettingsApp from './settings/SettingsApp';
 
+// Import log viewer app
+import LogViewer from './admin/LogViewer';
+
 /**
  * MeowSEO Plugin Component
  *
@@ -116,8 +119,9 @@ function MeowSeoPlugin() {
 	}
 }
 
-// Check if we're on the settings page or in the editor
+// Check if we're on the settings page, log viewer page, or in the editor
 const settingsRoot = document.getElementById( 'meowseo-settings-root' );
+const logViewerRoot = document.getElementById( 'meowseo-log-viewer-root' );
 
 if ( settingsRoot ) {
 	// Render settings app on admin page with error handling
@@ -126,6 +130,14 @@ if ( settingsRoot ) {
 	} catch ( error ) {
 		console.error( 'MeowSEO: Error rendering settings app', error );
 		settingsRoot.innerHTML = '<div class="notice notice-error"><p>MeowSEO: Failed to load settings interface. Please check the browser console for details.</p></div>';
+	}
+} else if ( logViewerRoot ) {
+	// Render log viewer app on admin page with error handling
+	try {
+		render( <LogViewer />, logViewerRoot );
+	} catch ( error ) {
+		console.error( 'MeowSEO: Error rendering log viewer app', error );
+		logViewerRoot.innerHTML = '<div class="notice notice-error"><p>MeowSEO: Failed to load log viewer interface. Please check the browser console for details.</p></div>';
 	}
 } else {
 	// Register the Gutenberg plugin with error handling

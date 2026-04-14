@@ -362,3 +362,53 @@
 	color: #dc3232;
 	font-weight: 600;
 }
+
+/* Log Viewer Styles */
+.meowseo-log-viewer {
+	margin: 20px 0;
+}
+
+.meowseo-log-viewer .wp-list-table {
+	margin-top: 0;
+}
+
+.meowseo-log-viewer .wp-list-table th,
+.meowseo-log-viewer .wp-list-table td {
+	vertical-align: middle;
+}
+
+.meowseo-log-viewer .components-checkbox-control {
+	margin: 0;
+}
+
+.meowseo-log-viewer .components-checkbox-control__input-container {
+	margin: 0;
+}
+
+.meowseo-log-viewer pre {
+	font-family: 'Courier New', Courier, monospace;
+	font-size: 12px;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+}
+
+.meowseo-log-viewer .components-card {
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.meowseo-log-viewer .components-flex {
+	flex-wrap: wrap;
+}
+
+.meowseo-log-viewer input[type="datetime-local"] {
+	border: 1px solid #757575;
+	border-radius: 2px;
+	font-size: 13px;
+}
+
+.meowseo-log-viewer input[type="datetime-local"]:focus {
+	border-color: #007cba;
+	outline: 2px solid transparent;
+	box-shadow: 0 0 0 1px #007cba;
+}
