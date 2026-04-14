@@ -72,14 +72,24 @@ class Module_Manager {
 		}
 
 		// Boot all loaded modules.
-		foreach ( $this->modules as $module ) {
+		foreach ( $this->modules as $module_id => $module ) {
 			try {
 				$module->boot();
 			} catch ( \Exception $e ) {
-				// Log error but don't break other modules.
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'MeowSEO: Failed to boot module: ' . $e->getMessage() );
-				}
+				// Log exception via Logger with full details.
+				Helpers\Logger::error(
+					'Failed to boot module: ' . $module_id,
+					array(
+						'exception_class' => get_class( $e ),
+						'exception_message' => $e->getMessage(),
+						'file' => $e->getFile(),
+						'line' => $e->getLine(),
+						'stack_trace' => $e->getTraceAsString(),
+					)
+				);
+				
+				// Continue booting remaining modules.
+				continue;
 			}
 		}
 	}
