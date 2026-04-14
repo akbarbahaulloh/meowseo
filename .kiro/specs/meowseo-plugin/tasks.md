@@ -250,19 +250,19 @@ This implementation plan breaks down the MeowSEO WordPress SEO plugin developmen
     - Include product URLs in sitemaps with stock filtering
     - _Requirements: 12.2, 12.3_
 
-- [ ] 15. Implement REST API layer for headless support
-  - [ ] 15.1 Create meowseo/v1 REST namespace
+- [x] 15. Implement REST API layer for headless support
+  - [x] 15.1 Create meowseo/v1 REST namespace
     - Register all REST endpoints under meowseo/v1
     - Implement meta CRUD endpoints with proper authentication
     - Add schema endpoint for JSON-LD access
     - _Requirements: 13.1, 13.2, 13.4_
 
-  - [ ] 15.2 Add caching headers for headless deployments
+  - [x] 15.2 Add caching headers for headless deployments
     - Include Cache-Control headers on GET responses
     - Support CDN and edge caching for headless sites
     - _Requirements: 13.6_
 
-  - [ ] 15.3 Create WPGraphQL integration (conditional)
+  - [x] 15.3 Create WPGraphQL integration (conditional)
     - Register seo field on all queryable post types
     - Expose title, description, robots, canonical, schema data
     - Include OpenGraph and Twitter Card sub-fields

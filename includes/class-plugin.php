@@ -41,6 +41,20 @@ class Plugin {
 	private ?Options $options = null;
 
 	/**
+	 * REST API instance.
+	 *
+	 * @var REST_API|null
+	 */
+	private ?REST_API $rest_api = null;
+
+	/**
+	 * WPGraphQL instance.
+	 *
+	 * @var WPGraphQL|null
+	 */
+	private ?WPGraphQL $wpgraphql = null;
+
+	/**
 	 * Private constructor to prevent direct instantiation.
 	 */
 	private function __construct() {
@@ -74,6 +88,16 @@ class Plugin {
 
 		// Boot all enabled modules.
 		$this->module_manager->boot();
+
+		// Initialize REST API layer.
+		$this->rest_api = new REST_API( $this->options, $this->module_manager );
+		add_action( 'rest_api_init', array( $this->rest_api, 'register_routes' ) );
+
+		// Initialize WPGraphQL integration if WPGraphQL is active.
+		if ( class_exists( 'WPGraphQL' ) ) {
+			$this->wpgraphql = new WPGraphQL( $this->module_manager );
+			add_action( 'graphql_register_types', array( $this->wpgraphql, 'register_fields' ) );
+		}
 	}
 
 	/**
