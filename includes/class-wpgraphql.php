@@ -55,20 +55,30 @@ class WPGraphQL {
 	public function register_fields(): void {
 		// Check if WPGraphQL is active.
 		if ( ! function_exists( 'register_graphql_field' ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'MeowSEO: WPGraphQL functions not available during field registration' );
+			}
 			return;
 		}
 
-		// Register SEO object type.
-		$this->register_seo_type();
+		try {
+			// Register SEO object type.
+			$this->register_seo_type();
 
-		// Register OpenGraph object type.
-		$this->register_opengraph_type();
+			// Register OpenGraph object type.
+			$this->register_opengraph_type();
 
-		// Register TwitterCard object type.
-		$this->register_twitter_card_type();
+			// Register TwitterCard object type.
+			$this->register_twitter_card_type();
 
-		// Register seo field on all queryable post types.
-		$this->register_post_type_fields();
+			// Register seo field on all queryable post types.
+			$this->register_post_type_fields();
+		} catch ( \Exception $e ) {
+			// Log error but don't break WPGraphQL.
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'MeowSEO: WPGraphQL field registration error: ' . $e->getMessage() );
+			}
+		}
 	}
 
 	/**
@@ -226,44 +236,52 @@ class WPGraphQL {
 
 		$post_id = $post->ID;
 
-		// Get meta module if active.
-		$meta_module = $this->module_manager->get_module( 'meta' );
-		$social_module = $this->module_manager->get_module( 'social' );
-		$schema_module = $this->module_manager->get_module( 'schema' );
+		try {
+			// Get meta module if active.
+			$meta_module = $this->module_manager->get_module( 'meta' );
+			$social_module = $this->module_manager->get_module( 'social' );
+			$schema_module = $this->module_manager->get_module( 'schema' );
 
-		$data = array();
+			$data = array();
 
-		// Get SEO meta if meta module is active.
-		if ( $meta_module ) {
-			$data['title']       = $meta_module->get_title( $post_id );
-			$data['description'] = $meta_module->get_description( $post_id );
-			$data['robots']      = $meta_module->get_robots( $post_id );
-			$data['canonical']   = $meta_module->get_canonical( $post_id );
+			// Get SEO meta if meta module is active.
+			if ( $meta_module ) {
+				$data['title']       = $meta_module->get_title( $post_id );
+				$data['description'] = $meta_module->get_description( $post_id );
+				$data['robots']      = $meta_module->get_robots( $post_id );
+				$data['canonical']   = $meta_module->get_canonical( $post_id );
+			}
+
+			// Get social meta if social module is active.
+			if ( $social_module ) {
+				$social_data = $social_module->get_social_data( $post_id );
+				$data['openGraph'] = array(
+					'title'       => $social_data['title'] ?? '',
+					'description' => $social_data['description'] ?? '',
+					'image'       => $social_data['image'] ?? '',
+					'type'        => $social_data['type'] ?? '',
+					'url'         => $social_data['url'] ?? '',
+				);
+				$data['twitterCard'] = array(
+					'card'        => 'summary_large_image',
+					'title'       => $social_data['title'] ?? '',
+					'description' => $social_data['description'] ?? '',
+					'image'       => $social_data['image'] ?? '',
+				);
+			}
+
+			// Get schema JSON-LD if schema module is active.
+			if ( $schema_module ) {
+				$data['schemaJsonLd'] = $schema_module->get_schema_json( $post_id );
+			}
+
+			return $data;
+		} catch ( \Exception $e ) {
+			// Log error and return null to prevent GraphQL query failure.
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'MeowSEO: Error resolving SEO field for post ' . $post_id . ': ' . $e->getMessage() );
+			}
+			return null;
 		}
-
-		// Get social meta if social module is active.
-		if ( $social_module ) {
-			$social_data = $social_module->get_social_data( $post_id );
-			$data['openGraph'] = array(
-				'title'       => $social_data['title'] ?? '',
-				'description' => $social_data['description'] ?? '',
-				'image'       => $social_data['image'] ?? '',
-				'type'        => $social_data['type'] ?? '',
-				'url'         => $social_data['url'] ?? '',
-			);
-			$data['twitterCard'] = array(
-				'card'        => 'summary_large_image',
-				'title'       => $social_data['title'] ?? '',
-				'description' => $social_data['description'] ?? '',
-				'image'       => $social_data['image'] ?? '',
-			);
-		}
-
-		// Get schema JSON-LD if schema module is active.
-		if ( $schema_module ) {
-			$data['schemaJsonLd'] = $schema_module->get_schema_json( $post_id );
-		}
-
-		return $data;
 	}
 }

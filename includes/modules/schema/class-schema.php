@@ -130,13 +130,14 @@ class Schema implements Module {
 	 * Get schema JSON for a post
 	 *
 	 * Returns cached schema JSON or generates it.
+	 * Implements caching to eliminate DB queries (Requirement 14.1).
 	 *
 	 * @since 1.0.0
 	 * @param int $post_id Post ID.
 	 * @return string Schema JSON string.
 	 */
 	public function get_schema_json( int $post_id ): string {
-		// Check cache first.
+		// Check cache first (Requirement 14.1, 14.2).
 		$cache_key = "schema_{$post_id}";
 		$cached = Cache::get( $cache_key );
 
@@ -153,8 +154,8 @@ class Schema implements Module {
 		// Convert to JSON.
 		$json = $this->schema_builder->to_json( $graph );
 
-		// Cache the result.
-		Cache::set( $cache_key, $json, 3600 ); // Cache for 1 hour.
+		// Cache the result for 1 hour (Requirement 14.1).
+		Cache::set( $cache_key, $json, 3600 );
 
 		return $json;
 	}

@@ -88,28 +88,48 @@ class Plugin {
 	 * Initializes Module_Manager and triggers module loading.
 	 *
 	 * @return void
+	 * @throws \Exception If critical initialization fails.
 	 */
 	public function boot(): void {
-		// Initialize Module_Manager.
-		$this->module_manager = new Module_Manager( $this->options );
+		try {
+			// Initialize Module_Manager.
+			$this->module_manager = new Module_Manager( $this->options );
 
-		// Boot all enabled modules.
-		$this->module_manager->boot();
+			// Boot all enabled modules (wrapped in try/catch internally).
+			$this->module_manager->boot();
 
-		// Initialize REST API layer.
-		$this->rest_api = new REST_API( $this->options, $this->module_manager );
-		add_action( 'rest_api_init', array( $this->rest_api, 'register_routes' ) );
+			// Initialize REST API layer.
+			$this->rest_api = new REST_API( $this->options, $this->module_manager );
+			add_action( 'rest_api_init', array( $this->rest_api, 'register_routes' ) );
 
-		// Initialize WPGraphQL integration if WPGraphQL is active.
-		if ( class_exists( 'WPGraphQL' ) ) {
-			$this->wpgraphql = new WPGraphQL( $this->module_manager );
-			add_action( 'graphql_register_types', array( $this->wpgraphql, 'register_fields' ) );
-		}
+			// Initialize WPGraphQL integration if WPGraphQL is active.
+			if ( class_exists( 'WPGraphQL' ) ) {
+				try {
+					$this->wpgraphql = new WPGraphQL( $this->module_manager );
+					add_action( 'graphql_register_types', array( $this->wpgraphql, 'register_fields' ) );
+				} catch ( \Exception $e ) {
+					// Log WPGraphQL registration error but don't break the plugin.
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'MeowSEO: Failed to initialize WPGraphQL integration: ' . $e->getMessage() );
+					}
+				}
+			}
 
-		// Initialize Admin interface (only in admin context).
-		if ( is_admin() ) {
-			$this->admin = new Admin( $this->options );
-			$this->admin->boot();
+			// Initialize Admin interface (only in admin context).
+			if ( is_admin() ) {
+				try {
+					$this->admin = new Admin( $this->options );
+					$this->admin->boot();
+				} catch ( \Exception $e ) {
+					// Log admin initialization error but don't break the plugin.
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'MeowSEO: Failed to initialize admin interface: ' . $e->getMessage() );
+					}
+				}
+			}
+		} catch ( \Exception $e ) {
+			// Re-throw critical errors for handling at the entry point.
+			throw $e;
 		}
 	}
 

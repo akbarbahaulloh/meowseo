@@ -150,9 +150,20 @@ class Sitemap implements Module {
 				exit;
 			}
 
-			// No stale file available, return 503
+			// Check if there's any existing sitemap file in the directory as fallback
+			$sitemap_dir = wp_upload_dir()['basedir'] . '/meowseo-sitemaps/';
+			$fallback_file = $sitemap_dir . 'meowseo-sitemap-' . $sitemap_type . '.xml';
+			
+			if ( file_exists( $fallback_file ) ) {
+				// Serve stale file even if not in cache
+				$this->serve_sitemap_file( $fallback_file );
+				exit;
+			}
+
+			// No stale file available, return 503 with retry header
 			status_header( 503 );
 			header( 'Retry-After: 60' );
+			header( 'Content-Type: text/plain; charset=utf-8' );
 			echo 'Sitemap is being generated. Please try again in a moment.';
 			exit;
 		}
@@ -161,16 +172,32 @@ class Sitemap implements Module {
 		try {
 			$file_path = $this->generate_sitemap( $sitemap_type );
 
-			if ( $file_path ) {
+			if ( $file_path && file_exists( $file_path ) ) {
 				// Store file path in cache (Requirement 6.2)
 				Cache::set( $cache_key, $file_path, self::CACHE_TTL );
 
 				// Serve the generated file
 				$this->serve_sitemap_file( $file_path );
 			} else {
+				// Generation failed
 				status_header( 500 );
+				header( 'Content-Type: text/plain; charset=utf-8' );
 				echo 'Failed to generate sitemap.';
+				
+				// Log error in debug mode
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'MeowSEO: Sitemap generation failed for type: ' . $sitemap_type );
+				}
 			}
+		} catch ( \Exception $e ) {
+			// Log exception
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'MeowSEO: Sitemap generation exception: ' . $e->getMessage() );
+			}
+			
+			status_header( 500 );
+			header( 'Content-Type: text/plain; charset=utf-8' );
+			echo 'An error occurred while generating the sitemap.';
 		} finally {
 			// Always release the lock
 			Cache::delete( $lock_key );
@@ -197,6 +224,7 @@ class Sitemap implements Module {
 	 * Serve sitemap file
 	 *
 	 * Outputs XML file with appropriate headers and exits.
+	 * Serves directly from filesystem, bypassing WordPress template loading (Requirement 14.5).
 	 *
 	 * @param string $file_path Path to sitemap file.
 	 * @return void
@@ -206,7 +234,7 @@ class Sitemap implements Module {
 		header( 'Content-Type: application/xml; charset=utf-8' );
 		header( 'X-Robots-Tag: noindex, follow' );
 
-		// Read and output file
+		// Read and output file directly from filesystem (Requirement 14.5)
 		readfile( $file_path );
 	}
 

@@ -66,12 +66,13 @@ class Gutenberg {
 	 * Enqueue editor assets
 	 *
 	 * Enqueues JavaScript and CSS for the Gutenberg editor.
+	 * Only loads when in block editor context (Requirement 14.4).
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public function enqueue_editor_assets(): void {
-		// Check if we're in the block editor
+		// Check if we're in the block editor (Requirement 14.4)
 		if ( ! function_exists( 'get_current_screen' ) ) {
 			return;
 		}

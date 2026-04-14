@@ -122,7 +122,31 @@ register_deactivation_hook( __FILE__, array( '\MeowSEO\Installer', 'deactivate' 
  * Initialize the plugin.
  */
 function meowseo_init(): void {
-	Plugin::instance()->boot();
+	try {
+		Plugin::instance()->boot();
+	} catch ( \Exception $e ) {
+		// Log error in debug mode.
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'MeowSEO: Failed to initialize plugin: ' . $e->getMessage() );
+		}
+
+		// Display admin notice for fatal errors.
+		add_action( 'admin_notices', function() use ( $e ) {
+			?>
+			<div class="notice notice-error">
+				<p>
+					<?php
+					printf(
+						/* translators: %s: Error message */
+						esc_html__( 'MeowSEO encountered an error during initialization: %s', 'meowseo' ),
+						esc_html( $e->getMessage() )
+					);
+					?>
+				</p>
+			</div>
+			<?php
+		} );
+	}
 }
 
 // Hook into plugins_loaded to initialize the plugin.

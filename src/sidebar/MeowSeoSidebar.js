@@ -10,7 +10,7 @@
 
 import { PluginSidebar, PluginSidebarMoreMenuItem } from '@wordpress/edit-post';
 import { useSelect, useDispatch } from '@wordpress/data';
-import { TabPanel } from '@wordpress/components';
+import { TabPanel, Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { useContentSync } from '../store/content-sync-hook';
 
@@ -26,12 +26,22 @@ import GscTab from './tabs/GscTab';
  * MeowSEO Sidebar Component
  */
 export default function MeowSeoSidebar() {
-	// Initialize content sync hook
-	useContentSync();
+	// Initialize content sync hook with error handling
+	try {
+		useContentSync();
+	} catch ( error ) {
+		console.error( 'MeowSEO: Error initializing content sync', error );
+	}
 
-	const { setActiveTab } = useDispatch( 'meowseo/data' );
-	const activeTab = useSelect(
-		( select ) => select( 'meowseo/data' ).getActiveTab(),
+	const { setActiveTab, clearError } = useDispatch( 'meowseo/data' );
+	const { activeTab, error } = useSelect(
+		( select ) => {
+			const store = select( 'meowseo/data' );
+			return {
+				activeTab: store?.getActiveTab?.() || 'meta',
+				error: store?.getError?.() || null,
+			};
+		},
 		[]
 	);
 
@@ -70,27 +80,36 @@ export default function MeowSeoSidebar() {
 	];
 
 	/**
-	 * Render tab content
+	 * Render tab content with error handling
 	 *
 	 * @param {Object} tab Current tab
 	 * @return {JSX.Element} Tab content
 	 */
 	const renderTabContent = ( tab ) => {
-		switch ( tab.name ) {
-			case 'meta':
-				return <MetaTab />;
-			case 'analysis':
-				return <AnalysisTab />;
-			case 'social':
-				return <SocialTab />;
-			case 'schema':
-				return <SchemaTab />;
-			case 'links':
-				return <LinksTab />;
-			case 'gsc':
-				return <GscTab />;
-			default:
-				return null;
+		try {
+			switch ( tab.name ) {
+				case 'meta':
+					return <MetaTab />;
+				case 'analysis':
+					return <AnalysisTab />;
+				case 'social':
+					return <SocialTab />;
+				case 'schema':
+					return <SchemaTab />;
+				case 'links':
+					return <LinksTab />;
+				case 'gsc':
+					return <GscTab />;
+				default:
+					return null;
+			}
+		} catch ( tabError ) {
+			console.error( 'MeowSEO: Error rendering tab', tab.name, tabError );
+			return (
+				<Notice status="error" isDismissible={ false }>
+					{ __( 'Error loading tab content. Please refresh the page.', 'meowseo' ) }
+				</Notice>
+			);
 		}
 	};
 
@@ -106,12 +125,28 @@ export default function MeowSeoSidebar() {
 				icon="search"
 			>
 				<div className="meowseo-sidebar">
+					{ error && (
+						<Notice
+							status="error"
+							isDismissible={ true }
+							onRemove={ clearError }
+						>
+							{ error }
+						</Notice>
+					) }
+
 					<TabPanel
 						className="meowseo-tab-panel"
 						activeClass="is-active"
 						tabs={ tabs }
 						initialTabName={ activeTab }
-						onSelect={ ( tabName ) => setActiveTab( tabName ) }
+						onSelect={ ( tabName ) => {
+							try {
+								setActiveTab( tabName );
+							} catch ( selectError ) {
+								console.error( 'MeowSEO: Error selecting tab', selectError );
+							}
+						} }
 					>
 						{ ( tab ) => (
 							<div className="meowseo-tab-content">

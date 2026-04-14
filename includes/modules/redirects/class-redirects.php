@@ -83,9 +83,9 @@ class Redirects implements Module {
 	 * Implements database-level matching algorithm:
 	 * 1. Exact-match query on indexed source_url (O(log n))
 	 * 2. Regex fallback only if meowseo_has_regex_rules flag is true
-	 * 3. Never loads all redirect rules into PHP memory
+	 * 3. Never loads all redirect rules into PHP memory (Requirement 14.6)
 	 *
-	 * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6
+	 * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 14.6
 	 *
 	 * @return void
 	 */

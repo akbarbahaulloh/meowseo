@@ -36,17 +36,6 @@ class GSCModuleTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		// Mock WordPress functions if not available.
-		if ( ! function_exists( 'add_action' ) ) {
-			function add_action() {}
-		}
-		if ( ! function_exists( 'wp_next_scheduled' ) ) {
-			function wp_next_scheduled() { return false; }
-		}
-		if ( ! function_exists( 'wp_schedule_event' ) ) {
-			function wp_schedule_event() {}
-		}
-
 		$this->options = new Options();
 		$this->gsc = new GSC( $this->options );
 	}

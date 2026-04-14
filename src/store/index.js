@@ -34,6 +34,7 @@ const DEFAULT_STATE = {
 	ui: {
 		activeTab: 'meta',
 		isSaving: false,
+		error: null,
 	},
 };
 
@@ -111,6 +112,30 @@ const actions = {
 		return {
 			type: 'INITIALIZE_META',
 			meta,
+		};
+	},
+
+	/**
+	 * Set error state
+	 *
+	 * @param {string|null} error Error message or null to clear
+	 * @return {Object} Action object
+	 */
+	setError( error ) {
+		return {
+			type: 'SET_ERROR',
+			error,
+		};
+	},
+
+	/**
+	 * Clear error state
+	 *
+	 * @return {Object} Action object
+	 */
+	clearError() {
+		return {
+			type: 'CLEAR_ERROR',
 		};
 	},
 };
@@ -199,6 +224,16 @@ const selectors = {
 	isSaving( state ) {
 		return state.ui.isSaving;
 	},
+
+	/**
+	 * Get error state
+	 *
+	 * @param {Object} state Store state
+	 * @return {string|null} Error message or null
+	 */
+	getError( state ) {
+		return state.ui.error;
+	},
 };
 
 /**
@@ -257,18 +292,41 @@ const reducer = ( state = DEFAULT_STATE, action ) => {
 				},
 			};
 
+		case 'SET_ERROR':
+			return {
+				...state,
+				ui: {
+					...state.ui,
+					error: action.error,
+				},
+			};
+
+		case 'CLEAR_ERROR':
+			return {
+				...state,
+				ui: {
+					...state.ui,
+					error: null,
+				},
+			};
+
 		default:
 			return state;
 	}
 };
 
 /**
- * Register the store
+ * Register the store with error handling
  */
-registerStore( 'meowseo/data', {
-	reducer,
-	actions,
-	selectors,
-} );
+try {
+	registerStore( 'meowseo/data', {
+		reducer,
+		actions,
+		selectors,
+	} );
+} catch ( error ) {
+	// Log error but don't break the editor
+	console.error( 'MeowSEO: Failed to register store', error );
+}
 
 export default 'meowseo/data';

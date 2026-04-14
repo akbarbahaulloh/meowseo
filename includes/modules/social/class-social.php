@@ -128,13 +128,14 @@ class Social implements Module {
 	 * Get social meta data for a post
 	 *
 	 * Returns social title, description, image, type, and URL with fallback logic.
+	 * Implements caching to eliminate DB queries (Requirement 14.1).
 	 *
 	 * @since 1.0.0
 	 * @param int $post_id Post ID.
 	 * @return array Social meta data.
 	 */
 	public function get_social_data( int $post_id ): array {
-		// Check cache first.
+		// Check cache first (Requirement 14.1, 14.2).
 		$cache_key = "social_{$post_id}";
 		$cached = Cache::get( $cache_key );
 
@@ -170,8 +171,8 @@ class Social implements Module {
 			'url'         => $url,
 		);
 
-		// Cache the result.
-		Cache::set( $cache_key, $data, 3600 ); // Cache for 1 hour.
+		// Cache the result for 1 hour (Requirement 14.1).
+		Cache::set( $cache_key, $data, 3600 );
 
 		return $data;
 	}

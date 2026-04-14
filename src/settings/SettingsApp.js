@@ -67,6 +67,7 @@ const SettingsApp = () => {
 	 */
 	const loadSettings = async () => {
 		setLoading(true);
+		setNotice(null);
 		try {
 			const response = await apiFetch({
 				path: '/meowseo/v1/settings',
@@ -75,11 +76,14 @@ const SettingsApp = () => {
 
 			if (response.success) {
 				setSettings(response.settings);
+			} else {
+				throw new Error(response.message || __('Unknown error', 'meowseo'));
 			}
 		} catch (error) {
+			console.error('MeowSEO: Failed to load settings', error);
 			setNotice({
 				type: 'error',
-				message: __('Failed to load settings.', 'meowseo'),
+				message: error.message || __('Failed to load settings. Please refresh the page and try again.', 'meowseo'),
 			});
 		} finally {
 			setLoading(false);
@@ -110,11 +114,14 @@ const SettingsApp = () => {
 					type: 'success',
 					message: __('Settings saved successfully.', 'meowseo'),
 				});
+			} else {
+				throw new Error(response.message || __('Unknown error', 'meowseo'));
 			}
 		} catch (error) {
+			console.error('MeowSEO: Failed to save settings', error);
 			setNotice({
 				type: 'error',
-				message: __('Failed to save settings.', 'meowseo'),
+				message: error.message || __('Failed to save settings. Please try again.', 'meowseo'),
 			});
 		} finally {
 			setSaving(false);

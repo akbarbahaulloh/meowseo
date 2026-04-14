@@ -5,6 +5,14 @@
  * Wraps WordPress Object Cache with consistent key prefix and group isolation.
  * Falls back to transients when Object Cache is unavailable.
  *
+ * Caching Strategy (Requirements 14.1, 14.2, 14.3):
+ * - All cache keys use the meowseo_ prefix for isolation
+ * - Cache group 'meowseo' provides namespace isolation
+ * - Automatic fallback to WordPress transients when Object Cache unavailable
+ * - SEO meta cached for 1 hour (3600s) to eliminate DB queries on frontend
+ * - Sitemap paths cached persistently until invalidated
+ * - 404 hits buffered in per-minute buckets for batch processing
+ *
  * @package MeowSEO
  * @since 1.0.0
  */
