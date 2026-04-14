@@ -202,7 +202,7 @@ class Logger {
 		// Find existing entry within time window.
 		$existing = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT id FROM {$table} WHERE level = %s AND module = %s AND message_hash = %s AND created_at >= %s ORDER BY created_at DESC LIMIT 1",
+				"SELECT id, created_at FROM {$table} WHERE level = %s AND module = %s AND message_hash = %s AND created_at >= %s ORDER BY created_at DESC LIMIT 1",
 				$data['level'],
 				$data['module'],
 				$data['message_hash'],
@@ -214,12 +214,11 @@ class Logger {
 			return false;
 		}
 
-		// Increment hit count and update timestamp.
+		// Increment hit count only (don't update created_at to avoid unique constraint violation).
 		$wpdb->query(
 			$wpdb->prepare(
-				"UPDATE {$table} SET hit_count = hit_count + 1, created_at = %s WHERE id = %d",
-				$data['created_at'],
-				$existing['id']
+				"UPDATE {$table} SET hit_count = hit_count + 1 WHERE id = %d",
+				$existing->id
 			)
 		);
 

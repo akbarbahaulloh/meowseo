@@ -207,7 +207,7 @@ CREATE TABLE {$prefix}meowseo_logs (
 	KEY idx_level (level),
 	KEY idx_module (module),
 	KEY idx_created_at (created_at),
-	UNIQUE KEY idx_dedup (level, module, message_hash, created_at)
+	KEY idx_dedup (level, module, message_hash)
 ) $charset_collate;
 ";
 
