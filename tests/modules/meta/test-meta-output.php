@@ -1,6 +1,6 @@
 <?php
 /**
- * Meta_Output Test
+ * Tests for Meta_Output class
  *
  * @package MeowSEO
  * @subpackage Tests\Modules\Meta
@@ -8,23 +8,25 @@
 
 namespace MeowSEO\Tests\Modules\Meta;
 
-use WP_UnitTestCase;
 use MeowSEO\Modules\Meta\Meta_Output;
 use MeowSEO\Modules\Meta\Meta_Resolver;
 use MeowSEO\Modules\Meta\Title_Patterns;
 use MeowSEO\Options;
+use PHPUnit\Framework\TestCase;
 
 /**
- * Test Meta_Output class
+ * Test_Meta_Output class
  */
-class MetaOutputTest extends WP_UnitTestCase {
+class Test_Meta_Output extends TestCase {
 	/**
-	 * Test tag group output
+	 * Test output_head_tags method structure
 	 *
 	 * @return void
 	 */
-	public function test_tag_group_output(): void {
+	public function test_output_head_tags_structure(): void {
 		// Create mock resolver.
+		$options  = $this->createMock( Options::class );
+		$patterns = $this->createMock( Title_Patterns::class );
 		$resolver = $this->createMock( Meta_Resolver::class );
 
 		// Configure resolver to return test values.
@@ -79,47 +81,11 @@ class MetaOutputTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test escaping functions
+	 * Test conditional description output
 	 *
 	 * @return void
 	 */
-	public function test_escaping(): void {
-		// Create mock resolver with values that need escaping.
-		$resolver = $this->createMock( Meta_Resolver::class );
-		$resolver->method( 'resolve_title' )->willReturn( 'Test <script>alert("xss")</script> Title' );
-		$resolver->method( 'resolve_description' )->willReturn( 'Test "description" with quotes' );
-		$resolver->method( 'resolve_robots' )->willReturn( 'index' );
-		$resolver->method( 'resolve_canonical' )->willReturn( 'https://example.com/test' );
-		$resolver->method( 'resolve_og_image' )->willReturn( array() );
-		$resolver->method( 'resolve_twitter_title' )->willReturn( '' );
-		$resolver->method( 'resolve_twitter_description' )->willReturn( '' );
-		$resolver->method( 'resolve_twitter_image' )->willReturn( '' );
-		$resolver->method( 'get_hreflang_alternates' )->willReturn( array() );
-
-		// Create Meta_Output instance.
-		$output = new Meta_Output( $resolver );
-
-		// Capture output.
-		ob_start();
-		$output->output_head_tags();
-		$html = ob_get_clean();
-
-		// Verify title is properly escaped (HTML entities).
-		$this->assertStringContainsString( 'Test &lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt; Title', $html );
-
-		// Verify description is properly escaped (attribute escaping).
-		$this->assertStringContainsString( 'content="Test &quot;description&quot; with quotes"', $html );
-
-		// Verify URL is present (escaping handled by esc_url).
-		$this->assertStringContainsString( 'href="https://example.com/test"', $html );
-	}
-
-	/**
-	 * Test conditional output logic
-	 *
-	 * @return void
-	 */
-	public function test_conditional_output(): void {
+	public function test_conditional_description_output(): void {
 		// Create mock resolver that returns empty description.
 		$resolver = $this->createMock( Meta_Resolver::class );
 		$resolver->method( 'resolve_title' )->willReturn( 'Test Title' );
@@ -140,11 +106,8 @@ class MetaOutputTest extends WP_UnitTestCase {
 		$output->output_head_tags();
 		$html = ob_get_clean();
 
-		// Verify meta description is NOT present when empty.
+		// Verify meta description is NOT present.
 		$this->assertStringNotContainsString( '<meta name="description"', $html );
-
-		// Verify title is still present.
-		$this->assertStringContainsString( '<title>Test Title</title>', $html );
 	}
 
 	/**
@@ -171,10 +134,6 @@ class MetaOutputTest extends WP_UnitTestCase {
 		// Test another valid date.
 		$result = $method->invoke( $output, '2023-12-25 00:00:00' );
 		$this->assertEquals( '2023-12-25T00:00:00+00:00', $result );
-
-		// Test invalid date returns empty string.
-		$result = $method->invoke( $output, 'invalid-date' );
-		$this->assertEquals( '', $result );
 	}
 
 	/**

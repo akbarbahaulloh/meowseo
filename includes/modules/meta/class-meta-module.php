@@ -74,6 +74,15 @@ class Meta_Module implements Module {
 	 */
 	public function __construct( Options $options ) {
 		$this->options = $options;
+
+		// Initialize Title_Patterns.
+		$this->patterns = new Title_Patterns( $this->options );
+
+		// Initialize Meta_Resolver.
+		$this->resolver = new Meta_Resolver( $this->options, $this->patterns );
+
+		// Initialize Meta_Output.
+		$this->output = new Meta_Output( $this->resolver );
 	}
 
 	/**
@@ -145,13 +154,12 @@ class Meta_Module implements Module {
 	/**
 	 * Output head tags
 	 *
-	 * Outputs all meta tags in wp_head. This is a placeholder that will be
-	 * implemented by Meta_Output class.
+	 * Delegates to Meta_Output instance to output all meta tags in wp_head.
 	 *
 	 * @return void
 	 */
 	public function output_head_tags(): void {
-		// TODO: Delegate to Meta_Output instance
+		$this->output->output_head_tags();
 	}
 
 	/**

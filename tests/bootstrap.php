@@ -876,3 +876,35 @@ if ( ! class_exists( 'WP_REST_Response' ) ) {
 		}
 	}
 }
+
+if ( ! class_exists( 'WP_UnitTestCase' ) ) {
+	/**
+	 * Base test case class for WordPress unit tests
+	 */
+	class WP_UnitTestCase extends \PHPUnit\Framework\TestCase {
+		/**
+		 * Set up test environment before each test
+		 */
+		protected function setUp(): void {
+			parent::setUp();
+			
+			// Reset global storage
+			global $wp_cache_storage, $wp_posts_storage, $wp_postmeta_storage;
+			$wp_cache_storage = array();
+			$wp_posts_storage = array();
+			$wp_postmeta_storage = array();
+			
+			// Reset test overrides
+			global $test_current_user_can_override, $test_wp_verify_nonce_override;
+			$test_current_user_can_override = null;
+			$test_wp_verify_nonce_override = null;
+		}
+		
+		/**
+		 * Tear down test environment after each test
+		 */
+		protected function tearDown(): void {
+			parent::tearDown();
+		}
+	}
+}

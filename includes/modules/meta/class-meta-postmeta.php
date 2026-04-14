@@ -44,7 +44,16 @@ class Meta_Postmeta {
 	 * @return void
 	 */
 	public function register(): void {
-		// TODO: Implement register() method
+		$post_types = $this->get_post_types();
+
+		foreach ( self::META_KEYS as $key => $type ) {
+			$meta_key = '_meowseo_' . $key;
+			$args     = $this->get_meta_args( $key, $type );
+
+			foreach ( $post_types as $post_type ) {
+				register_post_meta( $post_type, $meta_key, $args );
+			}
+		}
 	}
 
 	/**
@@ -53,8 +62,13 @@ class Meta_Postmeta {
 	 * @return array Post types.
 	 */
 	private function get_post_types(): array {
-		// TODO: Implement get_post_types() method
-		return array();
+		$post_types = get_post_types(
+			array(
+				'public' => true,
+			)
+		);
+
+		return $post_types;
 	}
 
 	/**
@@ -65,7 +79,25 @@ class Meta_Postmeta {
 	 * @return array Registration args.
 	 */
 	private function get_meta_args( string $key, string $type ): array {
-		// TODO: Implement get_meta_args() method
-		return array();
+		$args = array(
+			'show_in_rest' => true,
+			'single'       => true,
+			'type'         => $type,
+		);
+
+		// Add sanitize callback based on type.
+		switch ( $type ) {
+			case 'string':
+				$args['sanitize_callback'] = 'sanitize_text_field';
+				break;
+			case 'boolean':
+				// Boolean type has built-in sanitization.
+				break;
+			case 'integer':
+				// Integer type has built-in sanitization.
+				break;
+		}
+
+		return $args;
 	}
 }
