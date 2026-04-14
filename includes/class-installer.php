@@ -89,6 +89,7 @@ class Installer {
 			$wpdb->prefix . 'meowseo_gsc_queue',
 			$wpdb->prefix . 'meowseo_gsc_data',
 			$wpdb->prefix . 'meowseo_link_checks',
+			$wpdb->prefix . 'meowseo_logs',
 		);
 
 		foreach ( $tables as $table ) {
@@ -190,6 +191,23 @@ CREATE TABLE {$prefix}meowseo_link_checks (
 	KEY idx_source_post (source_post_id),
 	KEY idx_http_status (http_status),
 	UNIQUE KEY idx_source_target (source_post_id, target_url_hash(64))
+) $charset_collate;
+
+CREATE TABLE {$prefix}meowseo_logs (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	level VARCHAR(20) NOT NULL,
+	module VARCHAR(50) NOT NULL,
+	message TEXT NOT NULL,
+	message_hash CHAR(64) NOT NULL,
+	context JSON NULL,
+	stack_trace TEXT NULL,
+	hit_count BIGINT UNSIGNED NOT NULL DEFAULT 1,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	KEY idx_level (level),
+	KEY idx_module (module),
+	KEY idx_created_at (created_at),
+	UNIQUE KEY idx_dedup (level, module, message_hash, created_at)
 ) $charset_collate;
 ";
 
