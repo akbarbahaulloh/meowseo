@@ -137,8 +137,9 @@ class MetaProperty02ConditionalDescriptionTest extends WP_UnitTestCase {
 			Generator\string(),
 			Generator\string()
 		)->then( function( $post_title, $excerpt ) {
-			// Skip empty excerpts.
-			if ( empty( $excerpt ) ) {
+			// Skip empty excerpts or excerpts that would be empty after stripping.
+			$cleaned_excerpt = trim( wp_strip_all_tags( $excerpt ) );
+			if ( empty( $cleaned_excerpt ) ) {
 				return;
 			}
 

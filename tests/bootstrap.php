@@ -93,7 +93,20 @@ if ( ! function_exists( 'add_rewrite_tag' ) ) {
 
 if ( ! function_exists( 'add_action' ) ) {
 	function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
-		// Mock function
+		// Mock function - store actions for testing
+		global $wp_filter;
+		if ( ! isset( $wp_filter ) ) {
+			$wp_filter = array();
+		}
+		if ( ! isset( $wp_filter[ $hook ] ) ) {
+			$wp_filter[ $hook ] = array();
+		}
+		$wp_filter[ $hook ][] = array(
+			'callback' => $callback,
+			'priority' => $priority,
+			'accepted_args' => $accepted_args,
+		);
+		return true;
 	}
 }
 
@@ -878,6 +891,38 @@ if ( ! function_exists( 'current_time' ) ) {
 			return gmdate( 'Y-m-d H:i:s' );
 		}
 		return time();
+	}
+}
+
+// In-memory theme support storage for testing
+global $wp_theme_features;
+if ( ! isset( $wp_theme_features ) ) {
+	$wp_theme_features = array();
+}
+
+if ( ! function_exists( 'add_theme_support' ) ) {
+	function add_theme_support( $feature, ...$args ) {
+		global $wp_theme_features;
+		$wp_theme_features[ $feature ] = $args;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'remove_theme_support' ) ) {
+	function remove_theme_support( $feature ) {
+		global $wp_theme_features;
+		if ( isset( $wp_theme_features[ $feature ] ) ) {
+			unset( $wp_theme_features[ $feature ] );
+			return true;
+		}
+		return false;
+	}
+}
+
+if ( ! function_exists( 'current_theme_supports' ) ) {
+	function current_theme_supports( $feature ) {
+		global $wp_theme_features;
+		return isset( $wp_theme_features[ $feature ] );
 	}
 }
 

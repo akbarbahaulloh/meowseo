@@ -59,6 +59,9 @@ class MetaProperty07ISO8601DateFormattingTest extends WP_UnitTestCase {
 			$output->output_head_tags();
 			$html = ob_get_clean();
 
+			// Property: Output should not be empty.
+			$this->assertNotEmpty( $html, 'Meta output should not be empty' );
+
 			// Property: Verify ISO 8601 date format for article dates.
 			$this->assert_iso8601_date_format( $html );
 
@@ -131,6 +134,9 @@ class MetaProperty07ISO8601DateFormattingTest extends WP_UnitTestCase {
 		$output   = new Meta_Output( $resolver );
 		$output->output_head_tags();
 		$html = ob_get_clean();
+
+		// Property: Output should not be empty.
+		$this->assertNotEmpty( $html, 'Meta output should not be empty' );
 
 		// Property: Verify ISO 8601 date format.
 		$this->assert_iso8601_date_format( $html );

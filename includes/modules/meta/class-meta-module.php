@@ -70,6 +70,8 @@ class Meta_Module implements Module {
 	/**
 	 * Constructor
 	 *
+	 * Instantiates all module components with proper dependency injection.
+	 *
 	 * @param Options $options Options instance.
 	 */
 	public function __construct( Options $options ) {
@@ -78,21 +80,35 @@ class Meta_Module implements Module {
 		// Initialize Title_Patterns.
 		$this->patterns = new Title_Patterns( $this->options );
 
-		// Initialize Meta_Resolver.
+		// Initialize Meta_Resolver with Title_Patterns dependency.
 		$this->resolver = new Meta_Resolver( $this->options, $this->patterns );
 
-		// Initialize Meta_Output.
-		$this->output = new Meta_Output( $this->resolver );
+		// Initialize Global_SEO with dependencies.
+		$this->global_seo = new Global_SEO( $this->options, $this->patterns, $this->resolver );
+
+		// Initialize Meta_Output with Meta_Resolver dependency.
+		$this->output = new Meta_Output( $this->resolver, $this->global_seo );
+
+		// Initialize Meta_Postmeta for field registration.
+		$this->postmeta = new Meta_Postmeta();
+
+		// Initialize Robots_Txt for virtual robots.txt management.
+		$this->robots_txt = new Robots_Txt( $this->options );
 	}
 
 	/**
 	 * Boot the module
+	 *
+	 * Initializes all hooks and registers components.
 	 *
 	 * @return void
 	 */
 	public function boot(): void {
 		$this->remove_theme_title_tag();
 		$this->register_hooks();
+		
+		// Register Robots_Txt filter hook.
+		$this->robots_txt->register();
 	}
 
 	/**
@@ -179,13 +195,13 @@ class Meta_Module implements Module {
 	/**
 	 * Register REST fields
 	 *
-	 * Registers postmeta fields for REST API. This is a placeholder that will be
-	 * implemented by Meta_Postmeta class.
+	 * Delegates to Meta_Postmeta instance to register all postmeta fields
+	 * for REST API access.
 	 *
 	 * @return void
 	 */
 	public function register_rest_fields(): void {
-		// TODO: Delegate to Meta_Postmeta instance
+		$this->postmeta->register();
 	}
 
 	/**
