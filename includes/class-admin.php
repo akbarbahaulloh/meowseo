@@ -130,8 +130,8 @@ class Admin {
 			return;
 		}
 
-		// Enqueue the meowseo-editor asset handle (same as Gutenberg sidebar).
-		$asset_file = \MEOWSEO_PATH . 'build/index.asset.php';
+		// Enqueue the admin-settings asset
+		$asset_file = \MEOWSEO_PATH . 'build/admin-settings.asset.php';
 
 		if ( ! file_exists( $asset_file ) ) {
 			return;
@@ -140,23 +140,23 @@ class Admin {
 		$asset = require $asset_file;
 
 		wp_enqueue_script(
-			'meowseo-editor',
-			\MEOWSEO_URL . 'build/index.js',
+			'meowseo-admin-settings',
+			\MEOWSEO_URL . 'build/admin-settings.js',
 			$asset['dependencies'],
 			$asset['version'],
 			true
 		);
 
 		wp_enqueue_style(
-			'meowseo-editor',
-			\MEOWSEO_URL . 'build/index.css',
+			'meowseo-admin-settings',
+			\MEOWSEO_URL . 'build/admin-settings.css',
 			array( 'wp-components' ),
 			$asset['version']
 		);
 
 		// Localize script with settings data.
 		wp_localize_script(
-			'meowseo-editor',
+			'meowseo-admin-settings',
 			'meowseoAdmin',
 			array(
 				'restUrl'   => rest_url( 'meowseo/v1' ),

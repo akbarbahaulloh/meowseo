@@ -4,8 +4,11 @@
   "description": "MeowSEO WordPress Plugin - Gutenberg Integration",
   "main": "build/index.js",
   "scripts": {
-    "build": "wp-scripts build src/gutenberg/index.tsx --output-path=build",
+    "build": "npm run build:gutenberg && npm run build:admin",
+    "build:gutenberg": "wp-scripts build src/gutenberg/index.tsx --output-path=build --output-filename=gutenberg.js",
+    "build:admin": "wp-scripts build src/admin-settings.js --output-path=build --output-filename=admin-settings.js",
     "start": "wp-scripts start src/gutenberg/index.tsx --output-path=build",
+    "start:admin": "wp-scripts start src/admin-settings.js --output-path=build --output-filename=admin-settings.js",
     "lint:js": "wp-scripts lint-js src",
     "format:js": "wp-scripts format src",
     "type-check": "tsc --noEmit",

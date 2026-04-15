@@ -36,12 +36,12 @@ class Gutenberg_Assets {
 	 * nonce, post ID, and REST URL.
 	 */
 	public function enqueue_editor_assets(): void {
-		$asset_file = include plugin_dir_path( __FILE__ ) . '../../../build/index.asset.php';
+		$asset_file = include plugin_dir_path( __FILE__ ) . '../../../build/gutenberg.asset.php';
 
 		// Enqueue JavaScript bundle
 		wp_enqueue_script(
 			'meowseo-gutenberg',
-			plugins_url( 'build/index.js', dirname( __FILE__, 3 ) ),
+			plugins_url( 'build/gutenberg.js', dirname( __FILE__, 3 ) ),
 			$asset_file['dependencies'],
 			$asset_file['version'],
 			true
