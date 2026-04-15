@@ -1,0 +1,22 @@
+/**
+ * Sidebar Component Styles
+ */
+
+.meowseo-sidebar {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100%;
+  background: #fff;
+}
+
+/* Ensure the sidebar has proper spacing */
+.meowseo-sidebar > * {
+  flex-shrink: 0;
+}
+
+/* Make tab content area grow to fill available space */
+.meowseo-sidebar .meowseo-tab-content {
+  flex-grow: 1;
+}

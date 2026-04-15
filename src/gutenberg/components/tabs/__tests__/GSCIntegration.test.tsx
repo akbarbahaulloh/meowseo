@@ -6,6 +6,23 @@
  * Requirements: 14.7, 14.8
  */
 
+// Mock @wordpress/private-apis FIRST before any other imports
+jest.mock('@wordpress/private-apis', () => ({
+  __dangerousOptInToUnstableAPIsOnlyForCoreModules: jest.fn(() => ({
+    lock: jest.fn(),
+    unlock: jest.fn(() => ({
+      registerPrivateSelectors: jest.fn(),
+      registerPrivateActions: jest.fn(),
+    })),
+  })),
+}));
+
+// Mock @wordpress/core-data to avoid deep dependency issues
+jest.mock('@wordpress/core-data', () => ({
+  useEntityProp: jest.fn(),
+  store: jest.fn(),
+}));
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import GSCIntegration from '../GSCIntegration';
@@ -39,6 +56,7 @@ jest.mock('@wordpress/components', () => ({
 jest.mock('@wordpress/data', () => ({
   useSelect: jest.fn(),
   createSelector: jest.fn((selector) => selector),
+  createRegistrySelector: jest.fn((selector) => selector),
   combineReducers: jest.fn((reducers) => reducers),
   createReduxStore: jest.fn(),
   register: jest.fn(),

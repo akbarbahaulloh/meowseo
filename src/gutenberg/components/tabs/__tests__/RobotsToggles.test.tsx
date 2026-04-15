@@ -53,13 +53,12 @@ describe('RobotsToggles', () => {
   let mockSetNofollow: jest.Mock;
   
   beforeEach(() => {
+    // Reset all mocks
+    jest.clearAllMocks();
+    
+    // Create fresh mock functions
     mockSetNoindex = jest.fn();
     mockSetNofollow = jest.fn();
-    
-    // Default: both toggles off
-    mockUseEntityPropBinding
-      .mockReturnValueOnce(['', mockSetNoindex])  // noindex
-      .mockReturnValueOnce(['', mockSetNofollow]); // nofollow
   });
   
   afterEach(() => {
@@ -71,6 +70,10 @@ describe('RobotsToggles', () => {
    * Requirement: 14.1 - Display toggles for noindex and nofollow
    */
   it('should display noindex and nofollow toggles', () => {
+    mockUseEntityPropBinding
+      .mockReturnValueOnce(['', mockSetNoindex])
+      .mockReturnValueOnce(['', mockSetNofollow]);
+    
     render(<RobotsToggles />);
     
     const noindexToggle = screen.getByLabelText(/no index/i);
@@ -85,6 +88,10 @@ describe('RobotsToggles', () => {
    * Requirement: 14.2, 14.3 - Use Entity_Prop for robots directives
    */
   it('should use useEntityPropBinding with correct meta keys', () => {
+    mockUseEntityPropBinding
+      .mockReturnValueOnce(['', mockSetNoindex])
+      .mockReturnValueOnce(['', mockSetNofollow]);
+    
     render(<RobotsToggles />);
     
     expect(mockUseEntityPropBinding).toHaveBeenCalledWith('_meowseo_robots_noindex');
@@ -96,6 +103,10 @@ describe('RobotsToggles', () => {
    * Requirement: 14.1 - Display toggles with correct initial state
    */
   it('should display toggles as unchecked when values are empty', () => {
+    mockUseEntityPropBinding
+      .mockReturnValueOnce(['', mockSetNoindex])
+      .mockReturnValueOnce(['', mockSetNofollow]);
+    
     render(<RobotsToggles />);
     
     const noindexToggle = screen.getByLabelText(/no index/i) as HTMLInputElement;
@@ -110,12 +121,15 @@ describe('RobotsToggles', () => {
    * Requirement: 14.2, 14.3 - Display persisted values correctly
    */
   it('should display toggles as checked when values are "1"', () => {
-    // Clear previous mocks
-    jest.clearAllMocks();
+    // Don't clear mocks - let beforeEach handle setup
+    // Create new mock functions for this test
+    const testMockSetNoindex = jest.fn();
+    const testMockSetNofollow = jest.fn();
     
+    // Override the mock for this specific test
     mockUseEntityPropBinding
-      .mockReturnValueOnce(['1', mockSetNoindex])
-      .mockReturnValueOnce(['1', mockSetNofollow]);
+      .mockReturnValueOnce(['1', testMockSetNoindex])
+      .mockReturnValueOnce(['1', testMockSetNofollow]);
     
     render(<RobotsToggles />);
     
@@ -131,12 +145,15 @@ describe('RobotsToggles', () => {
    * Requirement: 14.2, 14.3 - Handle boolean string values
    */
   it('should display toggles as checked when values are "true"', () => {
-    // Clear previous mocks
-    jest.clearAllMocks();
+    // Don't clear mocks - let beforeEach handle setup
+    // Create new mock functions for this test
+    const testMockSetNoindex = jest.fn();
+    const testMockSetNofollow = jest.fn();
     
+    // Override the mock for this specific test
     mockUseEntityPropBinding
-      .mockReturnValueOnce(['true', mockSetNoindex])
-      .mockReturnValueOnce(['true', mockSetNofollow]);
+      .mockReturnValueOnce(['true', testMockSetNoindex])
+      .mockReturnValueOnce(['true', testMockSetNofollow]);
     
     render(<RobotsToggles />);
     
@@ -152,6 +169,10 @@ describe('RobotsToggles', () => {
    * Requirement: 14.2 - Persist noindex to postmeta
    */
   it('should call setValue with "1" when noindex is toggled on', () => {
+    mockUseEntityPropBinding
+      .mockReturnValueOnce(['', mockSetNoindex])
+      .mockReturnValueOnce(['', mockSetNofollow]);
+    
     render(<RobotsToggles />);
     
     const noindexToggle = screen.getByLabelText(/no index/i);
@@ -165,19 +186,22 @@ describe('RobotsToggles', () => {
    * Requirement: 14.2 - Persist noindex to postmeta
    */
   it('should call setValue with empty string when noindex is toggled off', () => {
-    // Clear previous mocks
-    jest.clearAllMocks();
+    // Don't clear mocks - let beforeEach handle setup
+    // Create new mock functions for this test
+    const testMockSetNoindex = jest.fn();
+    const testMockSetNofollow = jest.fn();
     
+    // Override the mock for this specific test
     mockUseEntityPropBinding
-      .mockReturnValueOnce(['1', mockSetNoindex])
-      .mockReturnValueOnce(['', mockSetNofollow]);
+      .mockReturnValueOnce(['1', testMockSetNoindex])
+      .mockReturnValueOnce(['', testMockSetNofollow]);
     
     render(<RobotsToggles />);
     
     const noindexToggle = screen.getByLabelText(/no index/i);
     fireEvent.click(noindexToggle);
     
-    expect(mockSetNoindex).toHaveBeenCalledWith('');
+    expect(testMockSetNoindex).toHaveBeenCalledWith('');
   });
   
   /**
@@ -185,6 +209,10 @@ describe('RobotsToggles', () => {
    * Requirement: 14.3 - Persist nofollow to postmeta
    */
   it('should call setValue with "1" when nofollow is toggled on', () => {
+    mockUseEntityPropBinding
+      .mockReturnValueOnce(['', mockSetNoindex])
+      .mockReturnValueOnce(['', mockSetNofollow]);
+    
     render(<RobotsToggles />);
     
     const nofollowToggle = screen.getByLabelText(/no follow/i);
@@ -198,19 +226,22 @@ describe('RobotsToggles', () => {
    * Requirement: 14.3 - Persist nofollow to postmeta
    */
   it('should call setValue with empty string when nofollow is toggled off', () => {
-    // Clear previous mocks
-    jest.clearAllMocks();
+    // Don't clear mocks - let beforeEach handle setup
+    // Create new mock functions for this test
+    const testMockSetNoindex = jest.fn();
+    const testMockSetNofollow = jest.fn();
     
+    // Override the mock for this specific test
     mockUseEntityPropBinding
-      .mockReturnValueOnce(['', mockSetNoindex])
-      .mockReturnValueOnce(['1', mockSetNofollow]);
+      .mockReturnValueOnce(['', testMockSetNoindex])
+      .mockReturnValueOnce(['1', testMockSetNofollow]);
     
     render(<RobotsToggles />);
     
     const nofollowToggle = screen.getByLabelText(/no follow/i);
     fireEvent.click(nofollowToggle);
     
-    expect(mockSetNofollow).toHaveBeenCalledWith('');
+    expect(testMockSetNofollow).toHaveBeenCalledWith('');
   });
   
   /**
@@ -218,6 +249,10 @@ describe('RobotsToggles', () => {
    * Requirement: 14.1 - Display help text for toggles
    */
   it('should display help text for both toggles', () => {
+    mockUseEntityPropBinding
+      .mockReturnValueOnce(['', mockSetNoindex])
+      .mockReturnValueOnce(['', mockSetNofollow]);
+    
     render(<RobotsToggles />);
     
     const noindexHelp = screen.getByText(/prevent search engines from indexing/i);

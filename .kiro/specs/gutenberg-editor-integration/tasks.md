@@ -344,11 +344,11 @@ This implementation plan breaks down the Gutenberg Editor Integration feature in
     - Test GSC integration button and API call
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7, 14.8_
 
-- [ ] 17. Checkpoint - Ensure all tests pass
+- [x] 17. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 18. Implement main Sidebar component and plugin registration
-  - [ ] 18.1 Create Sidebar component
+- [x] 18. Implement main Sidebar component and plugin registration
+  - [x] 18.1 Create Sidebar component
     - Call useContentSync hook (ONLY place to read from core/editor)
     - Select activeTab from meowseo/data store
     - Render ContentScoreWidget (always visible)
@@ -356,25 +356,25 @@ This implementation plan breaks down the Gutenberg Editor Integration feature in
     - Render TabContent with activeTab
     - _Requirements: 1.6, 1.7, 2.6, 2.7_
 
-  - [ ] 18.2 Register plugin with WordPress
+  - [x] 18.2 Register plugin with WordPress
     - Use registerPlugin from @wordpress/plugins
     - Import PluginSidebar from compatibility shim
     - Register sidebar with name "meowseo-sidebar", title "MeowSEO", icon "chart-line"
     - _Requirements: 1.1, 1.2_
 
-  - [ ] 18.3 Write property test for single content sync source
+  - [x] 18.3 Write property test for single content sync source
     - **Property 1: Single content sync source**
     - **Validates: Requirements 2.1, 2.6, 2.7**
     - Test that only useContentSync reads from core/editor
     - Verify no other components subscribe to core/editor
 
-  - [ ] 18.4 Write property test for no keystroke re-renders
+  - [x] 18.4 Write property test for no keystroke re-renders
     - **Property 6: No keystroke re-renders**
     - **Validates: Requirements 16.1, 16.2**
     - Test that sidebar components don't re-render on every keystroke
     - Simulate rapid keystrokes and measure re-render count
 
-  - [ ] 18.5 Write integration tests for sidebar
+  - [x] 18.5 Write integration tests for sidebar
     - Test sidebar appears in Gutenberg editor
     - Test typing in editor triggers content sync after 800ms
     - Test clicking "Analyze" button updates scores
