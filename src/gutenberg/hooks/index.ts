@@ -5,3 +5,4 @@
  */
 
 export { useContentSync } from './useContentSync';
+export { useEntityPropBinding } from './useEntityPropBinding';

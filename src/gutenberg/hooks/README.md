@@ -61,6 +61,80 @@ All tests use Jest with fake timers to verify debounce behavior without waiting 
 - **16.1**: Prevents keystroke re-renders
 - **16.2**: Optimizes performance with debouncing
 
+## useEntityPropBinding
+
+**Location:** `useEntityPropBinding.ts`
+
+### Purpose
+
+The `useEntityPropBinding` hook is a utility that wraps WordPress's `useEntityProp` for seamless postmeta operations. It provides a simple interface for reading and writing postmeta values with automatic WordPress auto-save integration.
+
+### How It Works
+
+1. **Gets post context**: Retrieves postType and postId from core/editor
+2. **Uses useEntityProp**: Leverages WordPress's built-in hook for postmeta operations
+3. **Returns tuple**: Provides [value, setValue] interface similar to useState
+4. **Handles null/undefined**: Falls back to empty string for missing values
+5. **Triggers auto-save**: WordPress automatically saves when setValue is called
+
+### Usage
+
+```typescript
+import { useEntityPropBinding } from './hooks';
+
+function FocusKeywordInput() {
+  const [focusKeyword, setFocusKeyword] = useEntityPropBinding('_meowseo_focus_keyword');
+  
+  return (
+    <TextControl
+      label="Focus Keyword"
+      value={focusKeyword}
+      onChange={setFocusKeyword}
+      help="Enter the main keyword for this content"
+    />
+  );
+}
+```
+
+### Supported Postmeta Keys
+
+The hook works with any postmeta key, but is designed for MeowSEO keys:
+
+- `_meowseo_title` - SEO title
+- `_meowseo_description` - Meta description
+- `_meowseo_focus_keyword` - Focus keyword
+- `_meowseo_direct_answer` - Direct answer
+- `_meowseo_og_title` - Open Graph title
+- `_meowseo_og_description` - Open Graph description
+- `_meowseo_twitter_title` - Twitter title
+- `_meowseo_canonical` - Canonical URL
+- `_meowseo_robots_noindex` - Noindex directive
+- `_meowseo_robots_nofollow` - Nofollow directive
+
+### Architecture Benefits
+
+- **Automatic persistence**: No manual save logic needed
+- **WordPress integration**: Uses native useEntityProp for compatibility
+- **Type safety**: Returns string values with empty string fallback
+- **Auto-save**: WordPress handles save timing automatically
+- **Consistent interface**: Same pattern as React's useState
+
+### Testing
+
+The hook has comprehensive test coverage:
+
+- **Unit tests** (`useEntityPropBinding.test.ts`): 14 tests covering functionality
+- **Property tests** (`useEntityPropBinding.property.test.ts`): 5 property-based tests validating persistence
+
+All tests mock WordPress dependencies and verify correct useEntityProp usage.
+
+### Requirements Validated
+
+- **15.1**: Uses Entity_Prop for all postmeta operations
+- **15.2**: Triggers WordPress auto-save on updates
+- **15.11**: Uses empty string default for missing keys
+- **17.3**: Handles null/undefined with empty string fallback
+
 ## Adding New Hooks
 
 When adding new hooks to this directory:
