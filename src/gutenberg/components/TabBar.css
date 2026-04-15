@@ -1,0 +1,35 @@
+.meowseo-tab-bar {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 16px;
+  gap: 0;
+}
+
+.meowseo-tab {
+  flex: 1;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  transition: all 0.2s ease;
+}
+
+.meowseo-tab:hover {
+  color: #0073aa;
+  background: #f0f0f0;
+}
+
+.meowseo-tab.is-active {
+  color: #0073aa;
+  border-bottom-color: #0073aa;
+  background: transparent;
+}
+
+.meowseo-tab:focus {
+  outline: 2px solid #0073aa;
+  outline-offset: -2px;
+}

@@ -1,0 +1,48 @@
+/**
+ * ContentScoreWidget Styles
+ */
+
+.meowseo-content-score-widget {
+  padding: 16px;
+  border-bottom: 1px solid #ddd;
+  background: #fff;
+}
+
+.meowseo-scores {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.meowseo-score-item {
+  flex: 1;
+  text-align: center;
+}
+
+.meowseo-score-label {
+  font-size: 12px;
+  color: #757575;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.meowseo-score-value {
+  font-size: 32px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.meowseo-analyze-button-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.meowseo-analyze-button-wrapper button {
+  width: 100%;
+  justify-content: center;
+}
+
+.meowseo-analyze-button-wrapper button .components-spinner {
+  margin-right: 8px;
+}

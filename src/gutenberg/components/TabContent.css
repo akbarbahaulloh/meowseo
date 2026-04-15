@@ -1,0 +1,10 @@
+.meowseo-tab-content {
+  padding: 16px 0;
+}
+
+.meowseo-tab-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+}
