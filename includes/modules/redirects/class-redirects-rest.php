@@ -56,7 +56,7 @@ class Redirects_REST {
 	/**
 	 * Register REST routes
 	 *
-	 * Requirement 7.7: REST endpoints for redirect CRUD operations
+	 * Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6
 	 *
 	 * @return void
 	 */
@@ -72,7 +72,7 @@ class Redirects_REST {
 			)
 		);
 
-		// POST /meowseo/v1/redirects - Create redirect
+		// POST /meowseo/v1/redirects - Create redirect (Requirement 16.1)
 		register_rest_route(
 			self::NAMESPACE,
 			'/redirects',
@@ -84,7 +84,7 @@ class Redirects_REST {
 			)
 		);
 
-		// PUT /meowseo/v1/redirects/{id} - Update redirect
+		// PUT /meowseo/v1/redirects/{id} - Update redirect (Requirement 16.2)
 		register_rest_route(
 			self::NAMESPACE,
 			'/redirects/(?P<id>\d+)',
@@ -105,7 +105,7 @@ class Redirects_REST {
 			)
 		);
 
-		// DELETE /meowseo/v1/redirects/{id} - Delete redirect
+		// DELETE /meowseo/v1/redirects/{id} - Delete redirect (Requirement 16.3)
 		register_rest_route(
 			self::NAMESPACE,
 			'/redirects/(?P<id>\d+)',
@@ -123,14 +123,25 @@ class Redirects_REST {
 			)
 		);
 
-		// POST /meowseo/v1/redirects/import - Import redirects from CSV
+		// POST /meowseo/v1/redirects/import - Import redirects from CSV (Requirement 16.4)
 		register_rest_route(
 			self::NAMESPACE,
 			'/redirects/import',
 			array(
 				'methods'             => 'POST',
-				'callback'            => array( $this, 'import_csv' ),
+				'callback'            => array( $this, 'import_redirects' ),
 				'permission_callback' => array( $this, 'check_manage_options_and_nonce' ),
+			)
+		);
+
+		// GET /meowseo/v1/redirects/export - Export redirects to CSV (Requirement 16.5)
+		register_rest_route(
+			self::NAMESPACE,
+			'/redirects/export',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'export_redirects' ),
+				'permission_callback' => array( $this, 'check_manage_options' ),
 			)
 		);
 	}
@@ -164,7 +175,7 @@ class Redirects_REST {
 				'default'           => 301,
 				'sanitize_callback' => 'absint',
 				'validate_callback' => function( $value ) {
-					return in_array( (int) $value, array( 301, 302, 307, 410 ), true );
+					return in_array( (int) $value, array( 301, 302, 307, 410, 451 ), true );
 				},
 			),
 			'is_regex'      => array(
@@ -199,13 +210,13 @@ class Redirects_REST {
 	/**
 	 * Check manage_options capability and nonce
 	 *
-	 * Requirements 15.2, 15.3: Verify nonce and capability
+	 * Requirement 16.6: Verify nonce and capability
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return bool|WP_Error True if authorized, WP_Error otherwise.
 	 */
 	public function check_manage_options_and_nonce( WP_REST_Request $request ) {
-		// Check capability first
+		// Check capability first (Requirement 16.6)
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return new WP_Error(
 				'rest_forbidden',
@@ -214,7 +225,7 @@ class Redirects_REST {
 			);
 		}
 
-		// Verify nonce
+		// Verify nonce (Requirement 16.6)
 		$nonce = $request->get_header( 'X-WP-Nonce' );
 
 		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
@@ -273,26 +284,37 @@ class Redirects_REST {
 	/**
 	 * Create redirect
 	 *
-	 * Requirement 7.7: Create redirect rule via REST API
+	 * Requirements: 16.1, 16.6, 6.1, 6.2, 6.3, 6.4
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return WP_REST_Response|WP_Error Response object or error.
 	 */
 	public function create_redirect( WP_REST_Request $request ) {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'meowseo_redirects';
-
 		// Prepare data
 		$data = array(
 			'source_url'    => $request->get_param( 'source_url' ),
 			'target_url'    => $request->get_param( 'target_url' ),
 			'redirect_type' => $request->get_param( 'redirect_type' ) ?? 301,
 			'is_regex'      => $request->get_param( 'is_regex' ) ? 1 : 0,
-			'status'        => $request->get_param( 'status' ) ?? 'active',
+			'is_active'     => 1,
 		);
 
-		$format = array( '%s', '%s', '%d', '%d', '%s' );
+		// Validate redirect data (Requirement 6.1, 6.2, 6.3, 6.4)
+		$validation_error = $this->validate_redirect_data( $data );
+		if ( is_wp_error( $validation_error ) ) {
+			return $validation_error;
+		}
+
+		// Check for redirect chains (Requirement 6.1, 6.2, 6.3, 6.4)
+		$chain_error = $this->check_redirect_chain( $data['target_url'], $data['source_url'] );
+		if ( is_wp_error( $chain_error ) ) {
+			return $chain_error;
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'meowseo_redirects';
+
+		$format = array( '%s', '%s', '%d', '%d', '%d' );
 
 		// Insert redirect
 		$result = $wpdb->insert( $table, $data, $format );
@@ -317,6 +339,16 @@ class Redirects_REST {
 			ARRAY_A
 		);
 
+		// Log creation
+		Logger::info(
+			'Redirect created via REST API',
+			array(
+				'redirect_id' => $redirect_id,
+				'source_url'  => $data['source_url'],
+				'target_url'  => $data['target_url'],
+			)
+		);
+
 		$response = new WP_REST_Response( $redirect, 201 );
 		$response->header( 'Cache-Control', 'no-store' );
 
@@ -326,7 +358,7 @@ class Redirects_REST {
 	/**
 	 * Update redirect
 	 *
-	 * Requirement 7.7: Update redirect rule via REST API
+	 * Requirements: 16.2, 16.6, 6.1, 6.2, 6.3, 6.4
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return WP_REST_Response|WP_Error Response object or error.
@@ -337,12 +369,13 @@ class Redirects_REST {
 		$table = $wpdb->prefix . 'meowseo_redirects';
 		$redirect_id = $request->get_param( 'id' );
 
-		// Check if redirect exists
-		$exists = $wpdb->get_var(
-			$wpdb->prepare( "SELECT id FROM {$table} WHERE id = %d", $redirect_id )
+		// Check if redirect exists (Requirement 16.6)
+		$existing = $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $redirect_id ),
+			ARRAY_A
 		);
 
-		if ( ! $exists ) {
+		if ( ! $existing ) {
 			return new WP_Error(
 				'redirect_not_found',
 				__( 'Redirect not found.', 'meowseo' ),
@@ -374,9 +407,22 @@ class Redirects_REST {
 			$format[] = '%d';
 		}
 
-		if ( $request->has_param( 'status' ) ) {
-			$data['status'] = $request->get_param( 'status' );
-			$format[] = '%s';
+		// Merge with existing data for validation
+		$full_data = array_merge( $existing, $data );
+
+		// Validate redirect data (Requirement 6.1, 6.2, 6.3, 6.4)
+		$validation_error = $this->validate_redirect_data( $full_data );
+		if ( is_wp_error( $validation_error ) ) {
+			return $validation_error;
+		}
+
+		// Check for redirect chains if target URL is being updated (Requirement 6.1, 6.2, 6.3, 6.4)
+		if ( isset( $data['target_url'] ) ) {
+			$source_url = $data['source_url'] ?? $existing['source_url'];
+			$chain_error = $this->check_redirect_chain( $data['target_url'], $source_url, $redirect_id );
+			if ( is_wp_error( $chain_error ) ) {
+				return $chain_error;
+			}
 		}
 
 		// Update redirect
@@ -405,6 +451,15 @@ class Redirects_REST {
 			ARRAY_A
 		);
 
+		// Log update
+		Logger::info(
+			'Redirect updated via REST API',
+			array(
+				'redirect_id' => $redirect_id,
+				'changes'     => array_keys( $data ),
+			)
+		);
+
 		$response = new WP_REST_Response( $redirect );
 		$response->header( 'Cache-Control', 'no-store' );
 
@@ -414,7 +469,7 @@ class Redirects_REST {
 	/**
 	 * Delete redirect
 	 *
-	 * Requirement 7.7: Delete redirect rule via REST API
+	 * Requirements: 16.3, 16.6
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return WP_REST_Response|WP_Error Response object or error.
@@ -425,7 +480,7 @@ class Redirects_REST {
 		$table = $wpdb->prefix . 'meowseo_redirects';
 		$redirect_id = $request->get_param( 'id' );
 
-		// Check if redirect exists
+		// Check if redirect exists (Requirement 16.6)
 		$redirect = $wpdb->get_row(
 			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $redirect_id ),
 			ARRAY_A
@@ -457,15 +512,171 @@ class Redirects_REST {
 		// Update has_regex_rules flag
 		$this->update_regex_rules_flag();
 
+		// Log deletion
+		Logger::info(
+			'Redirect deleted via REST API',
+			array(
+				'redirect_id' => $redirect_id,
+				'source_url'  => $redirect['source_url'],
+			)
+		);
+
 		$response = new WP_REST_Response(
 			array(
-				'deleted' => true,
+				'deleted'  => true,
 				'redirect' => $redirect,
 			)
 		);
 		$response->header( 'Cache-Control', 'no-store' );
 
 		return $response;
+	}
+
+	/**
+	 * Validate redirect data
+	 *
+	 * Checks required fields and valid redirect types.
+	 * Requirements: 6.1, 6.2, 6.3, 6.4, 16.6
+	 *
+	 * @param array $data Redirect data to validate.
+	 * @return true|WP_Error True if valid, WP_Error otherwise.
+	 */
+	private function validate_redirect_data( array $data ) {
+		// Check required fields (Requirement 16.6)
+		if ( empty( $data['source_url'] ) ) {
+			return new WP_Error(
+				'missing_source_url',
+				__( 'Source URL is required.', 'meowseo' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( empty( $data['target_url'] ) ) {
+			return new WP_Error(
+				'missing_target_url',
+				__( 'Target URL is required.', 'meowseo' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		// Validate redirect type (Requirement 16.6)
+		$valid_types = array( 301, 302, 307, 410, 451 );
+		$redirect_type = isset( $data['redirect_type'] ) ? absint( $data['redirect_type'] ) : 301;
+
+		if ( ! in_array( $redirect_type, $valid_types, true ) ) {
+			return new WP_Error(
+				'invalid_redirect_type',
+				sprintf(
+					__( 'Invalid redirect type. Must be one of: %s', 'meowseo' ),
+					implode( ', ', $valid_types )
+				),
+				array( 'status' => 400 )
+			);
+		}
+
+		// Validate source and target are not the same
+		if ( $data['source_url'] === $data['target_url'] ) {
+			return new WP_Error(
+				'same_source_target',
+				__( 'Source URL and target URL cannot be the same.', 'meowseo' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Check for redirect chains
+	 *
+	 * Prevents creating redirect loops by checking if the target URL
+	 * is already a source URL in another redirect.
+	 * Requirements: 6.1, 6.2, 6.3, 6.4
+	 *
+	 * @param string   $target_url Target URL to check.
+	 * @param string   $source_url Source URL of the redirect being created/updated.
+	 * @param int|null $exclude_id Redirect ID to exclude from check (for updates).
+	 * @return true|WP_Error True if no chain detected, WP_Error otherwise.
+	 */
+	private function check_redirect_chain( string $target_url, string $source_url, ?int $exclude_id = null ) {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'meowseo_redirects';
+
+		// Check if target URL is a source URL in another redirect (Requirement 6.1, 6.2)
+		$query = $wpdb->prepare(
+			"SELECT id, source_url, target_url FROM {$table} WHERE source_url = %s AND is_active = 1",
+			$target_url
+		);
+
+		// Exclude current redirect if updating
+		if ( $exclude_id ) {
+			$query .= $wpdb->prepare( ' AND id != %d', $exclude_id );
+		}
+
+		$existing_redirect = $wpdb->get_row( $query, ARRAY_A );
+
+		if ( $existing_redirect ) {
+			// Target URL is already a source URL - this would create a chain (Requirement 6.2, 6.3)
+			Logger::warning(
+				'Redirect chain detected',
+				array(
+					'source_url'           => $source_url,
+					'target_url'           => $target_url,
+					'existing_redirect_id' => $existing_redirect['id'],
+					'chain'                => array( $source_url, $target_url, $existing_redirect['target_url'] ),
+				)
+			);
+
+			return new WP_Error(
+				'redirect_chain_detected',
+				sprintf(
+					__( 'Redirect chain detected: %s redirects to %s, which already redirects to %s. Please update the existing redirect or choose a different target.', 'meowseo' ),
+					$source_url,
+					$target_url,
+					$existing_redirect['target_url']
+				),
+				array( 'status' => 400 )
+			);
+		}
+
+		// Check if source URL is a target URL in another redirect (would create reverse chain)
+		$query = $wpdb->prepare(
+			"SELECT id, source_url, target_url FROM {$table} WHERE target_url = %s AND is_active = 1",
+			$source_url
+		);
+
+		// Exclude current redirect if updating
+		if ( $exclude_id ) {
+			$query .= $wpdb->prepare( ' AND id != %d', $exclude_id );
+		}
+
+		$reverse_redirect = $wpdb->get_row( $query, ARRAY_A );
+
+		if ( $reverse_redirect ) {
+			// Source URL is already a target URL - this would create a reverse chain (Requirement 6.2, 6.3)
+			Logger::warning(
+				'Reverse redirect chain detected',
+				array(
+					'source_url'           => $source_url,
+					'target_url'           => $target_url,
+					'existing_redirect_id' => $reverse_redirect['id'],
+					'chain'                => array( $reverse_redirect['source_url'], $source_url, $target_url ),
+				)
+			);
+
+			return new WP_Error(
+				'reverse_redirect_chain_detected',
+				sprintf(
+					__( 'Reverse redirect chain detected: %s already redirects to %s. Creating this redirect would form a chain. Please update the existing redirect instead.', 'meowseo' ),
+					$reverse_redirect['source_url'],
+					$source_url
+				),
+				array( 'status' => 400 )
+			);
+		}
+
+		return true;
 	}
 
 	/**
@@ -483,7 +694,7 @@ class Redirects_REST {
 
 		// Check if any active regex rules exist
 		$has_regex = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$table} WHERE is_regex = 1 AND status = 'active'"
+			"SELECT COUNT(*) FROM {$table} WHERE is_regex = 1 AND is_active = 1"
 		);
 
 		// Update option flag
@@ -492,15 +703,15 @@ class Redirects_REST {
 	}
 
 	/**
-	 * Import redirects from CSV file
+	 * Import redirects from CSV data
 	 *
 	 * Expected CSV format: source_url,target_url,redirect_type,is_regex
-	 * Example: /old-page,/new-page,301,0
+	 * Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 16.4
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return WP_REST_Response|WP_Error Response object or error.
 	 */
-	public function import_csv( WP_REST_Request $request ) {
+	public function import_redirects( WP_REST_Request $request ) {
 		$files = $request->get_file_params();
 
 		if ( empty( $files['file'] ) ) {
@@ -607,7 +818,7 @@ class Redirects_REST {
 			}
 
 			// Validate redirect type
-			if ( ! in_array( $redirect_type, array( 301, 302, 307, 410 ), true ) ) {
+			if ( ! in_array( $redirect_type, array( 301, 302, 307, 410, 451 ), true ) ) {
 				$redirect_type = 301; // Default to 301
 			}
 
@@ -619,9 +830,9 @@ class Redirects_REST {
 					'target_url'    => $target_url,
 					'redirect_type' => $redirect_type,
 					'is_regex'      => $is_regex ? 1 : 0,
-					'status'        => 'active',
+					'is_active'     => 1,
 				],
-				[ '%s', '%s', '%d', '%d', '%s' ]
+				[ '%s', '%s', '%d', '%d', '%d' ]
 			);
 
 			if ( false === $result ) {
@@ -672,6 +883,62 @@ class Redirects_REST {
 				'errors'         => $errors,
 			]
 		);
+		$response->header( 'Cache-Control', 'no-store' );
+
+		return $response;
+	}
+
+	/**
+	 * Export redirects to CSV format
+	 *
+	 * Returns all redirect rules in CSV format with proper Content-Type headers.
+	 * Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 16.5
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response Response object with CSV data.
+	 */
+	public function export_redirects( WP_REST_Request $request ): WP_REST_Response {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'meowseo_redirects';
+
+		// Get all redirects (Requirement 12.5, 16.5)
+		$redirects = $wpdb->get_results(
+			"SELECT source_url, target_url, redirect_type, is_regex FROM {$table} ORDER BY id ASC",
+			ARRAY_A
+		);
+
+		// Build CSV content
+		$csv_lines = array();
+
+		// Add header row (Requirement 12.1, 12.2)
+		$csv_lines[] = 'source_url,target_url,redirect_type,is_regex';
+
+		// Add data rows (Requirement 12.3, 12.4)
+		foreach ( $redirects as $redirect ) {
+			$csv_lines[] = sprintf(
+				'"%s","%s",%d,%d',
+				str_replace( '"', '""', $redirect['source_url'] ),
+				str_replace( '"', '""', $redirect['target_url'] ),
+				$redirect['redirect_type'],
+				$redirect['is_regex']
+			);
+		}
+
+		$csv_content = implode( "\n", $csv_lines );
+
+		// Log export (Requirement 12.6)
+		Logger::info(
+			'CSV export completed via REST API',
+			array(
+				'redirect_count' => count( $redirects ),
+			)
+		);
+
+		// Create response with proper headers (Requirement 16.5)
+		$response = new WP_REST_Response( $csv_content );
+		$response->header( 'Content-Type', 'text/csv; charset=utf-8' );
+		$response->header( 'Content-Disposition', 'attachment; filename=meowseo-redirects-' . gmdate( 'Y-m-d' ) . '.csv' );
 		$response->header( 'Cache-Control', 'no-store' );
 
 		return $response;

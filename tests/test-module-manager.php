@@ -175,4 +175,47 @@ class Test_Module_Manager extends TestCase {
 		$this->assertArrayHasKey( 'schema', $modules );
 		$this->assertArrayHasKey( 'social', $modules );
 	}
+
+	/**
+	 * Test that redirects, monitor_404, and gsc modules are registered and can be loaded
+	 *
+	 * This test verifies Task 16: Register modules with Module_Manager.
+	 * Requirements: All
+	 *
+	 * @return void
+	 */
+	public function test_redirects_404_gsc_modules_are_registered(): void {
+		// Enable the three new modules.
+		$this->options->set( 'enabled_modules', array( 'redirects', 'monitor_404', 'gsc' ) );
+		$this->options->save();
+
+		$manager = new Module_Manager( $this->options );
+		$manager->boot();
+
+		// All three modules should be active.
+		$this->assertTrue( $manager->is_active( 'redirects' ), 'Redirects module should be active' );
+		$this->assertTrue( $manager->is_active( 'monitor_404' ), '404 Monitor module should be active' );
+		$this->assertTrue( $manager->is_active( 'gsc' ), 'GSC module should be active' );
+
+		// Verify modules are loaded.
+		$modules = $manager->get_modules();
+		$this->assertCount( 3, $modules, 'Three modules should be loaded' );
+		$this->assertArrayHasKey( 'redirects', $modules );
+		$this->assertArrayHasKey( 'monitor_404', $modules );
+		$this->assertArrayHasKey( 'gsc', $modules );
+
+		// Verify each module implements the Module interface.
+		$redirects_module = $manager->get_module( 'redirects' );
+		$monitor_404_module = $manager->get_module( 'monitor_404' );
+		$gsc_module = $manager->get_module( 'gsc' );
+
+		$this->assertInstanceOf( \MeowSEO\Contracts\Module::class, $redirects_module );
+		$this->assertInstanceOf( \MeowSEO\Contracts\Module::class, $monitor_404_module );
+		$this->assertInstanceOf( \MeowSEO\Contracts\Module::class, $gsc_module );
+
+		// Verify each module has the correct ID.
+		$this->assertEquals( 'redirects', $redirects_module->get_id() );
+		$this->assertEquals( 'monitor_404', $monitor_404_module->get_id() );
+		$this->assertEquals( 'gsc', $gsc_module->get_id() );
+	}
 }

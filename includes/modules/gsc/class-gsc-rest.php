@@ -11,6 +11,7 @@
 namespace MeowSEO\Modules\GSC;
 
 use MeowSEO\Options;
+use MeowSEO\Helpers\Logger;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -21,6 +22,7 @@ defined( 'ABSPATH' ) || exit;
  * GSC REST API class
  *
  * Handles REST endpoint registration and request processing.
+ * Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6
  */
 class GSC_REST {
 
@@ -39,52 +41,49 @@ class GSC_REST {
 	private Options $options;
 
 	/**
+	 * GSC Auth instance.
+	 *
+	 * @var GSC_Auth
+	 */
+	private GSC_Auth $auth;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param Options $options Options instance.
+	 * @param Options  $options Options instance.
+	 * @param GSC_Auth $auth    GSC Auth instance.
 	 */
-	public function __construct( Options $options ) {
+	public function __construct( Options $options, GSC_Auth $auth ) {
 		$this->options = $options;
+		$this->auth    = $auth;
 	}
 
 	/**
 	 * Register REST API routes.
 	 *
+	 * Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6
+	 *
 	 * @return void
 	 */
 	public function register_routes(): void {
-		// GET /meowseo/v1/gsc - Get GSC performance data (Requirement 10.6).
+		// GET /meowseo/v1/gsc/status - Get connection status (Requirement 18.5).
 		register_rest_route(
 			self::NAMESPACE,
-			'/gsc',
+			'/gsc/status',
 			array(
 				'methods'             => 'GET',
-				'callback'            => array( $this, 'get_gsc_data' ),
+				'callback'            => array( $this, 'get_status' ),
 				'permission_callback' => array( $this, 'check_manage_options' ),
-				'args'                => array(
-					'url'   => array(
-						'type'              => 'string',
-						'sanitize_callback' => 'esc_url_raw',
-					),
-					'start' => array(
-						'type'              => 'string',
-						'sanitize_callback' => 'sanitize_text_field',
-					),
-					'end'   => array(
-						'type'              => 'string',
-						'sanitize_callback' => 'sanitize_text_field',
-					),
-				),
 			)
 		);
 
-		// POST /meowseo/v1/gsc/auth - Save OAuth credentials (Requirement 10.1, 15.6).
+		// POST /meowseo/v1/gsc/auth - Save OAuth credentials (Requirement 18.3).
 		register_rest_route(
 			self::NAMESPACE,
 			'/gsc/auth',
 			array(
 				'methods'             => 'POST',
-				'callback'            => array( $this, 'save_credentials' ),
+				'callback'            => array( $this, 'save_auth' ),
 				'permission_callback' => array( $this, 'check_manage_options_and_nonce' ),
 				'args'                => array(
 					'access_token'  => array(
@@ -104,88 +103,77 @@ class GSC_REST {
 			)
 		);
 
-		// DELETE /meowseo/v1/gsc/auth - Remove OAuth credentials.
+		// DELETE /meowseo/v1/gsc/auth - Remove OAuth credentials (Requirement 18.4).
 		register_rest_route(
 			self::NAMESPACE,
 			'/gsc/auth',
 			array(
 				'methods'             => 'DELETE',
-				'callback'            => array( $this, 'delete_credentials' ),
+				'callback'            => array( $this, 'remove_auth' ),
 				'permission_callback' => array( $this, 'check_manage_options_and_nonce' ),
 			)
 		);
 
-		// GET /meowseo/v1/gsc/status - Check connection status.
+		// GET /meowseo/v1/gsc/data - Get GSC performance data (Requirement 18.1, 18.2).
 		register_rest_route(
 			self::NAMESPACE,
-			'/gsc/status',
+			'/gsc/data',
 			array(
 				'methods'             => 'GET',
-				'callback'            => array( $this, 'get_connection_status' ),
+				'callback'            => array( $this, 'get_data' ),
 				'permission_callback' => array( $this, 'check_manage_options' ),
+				'args'                => array(
+					'url'        => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'esc_url_raw',
+					),
+					'start_date' => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'end_date'   => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
 			)
 		);
 	}
 
 	/**
-	 * Get GSC performance data.
+	 * Get connection status.
 	 *
-	 * Supports filtering by URL or date range (Requirement 10.6).
+	 * Returns connection status and auth state.
+	 * Requirement 18.5: Return connection status and auth state.
 	 *
 	 * @param WP_REST_Request $request Request object.
-	 * @return WP_REST_Response|WP_Error Response object or error.
+	 * @return WP_REST_Response Response object.
 	 */
-	public function get_gsc_data( WP_REST_Request $request ) {
-		$url   = $request->get_param( 'url' );
-		$start = $request->get_param( 'start' );
-		$end   = $request->get_param( 'end' );
+	public function get_status( WP_REST_Request $request ): WP_REST_Response {
+		// Get auth status.
+		$auth_status = get_option( 'meowseo_gsc_auth_status', 'not_authenticated' );
 
-		global $wpdb;
-		$table = $wpdb->prefix . 'meowseo_gsc_data';
+		// Check if credentials exist.
+		$access_token  = get_option( 'meowseo_gsc_access_token', '' );
+		$refresh_token = get_option( 'meowseo_gsc_refresh_token', '' );
+		$token_expiry  = (int) get_option( 'meowseo_gsc_token_expiry', 0 );
 
-		// Build query based on parameters.
-		$where_clauses = array();
-		$where_values  = array();
+		$has_credentials = ! empty( $access_token ) && ! empty( $refresh_token );
+		$is_expired      = $has_credentials && time() >= $token_expiry;
 
-		if ( ! empty( $url ) ) {
-			$url_hash        = hash( 'sha256', $url );
-			$where_clauses[] = 'url_hash = %s';
-			$where_values[]  = $url_hash;
-		}
-
-		if ( ! empty( $start ) ) {
-			$where_clauses[] = 'date >= %s';
-			$where_values[]  = $start;
-		}
-
-		if ( ! empty( $end ) ) {
-			$where_clauses[] = 'date <= %s';
-			$where_values[]  = $end;
-		}
-
-		$where_sql = ! empty( $where_clauses ) ? 'WHERE ' . implode( ' AND ', $where_clauses ) : '';
-
-		$query = "SELECT * FROM {$table} {$where_sql} ORDER BY date DESC LIMIT 100";
-
-		if ( ! empty( $where_values ) ) {
-			$query = $wpdb->prepare( $query, $where_values );
-		}
-
-		$results = $wpdb->get_results( $query, ARRAY_A );
+		// Determine connection status.
+		$connected = $has_credentials && 'authenticated' === $auth_status && ! $is_expired;
 
 		$response = new WP_REST_Response(
 			array(
-				'data'    => $results ?: array(),
-				'filters' => array(
-					'url'   => $url,
-					'start' => $start,
-					'end'   => $end,
-				),
+				'connected'   => $connected,
+				'auth_status' => $auth_status,
+				'has_credentials' => $has_credentials,
+				'is_expired'  => $is_expired,
 			)
 		);
 
-		// Add cache control headers (Requirement 13.6).
-		$response->header( 'Cache-Control', 'public, max-age=300' );
+		$response->header( 'Cache-Control', 'public, max-age=60' );
 
 		return $response;
 	}
@@ -193,33 +181,48 @@ class GSC_REST {
 	/**
 	 * Save OAuth credentials.
 	 *
-	 * Encrypts and stores credentials (Requirement 10.1, 15.6).
+	 * Encrypts and stores OAuth credentials with nonce and capability check.
+	 * Requirement 18.3: Save OAuth credentials.
+	 * Requirement 18.6: Verify nonce and check manage_options capability.
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return WP_REST_Response|WP_Error Response object or error.
 	 */
-	public function save_credentials( WP_REST_Request $request ) {
+	public function save_auth( WP_REST_Request $request ) {
 		$access_token  = $request->get_param( 'access_token' );
 		$refresh_token = $request->get_param( 'refresh_token' );
-		$expires_in    = $request->get_param( 'expires_in' );
+		$expires_in    = $request->get_param( 'expires_in' ) ?? 3600;
 
-		$credentials = array(
-			'access_token'  => $access_token,
-			'refresh_token' => $refresh_token,
-			'expires_in'    => $expires_in,
-			'expires_at'    => time() + ( $expires_in ?: 3600 ),
-		);
-
-		// Save encrypted credentials (Requirement 15.6).
-		$saved = $this->options->set_gsc_credentials( $credentials );
-
-		if ( ! $saved ) {
+		// Validate required parameters.
+		if ( empty( $access_token ) ) {
 			return new WP_Error(
-				'save_failed',
-				__( 'Failed to save GSC credentials.', 'meowseo' ),
-				array( 'status' => 500 )
+				'missing_access_token',
+				__( 'Access token is required.', 'meowseo' ),
+				array( 'status' => 400 )
 			);
 		}
+
+		// Prepare credentials array.
+		$credentials = array(
+			'access_token'  => $access_token,
+			'refresh_token' => $refresh_token ?? '',
+			'expires_in'    => $expires_in,
+			'token_expiry'  => time() + $expires_in,
+		);
+
+		// Store credentials using GSC_Auth.
+		$this->auth->store_credentials( $credentials );
+
+		// Set auth status to authenticated.
+		update_option( 'meowseo_gsc_auth_status', 'authenticated' );
+
+		// Log the action.
+		Logger::info(
+			'GSC OAuth credentials saved via REST API',
+			array(
+				'module' => 'gsc',
+			)
+		);
 
 		$response = new WP_REST_Response(
 			array(
@@ -235,26 +238,36 @@ class GSC_REST {
 	}
 
 	/**
-	 * Delete OAuth credentials.
+	 * Remove OAuth credentials.
+	 *
+	 * Deletes OAuth credentials with nonce and capability check.
+	 * Requirement 18.4: Remove OAuth credentials.
+	 * Requirement 18.6: Verify nonce and check manage_options capability.
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return WP_REST_Response|WP_Error Response object or error.
 	 */
-	public function delete_credentials( WP_REST_Request $request ) {
-		$deleted = $this->options->delete_gsc_credentials();
+	public function remove_auth( WP_REST_Request $request ) {
+		// Delete all GSC credentials.
+		delete_option( 'meowseo_gsc_access_token' );
+		delete_option( 'meowseo_gsc_refresh_token' );
+		delete_option( 'meowseo_gsc_token_expiry' );
+		delete_option( 'meowseo_gsc_auth_status' );
+		delete_option( 'meowseo_gsc_client_id' );
+		delete_option( 'meowseo_gsc_client_secret' );
 
-		if ( ! $deleted ) {
-			return new WP_Error(
-				'delete_failed',
-				__( 'Failed to delete GSC credentials.', 'meowseo' ),
-				array( 'status' => 500 )
-			);
-		}
+		// Log the action.
+		Logger::info(
+			'GSC OAuth credentials removed via REST API',
+			array(
+				'module' => 'gsc',
+			)
+		);
 
 		$response = new WP_REST_Response(
 			array(
 				'success' => true,
-				'message' => __( 'GSC credentials deleted successfully.', 'meowseo' ),
+				'message' => __( 'GSC credentials removed successfully.', 'meowseo' ),
 			)
 		);
 
@@ -264,31 +277,96 @@ class GSC_REST {
 	}
 
 	/**
-	 * Get connection status.
+	 * Get GSC performance data.
 	 *
-	 * Returns boolean indicating if credentials are configured (Requirement 15.6).
-	 * Never exposes raw credentials.
+	 * Returns GSC performance data with filtering support.
+	 * Requirement 18.1: Return GSC performance data.
+	 * Requirement 18.2: Support filtering by URL, start date, and end date.
 	 *
 	 * @param WP_REST_Request $request Request object.
-	 * @return WP_REST_Response Response object.
+	 * @return WP_REST_Response|WP_Error Response object or error.
 	 */
-	public function get_connection_status( WP_REST_Request $request ) {
-		$credentials = $this->options->get_gsc_credentials();
-		$connected   = ! empty( $credentials ) && ! empty( $credentials['access_token'] );
+	public function get_data( WP_REST_Request $request ) {
+		$url        = $request->get_param( 'url' );
+		$start_date = $request->get_param( 'start_date' );
+		$end_date   = $request->get_param( 'end_date' );
 
-		$response = new WP_REST_Response(
+		global $wpdb;
+		$table = $wpdb->prefix . 'meowseo_gsc_data';
+
+		// Check if table exists.
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+
+		if ( ! $table_exists ) {
+			return new WP_Error(
+				'table_not_found',
+				__( 'GSC data table does not exist.', 'meowseo' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		// Build query with WHERE clauses (Requirement 18.2).
+		$where_clauses = array();
+		$where_values  = array();
+
+		if ( ! empty( $url ) ) {
+			$where_clauses[] = 'page = %s';
+			$where_values[]  = $url;
+		}
+
+		if ( ! empty( $start_date ) ) {
+			$where_clauses[] = 'date >= %s';
+			$where_values[]  = $start_date;
+		}
+
+		if ( ! empty( $end_date ) ) {
+			$where_clauses[] = 'date <= %s';
+			$where_values[]  = $end_date;
+		}
+
+		$where_sql = ! empty( $where_clauses ) ? 'WHERE ' . implode( ' AND ', $where_clauses ) : '';
+
+		$query = "SELECT * FROM {$table} {$where_sql} ORDER BY date DESC LIMIT 100";
+
+		if ( ! empty( $where_values ) ) {
+			$query = $wpdb->prepare( $query, $where_values );
+		}
+
+		$results = $wpdb->get_results( $query, ARRAY_A );
+
+		// Log the request.
+		Logger::debug(
+			'GSC data retrieved via REST API',
 			array(
-				'connected' => $connected,
+				'module'      => 'gsc',
+				'url'         => $url,
+				'start_date'  => $start_date,
+				'end_date'    => $end_date,
+				'result_count' => count( $results ),
 			)
 		);
 
-		$response->header( 'Cache-Control', 'public, max-age=60' );
+		$response = new WP_REST_Response(
+			array(
+				'data'    => $results ?: array(),
+				'filters' => array(
+					'url'        => $url,
+					'start_date' => $start_date,
+					'end_date'   => $end_date,
+				),
+			)
+		);
+
+		// Add cache control headers.
+		$response->header( 'Cache-Control', 'public, max-age=300' );
 
 		return $response;
 	}
 
 	/**
 	 * Check if user has manage_options capability.
+	 *
+	 * Requirement 18.6: Check manage_options capability.
 	 *
 	 * @return bool True if user has capability, false otherwise.
 	 */
@@ -299,10 +377,13 @@ class GSC_REST {
 	/**
 	 * Check if user has manage_options capability and valid nonce.
 	 *
+	 * Requirement 18.6: Verify nonce and check manage_options capability before mutation.
+	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return bool|WP_Error True if authorized, WP_Error otherwise.
 	 */
 	public function check_manage_options_and_nonce( WP_REST_Request $request ) {
+		// Check capability first (Requirement 18.6).
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return new WP_Error(
 				'rest_forbidden',
@@ -311,7 +392,7 @@ class GSC_REST {
 			);
 		}
 
-		// Verify nonce from request header.
+		// Verify nonce from request header (Requirement 18.6).
 		$nonce = $request->get_header( 'X-WP-Nonce' );
 		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
 			return new WP_Error(
@@ -324,4 +405,3 @@ class GSC_REST {
 		return true;
 	}
 }
-

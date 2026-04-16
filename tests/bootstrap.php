@@ -17,6 +17,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', __DIR__ . '/../' );
 }
 
+// Define AUTH_KEY for encryption testing
+if ( ! defined( 'AUTH_KEY' ) ) {
+	define( 'AUTH_KEY', 'test-auth-key-for-encryption-testing-12345678901234567890' );
+}
+
 // Define plugin directory constant
 if ( ! defined( 'MEOWSEO_PLUGIN_DIR' ) ) {
 	define( 'MEOWSEO_PLUGIN_DIR', __DIR__ . '/../' );
@@ -349,6 +354,12 @@ if ( ! function_exists( 'gmdate' ) ) {
 	}
 }
 
+// In-memory database storage for testing
+global $wpdb_storage;
+if ( ! isset( $wpdb_storage ) ) {
+	$wpdb_storage = array();
+}
+
 // Mock global $wpdb
 global $wpdb;
 if ( ! isset( $wpdb ) ) {
@@ -356,23 +367,337 @@ if ( ! isset( $wpdb ) ) {
 		public $posts = 'wp_posts';
 		public $postmeta = 'wp_postmeta';
 		public $prefix = 'wp_';
+		public $insert_id = 1;
+		public $last_error = '';
 
 		public function prepare( $query, ...$args ) {
-			return vsprintf( str_replace( '%s', "'%s'", str_replace( '%d', '%d', $query ) ), $args );
+			// Flatten args if first arg is an array
+			if ( count( $args ) === 1 && is_array( $args[0] ) ) {
+				$args = $args[0];
+			}
+			
+			// Replace placeholders with actual values
+			$offset = 0;
+			$prepared = '';
+			$arg_index = 0;
+			
+			while ( $offset < strlen( $query ) ) {
+				$pos_s = strpos( $query, '%s', $offset );
+				$pos_d = strpos( $query, '%d', $offset );
+				$pos_f = strpos( $query, '%f', $offset );
+				
+				// Find the next placeholder
+				$positions = array_filter( [ $pos_s, $pos_d, $pos_f ], function( $p ) { return $p !== false; } );
+				
+				if ( empty( $positions ) ) {
+					// No more placeholders
+					$prepared .= substr( $query, $offset );
+					break;
+				}
+				
+				$next_pos = min( $positions );
+				$prepared .= substr( $query, $offset, $next_pos - $offset );
+				
+				// Determine placeholder type
+				$placeholder = substr( $query, $next_pos, 2 );
+				
+				if ( $arg_index >= count( $args ) ) {
+					// No more args, keep placeholder
+					$prepared .= $placeholder;
+					$offset = $next_pos + 2;
+					continue;
+				}
+				
+				$value = $args[ $arg_index++ ];
+				
+				// Replace based on type
+				if ( $placeholder === '%s' ) {
+					$prepared .= "'" . addslashes( $value ) . "'";
+				} elseif ( $placeholder === '%d' ) {
+					$prepared .= (int) $value;
+				} elseif ( $placeholder === '%f' ) {
+					$prepared .= (float) $value;
+				}
+				
+				$offset = $next_pos + 2;
+			}
+			
+			return $prepared;
 		}
 
-		public function get_results( $query ) {
+		public function get_results( $query, $output = OBJECT ) {
+			global $wpdb_storage;
+			
+			// Extract table name from query
+			if ( preg_match( '/FROM\s+(\w+)/i', $query, $matches ) ) {
+				$table = $matches[1];
+				if ( isset( $wpdb_storage[ $table ] ) ) {
+					$results = array();
+					
+					// Apply WHERE conditions if present
+					if ( preg_match( '/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/is', $query, $where_matches ) ) {
+						foreach ( $wpdb_storage[ $table ] as $row ) {
+							if ( $this->matches_where( $row, $where_matches[1] ) ) {
+								$results[] = $row;
+							}
+						}
+					} else {
+						$results = array_values( $wpdb_storage[ $table ] );
+					}
+					
+					// Apply LIMIT if present
+					if ( preg_match( '/LIMIT\s+(\d+)/i', $query, $limit_matches ) ) {
+						$results = array_slice( $results, 0, (int) $limit_matches[1] );
+					}
+					
+					return array_map( function( $row ) use ( $output ) {
+						return $output === ARRAY_A ? $row : (object) $row;
+					}, $results );
+				}
+			}
+			
 			return array();
 		}
 
 		public function get_var( $query ) {
+			global $wpdb_storage;
+			
+			// Handle COUNT queries
+			if ( preg_match( '/SELECT\s+COUNT\(\*\)\s+FROM\s+(\w+)/i', $query, $matches ) ) {
+				$table = $matches[1];
+				if ( isset( $wpdb_storage[ $table ] ) ) {
+					// Apply WHERE conditions if present
+					if ( preg_match( '/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/is', $query, $where_matches ) ) {
+						$count = 0;
+						foreach ( $wpdb_storage[ $table ] as $row ) {
+							if ( $this->matches_where( $row, $where_matches[1] ) ) {
+								$count++;
+							}
+						}
+						return $count;
+					}
+					return count( $wpdb_storage[ $table ] );
+				}
+				return 0;
+			}
+			
+			// Handle SELECT specific column queries
+			if ( preg_match( '/SELECT\s+(\w+)\s+FROM\s+(\w+)/i', $query, $matches ) ) {
+				$column = $matches[1];
+				$table = $matches[2];
+				
+				if ( isset( $wpdb_storage[ $table ] ) && ! empty( $wpdb_storage[ $table ] ) ) {
+					// Apply WHERE conditions if present
+					if ( preg_match( '/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/is', $query, $where_matches ) ) {
+						foreach ( $wpdb_storage[ $table ] as $row ) {
+							if ( $this->matches_where( $row, $where_matches[1] ) ) {
+								return isset( $row[ $column ] ) ? $row[ $column ] : null;
+							}
+						}
+						return null;
+					}
+					
+					$row = reset( $wpdb_storage[ $table ] );
+					return isset( $row[ $column ] ) ? $row[ $column ] : null;
+				}
+				return null;
+			}
+			
+			// Handle SELECT * queries
+			$results = $this->get_results( $query, ARRAY_A );
+			if ( ! empty( $results ) ) {
+				$first_row = reset( $results );
+				return reset( $first_row );
+			}
+			
 			return 0;
 		}
 
+		public function get_row( $query, $output = OBJECT ) {
+			global $wpdb_storage;
+			
+			// Extract table name from query
+			if ( preg_match( '/FROM\s+(\w+)/i', $query, $matches ) ) {
+				$table = $matches[1];
+				if ( isset( $wpdb_storage[ $table ] ) && ! empty( $wpdb_storage[ $table ] ) ) {
+					// Apply WHERE conditions if present
+					if ( preg_match( '/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/is', $query, $where_matches ) ) {
+						foreach ( $wpdb_storage[ $table ] as $row ) {
+							if ( $this->matches_where( $row, $where_matches[1] ) ) {
+								return $output === ARRAY_A ? $row : (object) $row;
+							}
+						}
+						return null;
+					}
+					
+					$row = reset( $wpdb_storage[ $table ] );
+					return $output === ARRAY_A ? $row : (object) $row;
+				}
+			}
+			
+			return null;
+		}
+
 		public function query( $query ) {
+			global $wpdb_storage;
+			
+			// Handle DELETE queries
+			if ( preg_match( '/DELETE\s+FROM\s+(\w+)/i', $query, $matches ) ) {
+				$table = $matches[1];
+				if ( isset( $wpdb_storage[ $table ] ) ) {
+					$wpdb_storage[ $table ] = array();
+					return true;
+				}
+			}
+			
 			return 0;
 		}
+
+		public function insert( $table, $data, $format = null ) {
+			global $wpdb_storage;
+			
+			if ( ! isset( $wpdb_storage[ $table ] ) ) {
+				$wpdb_storage[ $table ] = array();
+			}
+			
+			// Auto-increment ID if not provided
+			if ( ! isset( $data['id'] ) ) {
+				$data['id'] = $this->insert_id++;
+			} else {
+				$this->insert_id = max( $this->insert_id, $data['id'] + 1 );
+			}
+			
+			$wpdb_storage[ $table ][ $data['id'] ] = $data;
+			
+			return 1;
+		}
+
+		public function update( $table, $data, $where, $format = null, $where_format = null ) {
+			global $wpdb_storage;
+			
+			if ( ! isset( $wpdb_storage[ $table ] ) ) {
+				return false;
+			}
+			
+			$updated = 0;
+			foreach ( $wpdb_storage[ $table ] as $id => &$row ) {
+				$matches = true;
+				foreach ( $where as $key => $value ) {
+					if ( ! isset( $row[ $key ] ) || $row[ $key ] != $value ) {
+						$matches = false;
+						break;
+					}
+				}
+				
+				if ( $matches ) {
+					foreach ( $data as $key => $value ) {
+						$row[ $key ] = $value;
+					}
+					$updated++;
+				}
+			}
+			
+			return $updated;
+		}
+
+		private function matches_where( $row, $where_clause ) {
+			// Simple WHERE clause matching for testing
+			// This is a simplified implementation for common cases
+			
+			// Handle multiple AND conditions
+			$conditions = preg_split( '/\s+AND\s+/i', $where_clause );
+			
+			foreach ( $conditions as $condition ) {
+				$condition = trim( $condition );
+				
+				// Handle payload = 'json_value' conditions (for JSON comparison)
+				// Match both with and without escaped quotes
+				if ( preg_match( "/payload\s*=\s*'(.+?)'/", $condition, $matches ) ) {
+					$expected_json = $matches[1];
+					// Remove any escaping that might have been added
+					$expected_json = stripslashes( $expected_json );
+					$row_payload = isset( $row['payload'] ) ? stripslashes( $row['payload'] ) : '';
+					if ( $row_payload !== $expected_json ) {
+						return false;
+					}
+					continue;
+				}
+				
+				// Handle status = 'value' conditions
+				if ( preg_match( "/(\w+)\s*=\s*'([^']+)'/", $condition, $matches ) ) {
+					$field = $matches[1];
+					$value = $matches[2];
+					if ( ! isset( $row[ $field ] ) || $row[ $field ] !== $value ) {
+						return false;
+					}
+					continue;
+				}
+				
+				// Handle numeric comparisons (id = value)
+				if ( preg_match( '/(\w+)\s*=\s*(\d+)/', $condition, $matches ) ) {
+					$field = $matches[1];
+					$value = $matches[2];
+					if ( ! isset( $row[ $field ] ) || $row[ $field ] != $value ) {
+						return false;
+					}
+					continue;
+				}
+				
+				// Handle IS NULL conditions
+				if ( preg_match( '/(\w+)\s+IS\s+NULL/i', $condition, $matches ) ) {
+					$field = $matches[1];
+					if ( isset( $row[ $field ] ) && $row[ $field ] !== null ) {
+						return false;
+					}
+					continue;
+				}
+				
+				// Handle <= comparisons (retry_after <= NOW())
+				if ( preg_match( '/(\w+)\s*<=\s*NOW\(\)/i', $condition, $matches ) ) {
+					$field = $matches[1];
+					// For testing, treat NULL as always ready
+					if ( ! isset( $row[ $field ] ) || $row[ $field ] === null ) {
+						continue;
+					}
+					// Compare timestamps
+					$row_time = strtotime( $row[ $field ] );
+					if ( $row_time > time() ) {
+						return false;
+					}
+					continue;
+				}
+				
+				// Handle OR conditions within parentheses
+				if ( preg_match( '/\((.+?)\)/i', $condition, $matches ) ) {
+					$or_conditions = preg_split( '/\s+OR\s+/i', $matches[1] );
+					$or_match = false;
+					foreach ( $or_conditions as $or_cond ) {
+						if ( $this->matches_where( $row, $or_cond ) ) {
+							$or_match = true;
+							break;
+						}
+					}
+					if ( ! $or_match ) {
+						return false;
+					}
+					continue;
+				}
+			}
+			
+			return true;
+		}
+
+		public function get_charset_collate() {
+			return 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+		}
 	};
+
+}
+
+if ( ! function_exists( 'dbDelta' ) ) {
+	function dbDelta( $queries = '', $execute = true ) {
+		return array();
+	}
 }
 
 // In-memory post storage for testing
@@ -860,6 +1185,51 @@ if ( ! function_exists( 'wp_json_encode' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_remote_post' ) ) {
+	function wp_remote_post( $url, $args = array() ) {
+		// Mock function for testing
+		return array(
+			'response' => array( 'code' => 200 ),
+			'body' => wp_json_encode( array( 'success' => true ) ),
+		);
+	}
+}
+
+if ( ! function_exists( 'wp_remote_request' ) ) {
+	function wp_remote_request( $url, $args = array() ) {
+		// Mock function for testing
+		return array(
+			'response' => array( 'code' => 200 ),
+			'body' => wp_json_encode( array( 'success' => true ) ),
+		);
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_response_code' ) ) {
+	function wp_remote_retrieve_response_code( $response ) {
+		if ( is_array( $response ) && isset( $response['response']['code'] ) ) {
+			return $response['response']['code'];
+		}
+		return 0;
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
+	function wp_remote_retrieve_body( $response ) {
+		if ( is_array( $response ) && isset( $response['body'] ) ) {
+			return $response['body'];
+		}
+		return '';
+	}
+}
+
+if ( ! function_exists( 'wp_redirect' ) ) {
+	function wp_redirect( $location, $status = 302 ) {
+		// Mock function for testing
+		return true;
+	}
+}
+
 if ( ! function_exists( 'wp_upload_dir' ) ) {
 	function wp_upload_dir( $time = null ) {
 		return array(
@@ -1278,5 +1648,223 @@ if ( ! function_exists( 'sanitize_html_class' ) ) {
 		}
 
 		return $sanitized;
+	}
+}
+
+if ( ! function_exists( 'is_admin' ) ) {
+	function is_admin() {
+		return false;
+	}
+}
+
+if ( ! function_exists( 'add_submenu_page' ) ) {
+	function add_submenu_page( $parent_slug, $page_title, $menu_title, $capability, $menu_slug, $callback = '' ) {
+		return true;
+	}
+}
+
+if ( ! function_exists( 'get_admin_page_title' ) ) {
+	function get_admin_page_title() {
+		return 'Test Page Title';
+	}
+}
+
+if ( ! function_exists( 'wp_die' ) ) {
+	function wp_die( $message = '', $title = '', $args = array() ) {
+		throw new \Exception( $message );
+	}
+}
+
+if ( ! function_exists( 'esc_html__' ) ) {
+	function esc_html__( $text, $domain = 'default' ) {
+		return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'esc_html_e' ) ) {
+	function esc_html_e( $text, $domain = 'default' ) {
+		echo htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'esc_attr_e' ) ) {
+	function esc_attr_e( $text, $domain = 'default' ) {
+		echo htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'wp_nonce_field' ) ) {
+	function wp_nonce_field( $action = -1, $name = '_wpnonce', $referer = true, $echo = true ) {
+		$nonce_field = '<input type="hidden" name="' . $name . '" value="test_nonce" />';
+		if ( $echo ) {
+			echo $nonce_field;
+		}
+		return $nonce_field;
+	}
+}
+
+if ( ! function_exists( 'submit_button' ) ) {
+	function submit_button( $text = null, $type = 'primary', $name = 'submit', $wrap = true, $other_attributes = array() ) {
+		$button = '<input type="submit" name="' . esc_attr( $name ) . '" value="' . esc_attr( $text ) . '" class="button button-' . esc_attr( $type ) . '" />';
+		if ( $wrap ) {
+			echo '<p class="submit">' . $button . '</p>';
+		} else {
+			echo $button;
+		}
+	}
+}
+
+if ( ! function_exists( 'add_settings_error' ) ) {
+	function add_settings_error( $setting, $code, $message, $type = 'error' ) {
+		global $wp_settings_errors;
+		if ( ! isset( $wp_settings_errors ) ) {
+			$wp_settings_errors = array();
+		}
+		$wp_settings_errors[] = array(
+			'setting' => $setting,
+			'code'    => $code,
+			'message' => $message,
+			'type'    => $type,
+		);
+	}
+}
+
+if ( ! function_exists( 'admin_url' ) ) {
+	function admin_url( $path = '', $scheme = 'admin' ) {
+		return 'http://example.com/wp-admin/' . ltrim( $path, '/' );
+	}
+}
+
+if ( ! function_exists( 'absint' ) ) {
+	function absint( $maybeint ) {
+		return abs( (int) $maybeint );
+	}
+}
+
+if ( ! function_exists( 'wp_send_json_error' ) ) {
+	function wp_send_json_error( $data = null, $status_code = null ) {
+		$response = array( 'success' => false );
+		if ( isset( $data ) ) {
+			$response['data'] = $data;
+		}
+		echo json_encode( $response );
+		exit;
+	}
+}
+
+if ( ! function_exists( 'wp_send_json_success' ) ) {
+	function wp_send_json_success( $data = null, $status_code = null ) {
+		$response = array( 'success' => true );
+		if ( isset( $data ) ) {
+			$response['data'] = $data;
+		}
+		echo json_encode( $response );
+		exit;
+	}
+}
+
+if ( ! function_exists( 'paginate_links' ) ) {
+	function paginate_links( $args = '' ) {
+		return '<div class="pagination">1 2 3</div>';
+	}
+}
+
+if ( ! function_exists( 'add_query_arg' ) ) {
+	function add_query_arg( $args, $url = false ) {
+		if ( is_array( $args ) ) {
+			return http_build_query( $args );
+		}
+		return $args;
+	}
+}
+
+if ( ! function_exists( 'nocache_headers' ) ) {
+	function nocache_headers() {
+		// Mock function
+	}
+}
+
+if ( ! function_exists( 'wp_redirect' ) ) {
+	function wp_redirect( $location, $status = 302, $x_redirect_by = 'WordPress' ) {
+		// Mock function - in tests we don't actually redirect
+		return true;
+	}
+}
+
+if ( ! function_exists( 'is_ssl' ) ) {
+	function is_ssl() {
+		return false;
+	}
+}
+
+if ( ! function_exists( 'wp_clear_scheduled_hook' ) ) {
+	function wp_clear_scheduled_hook( $hook, $args = array() ) {
+		return true;
+	}
+}
+
+if ( ! function_exists( 'wp_doing_ajax' ) ) {
+	function wp_doing_ajax() {
+		return defined( 'DOING_AJAX' ) && DOING_AJAX;
+	}
+}
+
+if ( ! function_exists( 'flush_rewrite_rules' ) ) {
+	function flush_rewrite_rules( $hard = true ) {
+		// Mock function
+	}
+}
+
+if ( ! function_exists( 'wp_remote_post' ) ) {
+	function wp_remote_post( $url, $args = array() ) {
+		// Mock function - return a mock response
+		return array(
+			'response' => array(
+				'code' => 200,
+			),
+			'body' => '{}',
+		);
+	}
+}
+
+if ( ! function_exists( 'wp_remote_get' ) ) {
+	function wp_remote_get( $url, $args = array() ) {
+		// Mock function - return a mock response
+		return array(
+			'response' => array(
+				'code' => 200,
+			),
+			'body' => '{}',
+		);
+	}
+}
+
+if ( ! function_exists( 'wp_remote_request' ) ) {
+	function wp_remote_request( $url, $args = array() ) {
+		// Mock function - return a mock response
+		return array(
+			'response' => array(
+				'code' => 200,
+			),
+			'body' => '{}',
+		);
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_response_code' ) ) {
+	function wp_remote_retrieve_response_code( $response ) {
+		if ( is_wp_error( $response ) ) {
+			return 0;
+		}
+		return isset( $response['response']['code'] ) ? $response['response']['code'] : 0;
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
+	function wp_remote_retrieve_body( $response ) {
+		if ( is_wp_error( $response ) ) {
+			return '';
+		}
+		return isset( $response['body'] ) ? $response['body'] : '';
 	}
 }

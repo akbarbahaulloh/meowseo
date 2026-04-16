@@ -154,14 +154,14 @@ CREATE TABLE {$prefix}meowseo_redirects (
 	target_url VARCHAR(2048) NOT NULL,
 	redirect_type SMALLINT NOT NULL DEFAULT 301,
 	is_regex TINYINT(1) NOT NULL DEFAULT 0,
-	status VARCHAR(10) NOT NULL DEFAULT 'active',
+	is_active TINYINT(1) NOT NULL DEFAULT 1,
 	hit_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
-	last_accessed DATETIME NULL,
+	last_hit DATETIME NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	PRIMARY KEY (id),
 	KEY idx_source_url (source_url(191)),
-	KEY idx_is_regex_status (is_regex, status)
+	KEY idx_is_regex_active (is_regex, is_active)
 ) $charset_collate;
 
 CREATE TABLE {$prefix}meowseo_404_log (

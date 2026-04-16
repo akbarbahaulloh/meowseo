@@ -39,33 +39,63 @@ class GSC implements Module {
 	private GSC_REST $rest;
 
 	/**
+	 * GSC Auth instance.
+	 *
+	 * @var GSC_Auth
+	 */
+	private GSC_Auth $auth;
+
+	/**
+	 * GSC API instance.
+	 *
+	 * @var GSC_API
+	 */
+	private GSC_API $api;
+
+	/**
+	 * GSC Queue instance.
+	 *
+	 * @var GSC_Queue
+	 */
+	private GSC_Queue $queue;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Options $options Options instance.
 	 */
 	public function __construct( Options $options ) {
 		$this->options = $options;
-		$this->rest    = new GSC_REST( $options );
+		$this->auth    = new GSC_Auth( $options );
+		$this->api     = new GSC_API( $this->auth );
+		$this->queue   = new GSC_Queue( $options, $this->api );
+		$this->rest    = new GSC_REST( $options, $this->auth );
 	}
 
 	/**
 	 * Boot the module.
 	 *
-	 * Register hooks for GSC queue processing and REST API.
+	 * Register hooks for GSC queue processing, automatic indexing, and REST API.
+	 * Requirement 10.1: Register hooks for transition_post_status.
+	 * Requirement 10.3: Register cron for queue processing.
 	 *
 	 * @return void
 	 */
 	public function boot(): void {
-		// Register WP-Cron hook for queue processing (Requirement 10.2, 10.3).
-		add_action( 'meowseo_process_gsc_queue', array( $this, 'process_queue' ) );
+		// Register custom cron interval for 5 minutes.
+		add_filter( 'cron_schedules', array( $this, 'register_cron_interval' ) );
 
-		// Register REST API endpoints (Requirement 10.6).
+		// Register hook for automatic indexing on post publish (Requirement 11.1).
+		add_action( 'transition_post_status', array( $this, 'handle_post_transition' ), 10, 3 );
+
+		// Register WP-Cron hook for queue processing (Requirement 10.3).
+		add_action( 'meowseo_gsc_process_queue', array( $this, 'process_queue' ) );
+
+		// Register REST API endpoints.
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
 
-		// Schedule cron event if not already scheduled.
-		if ( ! wp_next_scheduled( 'meowseo_process_gsc_queue' ) ) {
-			wp_schedule_event( time(), 'hourly', 'meowseo_process_gsc_queue' );
-		}
+		// Register cron schedule.
+		$this->register_cron();
 	}
 
 	/**
@@ -87,344 +117,107 @@ class GSC implements Module {
 	}
 
 	/**
+	 * Register custom cron interval.
+	 *
+	 * Adds a 5-minute interval for queue processing.
+	 *
+	 * @param array $schedules Existing cron schedules.
+	 * @return array Modified cron schedules.
+	 */
+	public function register_cron_interval( array $schedules ): array {
+		$schedules['meowseo_five_minutes'] = array(
+			'interval' => 300, // 5 minutes in seconds.
+			'display'  => __( 'Every 5 Minutes', 'meowseo' ),
+		);
+
+		return $schedules;
+	}
+
+	/**
+	 * Register cron schedule for queue processing.
+	 *
+	 * Schedules WP-Cron event to process queue every 5 minutes.
+	 * Requirement 10.3: Schedule queue processing every 5 minutes.
+	 *
+	 * @return void
+	 */
+	public function register_cron(): void {
+		// Schedule cron event if not already scheduled.
+		if ( ! wp_next_scheduled( 'meowseo_gsc_process_queue' ) ) {
+			// Schedule to run every 5 minutes.
+			wp_schedule_event( time(), 'meowseo_five_minutes', 'meowseo_gsc_process_queue' );
+		}
+	}
+
+	/**
+	 * Handle post status transition.
+	 *
+	 * Enqueues indexing job when post transitions to 'publish' or when published post is updated.
+	 * Requirement 11.1: Enqueue indexing job when post transitions to 'publish' from any other status.
+	 * Requirement 11.2: Check _meowseo_gsc_last_submit postmeta for published post updates.
+	 * Requirement 11.3: Enqueue new job and update postmeta timestamp if modified since last submission.
+	 * Requirement 11.4: Only process public and indexable post types.
+	 *
+	 * @param string  $new_status New post status.
+	 * @param string  $old_status Old post status.
+	 * @param WP_Post $post       Post object.
+	 * @return void
+	 */
+	public function handle_post_transition( string $new_status, string $old_status, \WP_Post $post ): void {
+		// Only process when transitioning to 'publish' status.
+		if ( 'publish' !== $new_status ) {
+			return;
+		}
+
+		// Check if post type is public and indexable (Requirement 11.4).
+		$post_type_object = get_post_type_object( $post->post_type );
+		if ( ! $post_type_object || ! $post_type_object->public ) {
+			return;
+		}
+
+		// Get post permalink.
+		$permalink = get_permalink( $post->ID );
+		if ( ! $permalink ) {
+			return;
+		}
+
+		// Case 1: Post transitioning to 'publish' from any other status (Requirement 11.1).
+		if ( 'publish' !== $old_status ) {
+			// Enqueue indexing job.
+			$this->queue->enqueue( $permalink, 'indexing' );
+
+			// Update last submit timestamp.
+			update_post_meta( $post->ID, '_meowseo_gsc_last_submit', time() );
+
+			return;
+		}
+
+		// Case 2: Published post being updated (Requirement 11.2, 11.3).
+		// Check if post has been modified since last submission.
+		$last_submit = get_post_meta( $post->ID, '_meowseo_gsc_last_submit', true );
+		$modified_time = strtotime( $post->post_modified_gmt );
+
+		// If never submitted or modified since last submission, enqueue new job.
+		if ( empty( $last_submit ) || $modified_time > (int) $last_submit ) {
+			// Enqueue indexing job.
+			$this->queue->enqueue( $permalink, 'indexing' );
+
+			// Update last submit timestamp.
+			update_post_meta( $post->ID, '_meowseo_gsc_last_submit', time() );
+		}
+	}
+
+	/**
 	 * Process GSC queue.
 	 *
-	 * Fetches up to 10 pending queue entries and processes them.
-	 * Implements exponential backoff for HTTP 429 responses (Requirement 10.3, 10.4).
+	 * Delegates to GSC_Queue for batch processing.
+	 * Requirement 10.3: Process queue batch.
+	 * Requirement 10.4: Process up to 10 queue entries per batch.
 	 *
 	 * @return void
 	 */
 	public function process_queue(): void {
-		// Fetch max 10 queue entries (Requirement 10.3).
-		$queue_entries = DB::get_gsc_queue( 10 );
-
-		if ( empty( $queue_entries ) ) {
-			return;
-		}
-
-		// Update status to 'processing' before execution.
-		$this->update_queue_status_bulk( $queue_entries, 'processing' );
-
-		$processed_count = 0;
-		foreach ( $queue_entries as $entry ) {
-			$this->process_queue_entry( $entry );
-			$processed_count++;
-		}
-
-		// Log batch completion (Requirement 11.3).
-		\MeowSEO\Helpers\Logger::info(
-			'Batch processing completed',
-			array(
-				'job_type'        => 'gsc_queue',
-				'processed_count' => $processed_count,
-			)
-		);
-	}
-
-	/**
-	 * Process a single queue entry.
-	 *
-	 * Executes the API call and handles response codes (Requirement 10.4).
-	 *
-	 * @param array $entry Queue entry data.
-	 * @return void
-	 */
-	private function process_queue_entry( array $entry ): void {
-		$id       = absint( $entry['id'] );
-		$job_type = $entry['job_type'];
-		$payload  = json_decode( $entry['payload'], true );
-		$attempts = absint( $entry['attempts'] );
-
-		// Execute API call based on job type.
-		$response = $this->execute_api_call( $job_type, $payload );
-
-		if ( is_wp_error( $response ) ) {
-			// Handle error response.
-			$this->handle_error_response( $id, $attempts );
-			return;
-		}
-
-		$status_code = wp_remote_retrieve_response_code( $response );
-
-		if ( 200 === $status_code ) {
-			// Success - store data and mark as done (Requirement 10.5).
-			$body = wp_remote_retrieve_body( $response );
-			$data = json_decode( $body, true );
-
-			if ( ! empty( $data ) && is_array( $data ) ) {
-				$this->store_gsc_data( $data );
-			}
-
-			$this->mark_queue_entry_done( $id );
-		} elseif ( 429 === $status_code ) {
-			// Rate limit - apply exponential backoff (Requirement 10.4).
-			$this->handle_rate_limit( $id, $attempts );
-		} else {
-			// Other error - retry or mark as failed.
-			$this->handle_error_response( $id, $attempts );
-		}
-	}
-
-	/**
-	 * Execute API call to Google Search Console.
-	 *
-	 * @param string $job_type Job type (e.g., 'fetch_url', 'fetch_sitemaps').
-	 * @param array  $payload  Job payload data.
-	 * @return array|\WP_Error Response array or WP_Error on failure.
-	 */
-	private function execute_api_call( string $job_type, array $payload ) {
-		// Get OAuth credentials (Requirement 10.1, 15.6).
-		$credentials = $this->options->get_gsc_credentials();
-
-		if ( empty( $credentials ) || empty( $credentials['access_token'] ) ) {
-			// Log OAuth failure (Requirement 11.1).
-			\MeowSEO\Helpers\Logger::error(
-				'OAuth authentication failed',
-				array(
-					'job_type'     => $job_type,
-					'error_code'   => 'no_credentials',
-					'access_token' => $credentials['access_token'] ?? null, // Will be sanitized.
-				)
-			);
-			return new \WP_Error( 'no_credentials', 'GSC credentials not configured.' );
-		}
-
-		$access_token = $credentials['access_token'];
-
-		// Build API request based on job type.
-		$api_url = $this->build_api_url( $job_type, $payload );
-
-		if ( is_wp_error( $api_url ) ) {
-			// Log OAuth failure (Requirement 11.1).
-			\MeowSEO\Helpers\Logger::error(
-				'OAuth authentication failed',
-				array(
-					'job_type'     => $job_type,
-					'error_code'   => $api_url->get_error_code(),
-					'access_token' => $access_token, // Will be sanitized.
-				)
-			);
-			return $api_url;
-		}
-
-		// Execute HTTP request with OAuth token.
-		$response = wp_remote_get(
-			$api_url,
-			array(
-				'headers' => array(
-					'Authorization' => 'Bearer ' . $access_token,
-					'Content-Type'  => 'application/json',
-				),
-				'timeout' => 30,
-			)
-		);
-
-		return $response;
-	}
-
-	/**
-	 * Build API URL based on job type and payload.
-	 *
-	 * @param string $job_type Job type.
-	 * @param array  $payload  Job payload.
-	 * @return string|\WP_Error API URL or WP_Error on invalid job type.
-	 */
-	private function build_api_url( string $job_type, array $payload ) {
-		$base_url = 'https://www.googleapis.com/webmasters/v3';
-
-		switch ( $job_type ) {
-			case 'fetch_url':
-				if ( empty( $payload['site_url'] ) || empty( $payload['url'] ) ) {
-					return new \WP_Error( 'invalid_payload', 'Missing site_url or url in payload.' );
-				}
-
-				$site_url = urlencode( $payload['site_url'] );
-				$url      = urlencode( $payload['url'] );
-				$start    = $payload['start_date'] ?? gmdate( 'Y-m-d', strtotime( '-30 days' ) );
-				$end      = $payload['end_date'] ?? gmdate( 'Y-m-d' );
-
-				return "{$base_url}/sites/{$site_url}/searchAnalytics/query?startDate={$start}&endDate={$end}&dimensions=page&filters={$url}";
-
-			case 'fetch_sitemaps':
-				if ( empty( $payload['site_url'] ) ) {
-					return new \WP_Error( 'invalid_payload', 'Missing site_url in payload.' );
-				}
-
-				$site_url = urlencode( $payload['site_url'] );
-				return "{$base_url}/sites/{$site_url}/sitemaps";
-
-			default:
-				return new \WP_Error( 'invalid_job_type', 'Unknown job type: ' . $job_type );
-		}
-	}
-
-	/**
-	 * Store GSC performance data.
-	 *
-	 * @param array $data GSC data array.
-	 * @return void
-	 */
-	private function store_gsc_data( array $data ): void {
-		if ( empty( $data['rows'] ) ) {
-			return;
-		}
-
-		$rows = array();
-
-		foreach ( $data['rows'] as $row ) {
-			if ( empty( $row['keys'][0] ) ) {
-				continue;
-			}
-
-			$rows[] = array(
-				'url'         => $row['keys'][0],
-				'date'        => gmdate( 'Y-m-d' ),
-				'clicks'      => $row['clicks'] ?? 0,
-				'impressions' => $row['impressions'] ?? 0,
-				'ctr'         => $row['ctr'] ?? 0.0,
-				'position'    => $row['position'] ?? 0.0,
-			);
-		}
-
-		if ( ! empty( $rows ) ) {
-			DB::upsert_gsc_data( $rows );
-		}
-	}
-
-	/**
-	 * Handle rate limit response (HTTP 429).
-	 *
-	 * Applies exponential backoff: retry_after = NOW() + POW(2, attempts) * 60 seconds.
-	 *
-	 * @param int $id       Queue entry ID.
-	 * @param int $attempts Current attempt count.
-	 * @return void
-	 */
-	private function handle_rate_limit( int $id, int $attempts ): void {
-		// Exponential backoff: 2^attempts * 60 seconds (Requirement 10.4).
-		$backoff_seconds = pow( 2, $attempts + 1 ) * 60;
-		$retry_after     = time() + $backoff_seconds;
-
-		// Log rate limit (Requirement 11.2).
-		\MeowSEO\Helpers\Logger::warning(
-			'Rate limit exceeded',
-			array(
-				'job_type'    => $this->get_job_type_from_queue( $id ),
-				'retry_after' => $retry_after,
-			)
-		);
-
-		DB::update_gsc_queue_retry( $id, $retry_after );
-	}
-
-	/**
-	 * Handle error response (HTTP 5xx or other errors).
-	 *
-	 * Marks as failed after 5 attempts, otherwise retries after 5 minutes.
-	 *
-	 * @param int $id       Queue entry ID.
-	 * @param int $attempts Current attempt count.
-	 * @return void
-	 */
-	private function handle_error_response( int $id, int $attempts ): void {
-		if ( $attempts >= 5 ) {
-			// Mark as failed after 5 attempts.
-			$this->mark_queue_entry_failed( $id );
-		} else {
-			// Retry after 5 minutes.
-			$retry_after = time() + 300;
-			DB::update_gsc_queue_retry( $id, $retry_after );
-		}
-	}
-
-	/**
-	 * Mark queue entry as done.
-	 *
-	 * @param int $id Queue entry ID.
-	 * @return void
-	 */
-	private function mark_queue_entry_done( int $id ): void {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'meowseo_gsc_queue';
-
-		$wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$table} SET status = 'done', processed_at = NOW() WHERE id = %d",
-				$id
-			)
-		);
-	}
-
-	/**
-	 * Mark queue entry as failed.
-	 *
-	 * @param int $id Queue entry ID.
-	 * @return void
-	 */
-	private function mark_queue_entry_failed( int $id ): void {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'meowseo_gsc_queue';
-
-		$wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$table} SET status = 'failed', processed_at = NOW() WHERE id = %d",
-				$id
-			)
-		);
-	}
-
-	/**
-	 * Update queue status in bulk.
-	 *
-	 * @param array  $entries Queue entries.
-	 * @param string $status  New status.
-	 * @return void
-	 */
-	private function update_queue_status_bulk( array $entries, string $status ): void {
-		if ( empty( $entries ) ) {
-			return;
-		}
-
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'meowseo_gsc_queue';
-		$ids   = array_map( 'absint', wp_list_pluck( $entries, 'id' ) );
-
-		if ( empty( $ids ) ) {
-			return;
-		}
-
-		$ids_placeholder = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
-
-		$wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$table} SET status = %s WHERE id IN ({$ids_placeholder})",
-				array_merge( array( $status ), $ids )
-			)
-		);
-	}
-
-	/**
-	 * Get job type from queue entry ID.
-	 *
-	 * @param int $id Queue entry ID.
-	 * @return string Job type or 'unknown'.
-	 */
-	private function get_job_type_from_queue( int $id ): string {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'meowseo_gsc_queue';
-
-		$job_type = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT job_type FROM {$table} WHERE id = %d",
-				$id
-			)
-		);
-
-		return $job_type ?? 'unknown';
+		$this->queue->process_batch();
 	}
 
 	/**
@@ -434,25 +227,17 @@ class GSC implements Module {
 	 *
 	 * @param string $job_type Job type.
 	 * @param array  $payload  Job payload.
-	 * @return int|false Queue entry ID on success, false on failure.
+	 * @return bool True on success, false on failure.
 	 */
-	public function enqueue_api_call( string $job_type, array $payload ) {
-		global $wpdb;
+	public function enqueue_api_call( string $job_type, array $payload ): bool {
+		// Extract URL from payload.
+		$url = $payload['url'] ?? '';
 
-		$table = $wpdb->prefix . 'meowseo_gsc_queue';
+		if ( empty( $url ) ) {
+			return false;
+		}
 
-		$result = $wpdb->insert(
-			$table,
-			array(
-				'job_type' => $job_type,
-				'payload'  => wp_json_encode( $payload ),
-				'status'   => 'pending',
-				'attempts' => 0,
-			),
-			array( '%s', '%s', '%s', '%d' )
-		);
-
-		return $result ? $wpdb->insert_id : false;
+		return $this->queue->enqueue( $url, $job_type );
 	}
 }
 

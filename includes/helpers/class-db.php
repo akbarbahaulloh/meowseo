@@ -31,7 +31,7 @@ class DB {
 		$table = $wpdb->prefix . 'meowseo_redirects';
 
 		$query = $wpdb->prepare(
-			"SELECT * FROM {$table} WHERE source_url = %s AND status = 'active' LIMIT 1",
+			"SELECT * FROM {$table} WHERE source_url = %s AND is_active = 1 AND is_regex = 0 LIMIT 1",
 			$url
 		);
 
@@ -51,7 +51,7 @@ class DB {
 		$table = $wpdb->prefix . 'meowseo_redirects';
 
 		$query = $wpdb->prepare(
-			"SELECT id, source_url, target_url, redirect_type FROM {$table} WHERE is_regex = %d AND status = 'active'",
+			"SELECT id, source_url, target_url, redirect_type FROM {$table} WHERE is_regex = %d AND is_active = 1",
 			1
 		);
 
@@ -73,7 +73,7 @@ class DB {
 
 		$wpdb->query(
 			$wpdb->prepare(
-				"UPDATE {$table} SET hit_count = hit_count + 1, last_accessed = NOW() WHERE id = %d",
+				"UPDATE {$table} SET hit_count = hit_count + 1, last_hit = NOW() WHERE id = %d",
 				$id
 			)
 		);
