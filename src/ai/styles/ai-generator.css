@@ -1,0 +1,90 @@
+/**
+ * AI Generator Sidebar Plugin Styles
+ * 
+ * Styles for the AI Generator sidebar panel in Gutenberg editor.
+ */
+
+.meowseo-ai-generator-panel {
+	padding: 0;
+}
+
+.meowseo-ai-generator-panel .components-panel {
+	border: none;
+}
+
+.meowseo-ai-generator-panel .components-panel__body {
+	border: none;
+}
+
+/* Error and warning notices */
+.meowseo-ai-generator-panel .components-notice {
+	margin-bottom: 16px;
+}
+
+.meowseo-ai-error-actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 12px;
+	align-items: center;
+}
+
+.meowseo-ai-error-actions a {
+	color: #0073aa;
+	text-decoration: none;
+	font-size: 13px;
+}
+
+.meowseo-ai-error-actions a:hover {
+	text-decoration: underline;
+}
+
+/* Generation buttons */
+.meowseo-ai-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.meowseo-ai-buttons .components-panel__row {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.meowseo-ai-generate-all {
+	width: 100%;
+}
+
+.meowseo-ai-generate-text,
+.meowseo-ai-generate-image {
+	flex: 1;
+	min-width: 100px;
+}
+
+/* Provider badge */
+.meowseo-ai-provider-badge {
+	display: inline-block;
+	padding: 8px 12px;
+	background-color: #f0f0f0;
+	border-radius: 4px;
+	font-size: 13px;
+	color: #333;
+	width: 100%;
+	text-align: center;
+}
+
+.meowseo-ai-provider-badge strong {
+	color: #0073aa;
+	font-weight: 600;
+}
+
+/* Spinner styling */
+.meowseo-ai-buttons .components-spinner {
+	margin-right: 8px;
+}
+
+/* Loading state */
+.meowseo-ai-buttons button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}

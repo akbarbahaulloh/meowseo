@@ -1,0 +1,189 @@
+/**
+ * Preview Panel Component Styles
+ * 
+ * Styles for the PreviewPanel component showing generated content.
+ * Includes accessibility features for keyboard navigation and focus indicators.
+ */
+
+.meowseo-preview-panel {
+	padding: 16px;
+	background-color: #fafafa;
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+	margin-bottom: 16px;
+}
+
+/* Preview header */
+.meowseo-preview-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+	padding-bottom: 12px;
+	border-bottom: 2px solid #e0e0e0;
+}
+
+.meowseo-preview-header h3 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: #333;
+}
+
+.meowseo-provider-info {
+	font-size: 12px;
+	color: #666;
+	background-color: #f0f0f0;
+	padding: 4px 8px;
+	border-radius: 3px;
+}
+
+.meowseo-provider-info strong {
+	color: #0073aa;
+	font-weight: 600;
+}
+
+/* Preview image */
+.meowseo-preview-image {
+	margin-bottom: 16px;
+	text-align: center;
+}
+
+.meowseo-preview-image img {
+	max-width: 100%;
+	height: auto;
+	border-radius: 4px;
+	border: 1px solid #ddd;
+	display: inline-block;
+	max-height: 200px;
+}
+
+.meowseo-image-info {
+	margin: 8px 0 0 0;
+	font-size: 12px;
+	color: #666;
+	font-style: italic;
+}
+
+/* Preview fields */
+.meowseo-preview-fields {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.meowseo-preview-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.meowseo-preview-field.meowseo-field-exceeded {
+	background-color: #fef5e7;
+	padding: 8px;
+	border-radius: 3px;
+	border-left: 3px solid #f0ad4e;
+}
+
+/* Field controls with focus indicators (Requirement 34.4) */
+.meowseo-preview-field .components-text-control__input,
+.meowseo-preview-field .components-textarea-control__textarea {
+	font-size: 13px;
+	padding: 8px;
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	transition: all 0.2s ease;
+}
+
+.meowseo-preview-field .components-text-control__input:focus,
+.meowseo-preview-field .components-textarea-control__textarea:focus {
+	border-color: #0073aa;
+	outline: 2px solid #0073aa;
+	outline-offset: 0;
+	box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.2);
+}
+
+.meowseo-preview-field .components-base-control__label {
+	font-weight: 600;
+	font-size: 12px;
+	color: #333;
+	margin-bottom: 4px;
+}
+
+/* Field info with live region support (Requirement 34.6) */
+.meowseo-field-info {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 11px;
+	color: #666;
+	padding: 0 4px;
+}
+
+.meowseo-char-count {
+	font-weight: 500;
+}
+
+.meowseo-field-warning {
+	color: #d63638;
+	font-weight: 600;
+}
+
+/* Action buttons with focus indicators (Requirement 34.4) */
+.meowseo-preview-actions {
+	display: flex;
+	gap: 8px;
+	padding-top: 12px;
+	border-top: 1px solid #e0e0e0;
+}
+
+.meowseo-preview-actions .components-panel__row {
+	display: flex;
+	gap: 8px;
+	padding: 0;
+	border: none;
+	width: 100%;
+}
+
+.meowseo-apply-button,
+.meowseo-cancel-button {
+	flex: 1;
+	min-width: 100px;
+	transition: all 0.2s ease;
+}
+
+/* Focus indicators for buttons (Requirement 34.4) */
+.meowseo-preview-actions .components-button:focus {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+	box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+	.meowseo-preview-panel {
+		padding: 12px;
+	}
+
+	.meowseo-preview-header {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+	}
+
+	.meowseo-provider-info {
+		width: 100%;
+	}
+
+	.meowseo-preview-actions .components-panel__row {
+		flex-direction: column;
+	}
+
+	.meowseo-apply-button,
+	.meowseo-cancel-button {
+		width: 100%;
+	}
+}
+

@@ -1,0 +1,209 @@
+/**
+ * AI Generator Panel Component Styles
+ * 
+ * Styles for the AiGeneratorPanel component.
+ * Includes accessibility features for keyboard navigation and focus indicators.
+ */
+
+.meowseo-ai-generator-panel {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 13px;
+	color: #333;
+}
+
+/* Screen reader only content (Requirement 34.2) */
+.meowseo-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border-width: 0;
+}
+
+/* Panel styling */
+.meowseo-ai-generator-panel .components-panel__body {
+	border-top: 1px solid #e0e0e0;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.meowseo-ai-generator-panel .components-panel__body-title {
+	font-weight: 600;
+	font-size: 14px;
+	padding: 16px;
+	margin: 0;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+/* Notice styling */
+.meowseo-ai-generator-panel .components-notice {
+	margin: 0 0 16px 0;
+	border-left: 4px solid #ddd;
+}
+
+.meowseo-ai-generator-panel .components-notice.is-error {
+	border-left-color: #d63638;
+	background-color: #fcf0f1;
+}
+
+.meowseo-ai-generator-panel .components-notice.is-warning {
+	border-left-color: #f0ad4e;
+	background-color: #fef5e7;
+}
+
+.meowseo-ai-generator-panel .components-notice.is-success {
+	border-left-color: #00a32a;
+	background-color: #f0f6f0;
+}
+
+.meowseo-ai-generator-panel .components-notice p {
+	margin: 0 0 8px 0;
+	font-size: 13px;
+}
+
+/* Button styling with focus indicators (Requirement 34.4) */
+.meowseo-ai-generator-panel .components-button {
+	font-size: 13px;
+	padding: 8px 12px;
+	height: auto;
+	line-height: 1.5;
+	transition: all 0.2s ease;
+}
+
+.meowseo-ai-generator-panel .components-button.is-primary {
+	background-color: #0073aa;
+	color: white;
+	border-color: #0073aa;
+}
+
+.meowseo-ai-generator-panel .components-button.is-primary:hover:not(:disabled) {
+	background-color: #005a87;
+	border-color: #005a87;
+}
+
+/* Focus indicator for keyboard navigation (Requirement 34.4) */
+.meowseo-ai-generator-panel .components-button:focus {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+	box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.2);
+}
+
+.meowseo-ai-generator-panel .components-button.is-secondary {
+	background-color: #f0f0f0;
+	color: #333;
+	border-color: #ccc;
+}
+
+.meowseo-ai-generator-panel .components-button.is-secondary:hover:not(:disabled) {
+	background-color: #e0e0e0;
+	border-color: #999;
+}
+
+.meowseo-ai-generator-panel .components-button.is-secondary:focus {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+	box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.2);
+}
+
+.meowseo-ai-generator-panel .components-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Spinner styling */
+.meowseo-ai-generator-panel .components-spinner {
+	display: inline-block;
+	margin-right: 8px;
+	vertical-align: middle;
+}
+
+/* Panel row styling */
+.meowseo-ai-generator-panel .components-panel__row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding: 12px 16px;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.meowseo-ai-generator-panel .components-panel__row:last-child {
+	border-bottom: none;
+}
+
+/* Buttons container */
+.meowseo-ai-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+}
+
+.meowseo-ai-buttons .components-panel__row {
+	flex-wrap: wrap;
+}
+
+.meowseo-ai-generate-all {
+	width: 100%;
+}
+
+.meowseo-ai-generate-text,
+.meowseo-ai-generate-image {
+	flex: 1;
+	min-width: 80px;
+}
+
+/* Provider badge */
+.meowseo-ai-provider-badge {
+	display: block;
+	padding: 8px 12px;
+	background-color: #f5f5f5;
+	border-radius: 3px;
+	font-size: 12px;
+	color: #666;
+	text-align: center;
+	width: 100%;
+	border: 1px solid #ddd;
+}
+
+.meowseo-ai-provider-badge strong {
+	color: #0073aa;
+	font-weight: 600;
+}
+
+/* Error actions */
+.meowseo-ai-error-actions {
+	display: flex;
+	gap: 12px;
+	margin-top: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.meowseo-ai-error-actions .components-button {
+	margin: 0;
+}
+
+.meowseo-ai-error-actions a {
+	color: #0073aa;
+	text-decoration: none;
+	font-size: 12px;
+	font-weight: 500;
+	padding: 4px 8px;
+	border-radius: 3px;
+	transition: all 0.2s ease;
+}
+
+.meowseo-ai-error-actions a:hover {
+	text-decoration: underline;
+	background-color: rgba(0, 115, 170, 0.1);
+}
+
+/* Focus indicator for links (Requirement 34.4) */
+.meowseo-ai-error-actions a:focus {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+	box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.2);
+}
+

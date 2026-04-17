@@ -1,0 +1,438 @@
+/**
+ * AI Settings CSS
+ *
+ * Styles for the AI settings page including:
+ * - Drag-and-drop provider ordering
+ * - Test connection status indicators
+ * - Provider status table
+ * - Character counter styling
+ *
+ * @package MeowSEO\Modules\AI
+ */
+
+/* Provider List Styling */
+.meowseo-providers-list {
+	background: #fff;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	margin: 15px 0;
+}
+
+.meowseo-provider-item {
+	border-bottom: 1px solid #eee;
+	padding: 15px;
+	transition: background-color 0.2s ease;
+	cursor: move;
+}
+
+.meowseo-provider-item:last-child {
+	border-bottom: none;
+}
+
+.meowseo-provider-item:hover {
+	background-color: #f9f9f9;
+}
+
+.meowseo-provider-item.meowseo-dragging {
+	opacity: 0.5;
+	background-color: #f0f0f0;
+}
+
+/* Provider Header */
+.meowseo-provider-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 10px;
+	font-weight: 500;
+}
+
+.meowseo-provider-drag-handle {
+	cursor: grab;
+	color: #999;
+	font-size: 14px;
+	user-select: none;
+}
+
+.meowseo-provider-drag-handle:active {
+	cursor: grabbing;
+}
+
+.meowseo-provider-priority {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	background-color: #0073aa;
+	color: #fff;
+	border-radius: 50%;
+	font-size: 12px;
+	font-weight: bold;
+}
+
+.meowseo-provider-label {
+	flex: 1;
+	font-weight: 500;
+}
+
+.meowseo-provider-capabilities {
+	display: flex;
+	gap: 5px;
+}
+
+.meowseo-capability-badge {
+	display: inline-block;
+	font-size: 16px;
+	title: "Capability";
+}
+
+/* Provider Configuration */
+.meowseo-provider-config {
+	margin-left: 34px;
+	padding-left: 10px;
+	border-left: 2px solid #ddd;
+}
+
+.meowseo-provider-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 10px;
+	flex-wrap: wrap;
+}
+
+.meowseo-provider-row:last-child {
+	margin-bottom: 0;
+}
+
+.meowseo-provider-row label {
+	flex: 0 0 auto;
+	min-width: 100px;
+	font-weight: 500;
+}
+
+.meowseo-api-key-input {
+	flex: 1;
+	min-width: 200px;
+	padding: 6px 8px;
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	font-size: 13px;
+}
+
+.meowseo-test-connection-btn {
+	flex: 0 0 auto;
+	padding: 6px 12px;
+	font-size: 13px;
+	white-space: nowrap;
+}
+
+.meowseo-test-connection-btn.meowseo-loading {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.meowseo-test-status {
+	flex: 0 0 auto;
+	font-size: 13px;
+	font-weight: 500;
+	padding: 4px 8px;
+	border-radius: 3px;
+	min-height: 20px;
+	display: inline-block;
+}
+
+.meowseo-test-status-success {
+	background-color: #d4edda;
+	color: #155724;
+	border: 1px solid #c3e6cb;
+}
+
+.meowseo-test-status-error {
+	background-color: #f8d7da;
+	color: #721c24;
+	border: 1px solid #f5c6cb;
+}
+
+.meowseo-test-status-loading {
+	background-color: #e2e3e5;
+	color: #383d41;
+	border: 1px solid #d6d8db;
+}
+
+.meowseo-provider-active-toggle {
+	margin-right: 5px;
+}
+
+/* Provider Status Table */
+.meowseo-provider-status-table {
+	width: 100%;
+	border-collapse: collapse;
+	background: #fff;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	overflow: hidden;
+	margin: 15px 0;
+}
+
+.meowseo-provider-status-table thead {
+	background-color: #f5f5f5;
+	border-bottom: 2px solid #ddd;
+}
+
+.meowseo-provider-status-table th {
+	padding: 12px 15px;
+	text-align: left;
+	font-weight: 600;
+	font-size: 13px;
+	color: #333;
+}
+
+.meowseo-provider-status-table td {
+	padding: 12px 15px;
+	border-bottom: 1px solid #eee;
+	font-size: 13px;
+}
+
+.meowseo-provider-status-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.meowseo-provider-status-table tbody tr:hover {
+	background-color: #f9f9f9;
+}
+
+.meowseo-provider-name {
+	font-weight: 500;
+	color: #333;
+}
+
+.meowseo-provider-status-indicator {
+	text-align: center;
+}
+
+.meowseo-status-badge {
+	display: inline-block;
+	padding: 4px 12px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.meowseo-status-active {
+	background-color: #d4edda;
+	color: #155724;
+	border: 1px solid #c3e6cb;
+}
+
+.meowseo-status-inactive {
+	background-color: #e2e3e5;
+	color: #383d41;
+	border: 1px solid #d6d8db;
+}
+
+.meowseo-status-no-key {
+	background-color: #fff3cd;
+	color: #856404;
+	border: 1px solid #ffeaa7;
+}
+
+.meowseo-status-rate-limited {
+	background-color: #f8d7da;
+	color: #721c24;
+	border: 1px solid #f5c6cb;
+}
+
+.meowseo-provider-status-details {
+	color: #666;
+	font-size: 12px;
+}
+
+.meowseo-status-detail {
+	display: block;
+}
+
+.meowseo-status-success {
+	color: #155724;
+	font-weight: 500;
+}
+
+.meowseo-status-warning {
+	color: #856404;
+	font-weight: 500;
+}
+
+/* AI Settings Sections */
+.meowseo-ai-section {
+	background: #fff;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 20px;
+	margin: 20px 0;
+}
+
+.meowseo-ai-section h3 {
+	margin-top: 0;
+	margin-bottom: 10px;
+	font-size: 16px;
+	font-weight: 600;
+	color: #333;
+}
+
+.meowseo-ai-section .description {
+	margin-bottom: 15px;
+	color: #666;
+	font-size: 13px;
+}
+
+/* Character Counter */
+#ai_custom_instructions_count {
+	display: block;
+	margin-top: 5px;
+	font-size: 12px;
+	color: #666;
+	font-weight: 500;
+}
+
+#ai_custom_instructions_count.warning {
+	color: #d63638;
+	font-weight: bold;
+}
+
+/* Form Table Styling */
+.meowseo-ai-section .form-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 0;
+}
+
+.meowseo-ai-section .form-table th {
+	text-align: left;
+	padding: 15px 0;
+	font-weight: 600;
+	border-bottom: 1px solid #eee;
+	width: 200px;
+	vertical-align: top;
+}
+
+.meowseo-ai-section .form-table td {
+	padding: 15px 0 15px 20px;
+	border-bottom: 1px solid #eee;
+}
+
+.meowseo-ai-section .form-table tr:last-child th,
+.meowseo-ai-section .form-table tr:last-child td {
+	border-bottom: none;
+}
+
+.meowseo-ai-section .form-table input[type="text"],
+.meowseo-ai-section .form-table input[type="password"],
+.meowseo-ai-section .form-table textarea,
+.meowseo-ai-section .form-table select {
+	max-width: 100%;
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	font-size: 13px;
+	font-family: inherit;
+}
+
+.meowseo-ai-section .form-table textarea {
+	resize: vertical;
+	min-height: 100px;
+}
+
+.meowseo-ai-section .form-table label {
+	display: block;
+	margin-bottom: 8px;
+	font-weight: 500;
+	color: #333;
+}
+
+.meowseo-ai-section .form-table input[type="checkbox"],
+.meowseo-ai-section .form-table input[type="radio"] {
+	margin-right: 5px;
+	width: auto;
+}
+
+.meowseo-ai-section .form-table .description {
+	display: block;
+	margin-top: 5px;
+	color: #666;
+	font-size: 12px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.meowseo-provider-row {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.meowseo-provider-row label {
+		width: 100%;
+		margin-bottom: 5px;
+	}
+
+	.meowseo-api-key-input,
+	.meowseo-test-connection-btn {
+		width: 100%;
+		min-width: auto;
+	}
+
+	.meowseo-provider-header {
+		flex-wrap: wrap;
+	}
+
+	.meowseo-ai-section .form-table th {
+		width: 100%;
+		display: block;
+		padding: 10px 0;
+	}
+
+	.meowseo-ai-section .form-table td {
+		display: block;
+		padding: 0 0 15px 0;
+	}
+
+	.meowseo-provider-status-table {
+		font-size: 12px;
+	}
+
+	.meowseo-provider-status-table th,
+	.meowseo-provider-status-table td {
+		padding: 8px 10px;
+	}
+}
+
+/* Accessibility */
+.meowseo-provider-item:focus-within {
+	outline: 2px solid #0073aa;
+	outline-offset: -2px;
+}
+
+.meowseo-test-connection-btn:focus {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+}
+
+.meowseo-api-key-input:focus,
+.meowseo-ai-section .form-table input:focus,
+.meowseo-ai-section .form-table textarea:focus,
+.meowseo-ai-section .form-table select:focus {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+	border-color: #0073aa;
+}
+
+/* Print Styles */
+@media print {
+	.meowseo-test-connection-btn,
+	.meowseo-provider-drag-handle {
+		display: none;
+	}
+}
