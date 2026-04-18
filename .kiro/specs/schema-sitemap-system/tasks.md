@@ -28,14 +28,14 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
   - [x] 1.1 Create Abstract_Schema_Node base class
     - _Requirements: 1.1, 1.7_
   
-  - [ ]* 1.2 Write property test for Abstract_Schema_Node
+  - [x] 1.2 Write property test for Abstract_Schema_Node
     - **Property 6: Consistent @id Format**
     - **Validates: Requirements 1.7**
   
   - [x] 1.3 Create Schema_Builder core engine
     - _Requirements: 1.1, 1.2, 1.3_
   
-  - [ ]* 1.4 Write property tests for Schema_Builder
+  - [ ] 1.4 Write property tests for Schema_Builder
     - **Property 1: Schema Output is Valid JSON-LD Script Tag**
     - **Validates: Requirements 1.1, 2.3**
     - **Property 2: Required Schema Nodes Always Present**
@@ -45,21 +45,21 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
   - [x] 2.1 Create WebSite_Node builder
     - _Requirements: 1.3, 1.8_
   
-  - [ ]* 2.2 Write property test for WebSite_Node
+  - [ ] 2.2 Write property test for WebSite_Node
     - **Property 7: WebSite Node Contains SearchAction**
     - **Validates: Requirements 1.8**
   
   - [x] 2.3 Create Organization_Node builder
     - _Requirements: 1.3, 1.9_
   
-  - [ ]* 2.4 Write property test for Organization_Node
+  - [ ] 2.4 Write property test for Organization_Node
     - **Property 8: Organization Node Contains Required Properties**
     - **Validates: Requirements 1.9**
   
   - [x] 2.5 Create WebPage_Node builder
     - _Requirements: 1.3, 1.10_
   
-  - [ ]* 2.6 Write property test for WebPage_Node
+  - [ ] 2.6 Write property test for WebPage_Node
     - **Property 9: WebPage Type Varies by Context**
     - **Validates: Requirements 1.10**
     - **Property 33: Date Properties Use ISO 8601 Format**
@@ -69,7 +69,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
   - [x] 3.1 Create Article_Node builder
     - _Requirements: 1.4, 1.11, 20.1, 20.2_
   
-  - [ ]* 3.2 Write property tests for Article_Node
+  - [ ] 3.2 Write property tests for Article_Node
     - **Property 3: Article Node Conditional Inclusion**
     - **Validates: Requirements 1.4**
     - **Property 10: Article Node Contains Speakable**
@@ -78,7 +78,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
   - [x] 3.3 Create Product_Node builder for WooCommerce
     - _Requirements: 1.5, 11.1, 11.2, 11.3_
   
-  - [ ]* 3.4 Write property tests for Product_Node
+  - [ ] 3.4 Write property tests for Product_Node
     - **Property 4: Product Node Conditional Inclusion**
     - **Validates: Requirements 1.5, 11.1**
     - **Property 28: Product Schema Contains Required Properties**
@@ -89,7 +89,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
   - [x] 3.5 Create FAQ_Node builder
     - _Requirements: 1.6, 9.2_
   
-  - [ ]* 3.6 Write property tests for FAQ_Node
+  - [ ] 3.6 Write property tests for FAQ_Node
     - **Property 5: FAQ Node Conditional Inclusion**
     - **Validates: Requirements 1.6**
     - **Property 27: Multiple Schema Types Coexist**
@@ -104,7 +104,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
     - Include in @graph when schema_type is "HowTo"
     - _Requirements: 9.3, 10.2_
   
-  - [ ]* 4.2 Write property test for HowTo_Node
+  - [ ] 4.2 Write property test for HowTo_Node
     - **Property: HowTo Node Conditional Inclusion**
     - **Validates: Requirements 10.2**
   
@@ -116,7 +116,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
     - Generate PostalAddress and GeoCoordinates sub-objects
     - _Requirements: 9.4_
   
-  - [ ]* 4.4 Write property test for LocalBusiness_Node
+  - [ ] 4.4 Write property test for LocalBusiness_Node
     - **Property: LocalBusiness Node Contains Required Properties**
     - **Validates: Requirements 9.4**
 
@@ -127,14 +127,14 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
   - [x] 5.2 Implement schema caching in Schema_Module
     - _Requirements: 2.6_
   
-  - [ ]* 5.3 Write property test for schema caching
+  - [ ] 5.3 Write property test for schema caching
     - **Property 11: Schema Cache Reuse**
     - **Validates: Requirements 2.6**
   
   - [x] 5.4 Implement REST API endpoints in Schema_Module
     - _Requirements: 2.4, 2.5, 14.1, 14.2, 14.3, 14.4_
   
-  - [ ]* 5.5 Write property test for REST API
+  - [ ] 5.5 Write property test for REST API
     - **Property 12: REST API Response Structure**
     - **Validates: Requirements 2.5**
   
@@ -145,7 +145,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
   - [x] 6.1 Create Breadcrumbs class
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
   
-  - [ ]* 6.2 Write property tests for Breadcrumbs
+  - [ ] 6.2 Write property tests for Breadcrumbs
     - **Property 24: Breadcrumb Trail Structure for Posts**
     - **Validates: Requirements 8.2**
     - **Property 25: Breadcrumb Trail Structure for Pages**
@@ -154,7 +154,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
   - [x] 6.3 Implement Breadcrumbs render() method
     - _Requirements: 8.7, 18.1, 18.2, 18.5, 18.6_
   
-  - [ ]* 6.4 Write property tests for Breadcrumbs HTML
+  - [ ] 6.4 Write property tests for Breadcrumbs HTML
     - **Property 26: Breadcrumb HTML Contains Schema.org Microdata**
     - **Validates: Requirements 8.7, 18.6**
     - **Property 35: Breadcrumb Separator Customization**
@@ -189,7 +189,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
     - Store file paths in Object Cache, not content
     - _Requirements: 4.2, 4.3, 4.4, 4.5, 4.6_
   
-  - [ ]* 8.3 Write property tests for Sitemap_Cache
+  - [ ] 8.3 Write property tests for Sitemap_Cache
     - **Property 13: Sitemap Files Stored in Correct Directory**
     - **Validates: Requirements 4.1**
     - **Property 14: Cache Stores Paths Not Content**
@@ -207,7 +207,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
     - Return stale file on lock failure, 503 if no stale file
     - _Requirements: 4.7, 4.8, 4.9_
   
-  - [ ]* 8.5 Write property tests for lock pattern
+  - [ ] 8.5 Write property tests for lock pattern
     - **Property 17: Stale File Served on Lock Failure**
     - **Validates: Requirements 4.8**
     - **Property 18: 503 Response When No Stale File**
@@ -228,7 +228,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
     - Include lastmod in ISO 8601 format
     - _Requirements: 5.3, 5.5, 5.6, 5.10, 12.1, 12.2, 12.3_
   
-  - [ ]* 9.3 Write property tests for build_posts()
+  - [ ] 9.3 Write property tests for build_posts()
     - **Property 20: Noindex Posts Excluded from Sitemap**
     - **Validates: Requirements 5.4, 19.1**
     - **Property 21: Sitemap Pagination at 1000 URLs**
@@ -245,7 +245,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
     - Route through Sitemap_Cache
     - _Requirements: 5.7, 16.1, 16.2, 16.3, 16.4, 16.5, 16.6_
   
-  - [ ]* 10.2 Write property test for news sitemap
+  - [ ] 10.2 Write property test for news sitemap
     - **Property 22: News Sitemap Contains Only Recent Posts**
     - **Validates: Requirements 5.7, 16.1**
   
@@ -265,7 +265,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
     - Route through Sitemap_Cache
     - _Requirements: 5.8, 15.4, 15.6, 15.7_
   
-  - [ ]* 10.5 Write property tests for video sitemap
+  - [ ] 10.5 Write property tests for video sitemap
     - **Property 23: Video Sitemap Contains Only Posts with Videos**
     - **Validates: Requirements 5.8, 15.7**
     - **Property 31: Video Sitemap Includes Metadata**
@@ -276,7 +276,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
     - Ensure image:image element with image:loc is included
     - _Requirements: 15.1_
   
-  - [ ]* 10.7 Write property test for image extension
+  - [ ] 10.7 Write property test for image extension
     - **Property 30: Sitemap Image Extension for Featured Images**
     - **Validates: Requirements 15.1**
 
@@ -363,7 +363,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
     - Handle missing images gracefully
     - _Requirements: 13.3, 17.1, 17.2, 17.3_
   
-  - [ ]* 15.2 Write property test for schema validation
+  - [ ] 15.2 Write property test for schema validation
     - **Property 32: Schema Validation Skips Invalid Nodes**
     - **Validates: Requirements 17.1, 17.2**
   
@@ -470,7 +470,7 @@ This implementation plan covers the Schema Generator and XML Sitemap System for 
     - Check user capabilities for configuration
     - _Requirements: Design section "Security Considerations"_
   
-  - [ ]* 19.3 Write integration tests
+  - [ ] 19.3 Write integration tests
     - Test Schema_Module wp_head integration
     - Test Sitemap_Module rewrite rules
     - Test cache invalidation triggers
