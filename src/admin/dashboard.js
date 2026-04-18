@@ -6,36 +6,38 @@
  *
  * Requirements: 2.3, 2.4, 2.6
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 
 /**
  * Initialize dashboard widgets on DOM ready
  */
-document.addEventListener('DOMContentLoaded', () => {
-	const widgets = document.querySelectorAll('.meowseo-widget');
+document.addEventListener( 'DOMContentLoaded', () => {
+	const widgets = document.querySelectorAll( '.meowseo-widget' );
 
-	if (!widgets.length) {
+	if ( ! widgets.length ) {
 		return;
 	}
 
 	// Load each widget independently
-	widgets.forEach((widget) => {
-		loadWidget(widget);
-	});
+	widgets.forEach( ( widget ) => {
+		loadWidget( widget );
+	} );
 
 	// Set up retry button handlers
-	document.addEventListener('click', (event) => {
-		if (event.target.classList.contains('meowseo-widget-retry')) {
-			const widgetId = event.target.getAttribute('data-widget-id');
-			const widget = document.getElementById(`meowseo-widget-${widgetId}`);
-			if (widget) {
-				loadWidget(widget);
+	document.addEventListener( 'click', ( event ) => {
+		if ( event.target.classList.contains( 'meowseo-widget-retry' ) ) {
+			const widgetId = event.target.getAttribute( 'data-widget-id' );
+			const widget = document.getElementById(
+				`meowseo-widget-${ widgetId }`
+			);
+			if ( widget ) {
+				loadWidget( widget );
 			}
 		}
-	});
-});
+	} );
+} );
 
 /**
  * Load widget data from REST API
@@ -45,54 +47,68 @@ document.addEventListener('DOMContentLoaded', () => {
  *
  * @param {HTMLElement} widget - The widget container element
  */
-async function loadWidget(widget) {
-	const widgetId = widget.getAttribute('data-widget-id');
-	const endpoint = widget.getAttribute('data-endpoint');
-	const nonce = widget.getAttribute('data-nonce');
+async function loadWidget( widget ) {
+	const widgetId = widget.getAttribute( 'data-widget-id' );
+	const endpoint = widget.getAttribute( 'data-endpoint' );
+	const nonce = widget.getAttribute( 'data-nonce' );
 
 	// Get widget UI elements
-	const loadingEl = widget.querySelector('.meowseo-widget-loading');
-	const errorEl = widget.querySelector('.meowseo-widget-error');
-	const dataEl = widget.querySelector('.meowseo-widget-data');
+	const loadingEl = widget.querySelector( '.meowseo-widget-loading' );
+	const errorEl = widget.querySelector( '.meowseo-widget-error' );
+	const dataEl = widget.querySelector( '.meowseo-widget-data' );
 
 	// Show loading state
-	if (loadingEl) loadingEl.style.display = 'block';
-	if (errorEl) errorEl.style.display = 'none';
-	if (dataEl) dataEl.style.display = 'none';
+	if ( loadingEl ) {
+		loadingEl.style.display = 'block';
+	}
+	if ( errorEl ) {
+		errorEl.style.display = 'none';
+	}
+	if ( dataEl ) {
+		dataEl.style.display = 'none';
+	}
 
 	try {
 		// Fetch widget data from REST API
-		const response = await fetch(endpoint, {
+		const response = await fetch( endpoint, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
 				'X-WP-Nonce': nonce,
 			},
 			credentials: 'same-origin',
-		});
+		} );
 
-		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		if ( ! response.ok ) {
+			throw new Error(
+				`HTTP ${ response.status }: ${ response.statusText }`
+			);
 		}
 
 		const data = await response.json();
 
 		// Hide loading, show data
-		if (loadingEl) loadingEl.style.display = 'none';
-		if (dataEl) {
-			dataEl.innerHTML = renderWidgetData(widgetId, data);
+		if ( loadingEl ) {
+			loadingEl.style.display = 'none';
+		}
+		if ( dataEl ) {
+			dataEl.innerHTML = renderWidgetData( widgetId, data );
 			dataEl.style.display = 'block';
 		}
-	} catch (error) {
-		console.error(`Failed to load widget ${widgetId}:`, error);
+	} catch ( error ) {
+		console.error( `Failed to load widget ${ widgetId }:`, error );
 
 		// Hide loading, show error
-		if (loadingEl) loadingEl.style.display = 'none';
-		if (errorEl) {
+		if ( loadingEl ) {
+			loadingEl.style.display = 'none';
+		}
+		if ( errorEl ) {
 			// Update error message if available
-			const errorMessage = errorEl.querySelector('.meowseo-widget-error-message');
-			if (errorMessage && error.message) {
-				errorMessage.textContent = `Failed to load widget data: ${error.message}`;
+			const errorMessage = errorEl.querySelector(
+				'.meowseo-widget-error-message'
+			);
+			if ( errorMessage && error.message ) {
+				errorMessage.textContent = `Failed to load widget data: ${ error.message }`;
 			}
 			errorEl.style.display = 'block';
 		}
@@ -105,23 +121,23 @@ async function loadWidget(widget) {
  * Generates HTML for widget content based on the widget ID and data.
  *
  * @param {string} widgetId - The widget identifier
- * @param {Object} data - The widget data from REST API
+ * @param {Object} data     - The widget data from REST API
  * @return {string} HTML string for widget content
  */
-function renderWidgetData(widgetId, data) {
-	switch (widgetId) {
+function renderWidgetData( widgetId, data ) {
+	switch ( widgetId ) {
 		case 'content-health':
-			return renderContentHealthWidget(data);
+			return renderContentHealthWidget( data );
 		case 'sitemap-status':
-			return renderSitemapStatusWidget(data);
+			return renderSitemapStatusWidget( data );
 		case 'top-404s':
-			return renderTop404sWidget(data);
+			return renderTop404sWidget( data );
 		case 'gsc-summary':
-			return renderGscSummaryWidget(data);
+			return renderGscSummaryWidget( data );
 		case 'discover-performance':
-			return renderDiscoverPerformanceWidget(data);
+			return renderDiscoverPerformanceWidget( data );
 		case 'index-queue':
-			return renderIndexQueueWidget(data);
+			return renderIndexQueueWidget( data );
 		default:
 			return '<p>Unknown widget type</p>';
 	}
@@ -133,7 +149,7 @@ function renderWidgetData(widgetId, data) {
  * @param {Object} data - Widget data
  * @return {string} HTML string
  */
-function renderContentHealthWidget(data) {
+function renderContentHealthWidget( data ) {
 	const percentage = data.percentage_complete || 0;
 	const totalPosts = data.total_posts || 0;
 	const missingTitle = data.missing_title || 0;
@@ -150,19 +166,21 @@ function renderContentHealthWidget(data) {
 							a 15.9155 15.9155 0 0 1 0 -31.831"
 					/>
 					<path class="meowseo-circle"
-						stroke-dasharray="${percentage}, 100"
+						stroke-dasharray="${ percentage }, 100"
 						d="M18 2.0845
 							a 15.9155 15.9155 0 0 1 0 31.831
 							a 15.9155 15.9155 0 0 1 0 -31.831"
 					/>
-					<text x="18" y="20.35" class="meowseo-percentage">${percentage.toFixed(1)}%</text>
+					<text x="18" y="20.35" class="meowseo-percentage">${ percentage.toFixed(
+						1
+					) }%</text>
 				</svg>
 			</div>
 			<div class="meowseo-content-health-stats">
-				<p><strong>Total Posts:</strong> ${totalPosts}</p>
-				<p><strong>Missing Title:</strong> ${missingTitle}</p>
-				<p><strong>Missing Description:</strong> ${missingDescription}</p>
-				<p><strong>Missing Focus Keyword:</strong> ${missingFocusKeyword}</p>
+				<p><strong>Total Posts:</strong> ${ totalPosts }</p>
+				<p><strong>Missing Title:</strong> ${ missingTitle }</p>
+				<p><strong>Missing Description:</strong> ${ missingDescription }</p>
+				<p><strong>Missing Focus Keyword:</strong> ${ missingFocusKeyword }</p>
 			</div>
 		</div>
 	`;
@@ -174,33 +192,39 @@ function renderContentHealthWidget(data) {
  * @param {Object} data - Widget data
  * @return {string} HTML string
  */
-function renderSitemapStatusWidget(data) {
-	if (!data.enabled) {
+function renderSitemapStatusWidget( data ) {
+	if ( ! data.enabled ) {
 		return '<p>Sitemap generation is disabled. Enable it in Settings to see status.</p>';
 	}
 
 	const lastGenerated = data.last_generated
-		? new Date(data.last_generated).toLocaleString()
+		? new Date( data.last_generated ).toLocaleString()
 		: 'Never';
 	const totalUrls = data.total_urls || 0;
 	const cacheStatus = data.cache_status || 'unknown';
 	const postTypes = data.post_types || {};
 
-	const postTypesList = Object.entries(postTypes)
-		.map(([type, count]) => `<li><strong>${escapeHtml(type)}:</strong> ${count} URLs</li>`)
-		.join('');
+	const postTypesList = Object.entries( postTypes )
+		.map(
+			( [ type, count ] ) =>
+				`<li><strong>${ escapeHtml(
+					type
+				) }:</strong> ${ count } URLs</li>`
+		)
+		.join( '' );
 
-	const statusClass = cacheStatus === 'fresh' ? 'status-good' : 'status-warning';
+	const statusClass =
+		cacheStatus === 'fresh' ? 'status-good' : 'status-warning';
 	const statusText = cacheStatus === 'fresh' ? 'Fresh' : 'Stale';
 
 	return `
 		<div class="meowseo-sitemap-status">
-			<p><strong>Status:</strong> <span class="${statusClass}">${statusText}</span></p>
-			<p><strong>Last Generated:</strong> ${escapeHtml(lastGenerated)}</p>
-			<p><strong>Total URLs:</strong> ${totalUrls}</p>
+			<p><strong>Status:</strong> <span class="${ statusClass }">${ statusText }</span></p>
+			<p><strong>Last Generated:</strong> ${ escapeHtml( lastGenerated ) }</p>
+			<p><strong>Total URLs:</strong> ${ totalUrls }</p>
 			<div class="meowseo-post-types">
 				<strong>Post Types:</strong>
-				<ul>${postTypesList}</ul>
+				<ul>${ postTypesList }</ul>
 			</div>
 		</div>
 	`;
@@ -212,17 +236,17 @@ function renderSitemapStatusWidget(data) {
  * @param {Array} data - Widget data (array of 404 entries)
  * @return {string} HTML string
  */
-function renderTop404sWidget(data) {
-	if (!Array.isArray(data) || data.length === 0) {
+function renderTop404sWidget( data ) {
+	if ( ! Array.isArray( data ) || data.length === 0 ) {
 		return '<p>No 404 errors recorded in the last 30 days.</p>';
 	}
 
 	const rows = data
-		.map((entry) => {
-			const url = escapeHtml(entry.url || '');
+		.map( ( entry ) => {
+			const url = escapeHtml( entry.url || '' );
 			const count = entry.count || 0;
 			const lastSeen = entry.last_seen
-				? new Date(entry.last_seen).toLocaleString()
+				? new Date( entry.last_seen ).toLocaleString()
 				: 'Unknown';
 			const hasRedirect = entry.has_redirect;
 			const redirectBadge = hasRedirect
@@ -231,14 +255,14 @@ function renderTop404sWidget(data) {
 
 			return `
 				<tr>
-					<td>${url}</td>
-					<td>${count}</td>
-					<td>${escapeHtml(lastSeen)}</td>
-					<td>${redirectBadge}</td>
+					<td>${ url }</td>
+					<td>${ count }</td>
+					<td>${ escapeHtml( lastSeen ) }</td>
+					<td>${ redirectBadge }</td>
 				</tr>
 			`;
-		})
-		.join('');
+		} )
+		.join( '' );
 
 	return `
 		<div class="meowseo-top-404s">
@@ -252,7 +276,7 @@ function renderTop404sWidget(data) {
 					</tr>
 				</thead>
 				<tbody>
-					${rows}
+					${ rows }
 				</tbody>
 			</table>
 		</div>
@@ -265,14 +289,14 @@ function renderTop404sWidget(data) {
  * @param {Object} data - Widget data
  * @return {string} HTML string
  */
-function renderGscSummaryWidget(data) {
+function renderGscSummaryWidget( data ) {
 	const clicks = data.clicks || 0;
 	const impressions = data.impressions || 0;
 	const ctr = data.ctr || 0;
 	const position = data.position || 0;
 	const dateRange = data.date_range || {};
 	const lastSynced = data.last_synced
-		? new Date(data.last_synced).toLocaleString()
+		? new Date( data.last_synced ).toLocaleString()
 		: 'Never';
 
 	const startDate = dateRange.start || 'N/A';
@@ -283,24 +307,26 @@ function renderGscSummaryWidget(data) {
 			<div class="meowseo-metric-grid">
 				<div class="meowseo-metric">
 					<span class="meowseo-metric-label">Clicks</span>
-					<span class="meowseo-metric-value">${clicks.toLocaleString()}</span>
+					<span class="meowseo-metric-value">${ clicks.toLocaleString() }</span>
 				</div>
 				<div class="meowseo-metric">
 					<span class="meowseo-metric-label">Impressions</span>
-					<span class="meowseo-metric-value">${impressions.toLocaleString()}</span>
+					<span class="meowseo-metric-value">${ impressions.toLocaleString() }</span>
 				</div>
 				<div class="meowseo-metric">
 					<span class="meowseo-metric-label">CTR</span>
-					<span class="meowseo-metric-value">${(ctr * 100).toFixed(2)}%</span>
+					<span class="meowseo-metric-value">${ ( ctr * 100 ).toFixed( 2 ) }%</span>
 				</div>
 				<div class="meowseo-metric">
 					<span class="meowseo-metric-label">Avg. Position</span>
-					<span class="meowseo-metric-value">${position.toFixed(1)}</span>
+					<span class="meowseo-metric-value">${ position.toFixed( 1 ) }</span>
 				</div>
 			</div>
 			<div class="meowseo-gsc-meta">
-				<p><strong>Date Range:</strong> ${escapeHtml(startDate)} to ${escapeHtml(endDate)}</p>
-				<p><strong>Last Synced:</strong> ${escapeHtml(lastSynced)}</p>
+				<p><strong>Date Range:</strong> ${ escapeHtml( startDate ) } to ${ escapeHtml(
+					endDate
+				) }</p>
+				<p><strong>Last Synced:</strong> ${ escapeHtml( lastSynced ) }</p>
 			</div>
 		</div>
 	`;
@@ -312,8 +338,8 @@ function renderGscSummaryWidget(data) {
  * @param {Object} data - Widget data
  * @return {string} HTML string
  */
-function renderDiscoverPerformanceWidget(data) {
-	if (!data.available) {
+function renderDiscoverPerformanceWidget( data ) {
+	if ( ! data.available ) {
 		return '<p>No Discover data available. Your site may not have content appearing in Google Discover yet.</p>';
 	}
 
@@ -330,19 +356,21 @@ function renderDiscoverPerformanceWidget(data) {
 			<div class="meowseo-metric-grid">
 				<div class="meowseo-metric">
 					<span class="meowseo-metric-label">Impressions</span>
-					<span class="meowseo-metric-value">${impressions.toLocaleString()}</span>
+					<span class="meowseo-metric-value">${ impressions.toLocaleString() }</span>
 				</div>
 				<div class="meowseo-metric">
 					<span class="meowseo-metric-label">Clicks</span>
-					<span class="meowseo-metric-value">${clicks.toLocaleString()}</span>
+					<span class="meowseo-metric-value">${ clicks.toLocaleString() }</span>
 				</div>
 				<div class="meowseo-metric">
 					<span class="meowseo-metric-label">CTR</span>
-					<span class="meowseo-metric-value">${(ctr * 100).toFixed(2)}%</span>
+					<span class="meowseo-metric-value">${ ( ctr * 100 ).toFixed( 2 ) }%</span>
 				</div>
 			</div>
 			<div class="meowseo-discover-meta">
-				<p><strong>Date Range:</strong> ${escapeHtml(startDate)} to ${escapeHtml(endDate)}</p>
+				<p><strong>Date Range:</strong> ${ escapeHtml( startDate ) } to ${ escapeHtml(
+					endDate
+				) }</p>
 			</div>
 		</div>
 	`;
@@ -354,13 +382,13 @@ function renderDiscoverPerformanceWidget(data) {
  * @param {Object} data - Widget data
  * @return {string} HTML string
  */
-function renderIndexQueueWidget(data) {
+function renderIndexQueueWidget( data ) {
 	const pending = data.pending || 0;
 	const processing = data.processing || 0;
 	const completed = data.completed || 0;
 	const failed = data.failed || 0;
 	const lastProcessed = data.last_processed
-		? new Date(data.last_processed).toLocaleString()
+		? new Date( data.last_processed ).toLocaleString()
 		: 'Never';
 
 	return `
@@ -368,23 +396,23 @@ function renderIndexQueueWidget(data) {
 			<div class="meowseo-queue-stats">
 				<div class="meowseo-queue-stat">
 					<span class="meowseo-queue-label">Pending</span>
-					<span class="meowseo-queue-value meowseo-queue-pending">${pending}</span>
+					<span class="meowseo-queue-value meowseo-queue-pending">${ pending }</span>
 				</div>
 				<div class="meowseo-queue-stat">
 					<span class="meowseo-queue-label">Processing</span>
-					<span class="meowseo-queue-value meowseo-queue-processing">${processing}</span>
+					<span class="meowseo-queue-value meowseo-queue-processing">${ processing }</span>
 				</div>
 				<div class="meowseo-queue-stat">
 					<span class="meowseo-queue-label">Completed</span>
-					<span class="meowseo-queue-value meowseo-queue-completed">${completed}</span>
+					<span class="meowseo-queue-value meowseo-queue-completed">${ completed }</span>
 				</div>
 				<div class="meowseo-queue-stat">
 					<span class="meowseo-queue-label">Failed</span>
-					<span class="meowseo-queue-value meowseo-queue-failed">${failed}</span>
+					<span class="meowseo-queue-value meowseo-queue-failed">${ failed }</span>
 				</div>
 			</div>
 			<div class="meowseo-queue-meta">
-				<p><strong>Last Processed:</strong> ${escapeHtml(lastProcessed)}</p>
+				<p><strong>Last Processed:</strong> ${ escapeHtml( lastProcessed ) }</p>
 			</div>
 		</div>
 	`;
@@ -396,8 +424,8 @@ function renderIndexQueueWidget(data) {
  * @param {string} text - Text to escape
  * @return {string} Escaped text
  */
-function escapeHtml(text) {
-	const div = document.createElement('div');
+function escapeHtml( text ) {
+	const div = document.createElement( 'div' );
 	div.textContent = text;
 	return div.innerHTML;
 }

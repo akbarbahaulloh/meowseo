@@ -1,9 +1,9 @@
 /**
  * MeowSEO Gutenberg Editor Integration
- * 
+ *
  * Entry point for the Gutenberg sidebar plugin.
  * This file registers the plugin and initializes the Redux store.
- * 
+ *
  * Requirements: 1.1, 1.2, 18.1, 18.2
  */
 
@@ -21,11 +21,11 @@ configureApiFetch();
 
 /**
  * Register the MeowSEO sidebar plugin
- * 
+ *
  * Uses the compatibility shim to import PluginSidebar from the correct package
  * based on WordPress version (6.6+ uses @wordpress/editor, < 6.6 uses @wordpress/edit-post)
  */
-registerPlugin('meowseo-sidebar', {
+registerPlugin( 'meowseo-sidebar', {
 	render: () => {
 		return (
 			<PluginSidebar
@@ -39,4 +39,4 @@ registerPlugin('meowseo-sidebar', {
 			</PluginSidebar>
 		);
 	},
-});
+} );

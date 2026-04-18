@@ -4,7 +4,7 @@
  * Schema type selection for structured data override.
  * Reads from meowseo/data store and persists via useEntityProp.
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 
@@ -26,7 +26,12 @@ export default function SchemaTab() {
 	);
 
 	// Use useEntityProp for postmeta persistence
-	const [ schemaType, setSchemaType ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_schema_type' );
+	const [ schemaType, setSchemaType ] = useEntityProp(
+		'postType',
+		postType,
+		'meta',
+		'meowseo_schema_type'
+	);
 
 	// Schema type options
 	const schemaOptions = [

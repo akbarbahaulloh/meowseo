@@ -4,7 +4,7 @@
  * Internal link suggestions and link health data.
  * Fetches data from Internal Links Module REST API.
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 
@@ -41,7 +41,9 @@ export default function LinksTab() {
 			} );
 			setLinkData( response );
 		} catch ( err ) {
-			setError( err.message || __( 'Failed to load link data', 'meowseo' ) );
+			setError(
+				err.message || __( 'Failed to load link data', 'meowseo' )
+			);
 		} finally {
 			setLoading( false );
 		}
@@ -61,7 +63,7 @@ export default function LinksTab() {
 		return (
 			<div className="meowseo-links-tab meowseo-loading">
 				<Spinner />
-				<p>{ __( 'Loading link data...', 'meowseo' ) }</p>
+				<p>{ __( 'Loading link data…', 'meowseo' ) }</p>
 			</div>
 		);
 	}
@@ -83,12 +85,18 @@ export default function LinksTab() {
 	/**
 	 * Render empty state
 	 */
-	if ( ! linkData || ( ! linkData.suggestions?.length && ! linkData.outbound?.length ) ) {
+	if (
+		! linkData ||
+		( ! linkData.suggestions?.length && ! linkData.outbound?.length )
+	) {
 		return (
 			<div className="meowseo-links-tab meowseo-empty">
 				<p>{ __( 'No link data available yet.', 'meowseo' ) }</p>
 				<p className="description">
-					{ __( 'Link suggestions will appear after you publish this post.', 'meowseo' ) }
+					{ __(
+						'Link suggestions will appear after you publish this post.',
+						'meowseo'
+					) }
 				</p>
 			</div>
 		);
@@ -101,11 +109,17 @@ export default function LinksTab() {
 				<div className="meowseo-link-section">
 					<h3>{ __( 'Internal Link Suggestions', 'meowseo' ) }</h3>
 					<p className="description">
-						{ __( 'Related posts you might want to link to:', 'meowseo' ) }
+						{ __(
+							'Related posts you might want to link to:',
+							'meowseo'
+						) }
 					</p>
 					<ul className="meowseo-link-suggestions">
 						{ linkData.suggestions.map( ( suggestion ) => (
-							<li key={ suggestion.id } className="meowseo-link-suggestion">
+							<li
+								key={ suggestion.id }
+								className="meowseo-link-suggestion"
+							>
 								<a
 									href={ suggestion.edit_url }
 									target="_blank"
@@ -115,7 +129,8 @@ export default function LinksTab() {
 								</a>
 								{ suggestion.score && (
 									<span className="meowseo-suggestion-score">
-										{ __( 'Match:', 'meowseo' ) } { suggestion.score }%
+										{ __( 'Match:', 'meowseo' ) }{ ' ' }
+										{ suggestion.score }%
 									</span>
 								) }
 							</li>
@@ -137,15 +152,19 @@ export default function LinksTab() {
 								key={ index }
 								className={ `meowseo-link-item meowseo-link-status-${ link.status }` }
 							>
-								<span className="meowseo-link-url">{ link.url }</span>
+								<span className="meowseo-link-url">
+									{ link.url }
+								</span>
 								{ link.anchor_text && (
 									<span className="meowseo-link-anchor">
-										{ __( 'Anchor:', 'meowseo' ) } { link.anchor_text }
+										{ __( 'Anchor:', 'meowseo' ) }{ ' ' }
+										{ link.anchor_text }
 									</span>
 								) }
 								{ link.http_status && (
 									<span className="meowseo-link-http-status">
-										{ __( 'Status:', 'meowseo' ) } { link.http_status }
+										{ __( 'Status:', 'meowseo' ) }{ ' ' }
+										{ link.http_status }
 									</span>
 								) }
 							</li>

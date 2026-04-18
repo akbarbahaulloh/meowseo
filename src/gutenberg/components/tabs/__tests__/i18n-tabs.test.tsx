@@ -1,8 +1,8 @@
 /**
  * Internationalization (i18n) Tests for Tab Components
- * 
+ *
  * Tests that all tab components have proper i18n implementation.
- * 
+ *
  * Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.6
  */
 
@@ -22,373 +22,384 @@ import CanonicalURLInput from '../CanonicalURLInput';
 import GSCIntegration from '../GSCIntegration';
 
 // Mock the store module
-jest.mock('../../../store', () => ({
-  STORE_NAME: 'meowseo/data',
-}));
+jest.mock( '../../../store', () => ( {
+	STORE_NAME: 'meowseo/data',
+} ) );
 
 // Track all translation calls
-const translationCalls: Array<{ text: string; domain: string }> = [];
+const translationCalls: Array< { text: string; domain: string } > = [];
 
 // Mock @wordpress/i18n to track translation calls
-jest.mock('@wordpress/i18n', () => ({
-  __: jest.fn((text: string, domain: string) => {
-    translationCalls.push({ text, domain });
-    return text;
-  }),
-  _x: jest.fn((text: string, context: string, domain: string) => {
-    translationCalls.push({ text, domain });
-    return text;
-  }),
-}));
+jest.mock( '@wordpress/i18n', () => ( {
+	__: jest.fn( ( text: string, domain: string ) => {
+		translationCalls.push( { text, domain } );
+		return text;
+	} ),
+	_x: jest.fn( ( text: string, context: string, domain: string ) => {
+		translationCalls.push( { text, domain } );
+		return text;
+	} ),
+} ) );
 
 // Mock @wordpress/data
-jest.mock('@wordpress/data', () => ({
-  useSelect: jest.fn((callback) => {
-    const select = {
-      'core/editor': {
-        getEditedPostAttribute: (attr: string) => {
-          if (attr === 'title') return 'Test Post';
-          if (attr === 'excerpt') return 'Test excerpt';
-          return '';
-        },
-        getPermalink: () => 'https://example.com/test',
-        getCurrentPostId: () => 1,
-      },
-      'core': {
-        getMedia: () => null,
-      },
-    };
-    return callback((storeName: string) => select[storeName as keyof typeof select]);
-  }),
-  useDispatch: jest.fn(() => ({})),
-}));
+jest.mock( '@wordpress/data', () => ( {
+	useSelect: jest.fn( ( callback ) => {
+		const select = {
+			'core/editor': {
+				getEditedPostAttribute: ( attr: string ) => {
+					if ( attr === 'title' ) {
+						return 'Test Post';
+					}
+					if ( attr === 'excerpt' ) {
+						return 'Test excerpt';
+					}
+					return '';
+				},
+				getPermalink: () => 'https://example.com/test',
+				getCurrentPostId: () => 1,
+			},
+			core: {
+				getMedia: () => null,
+			},
+		};
+		return callback(
+			( storeName: string ) => select[ storeName as keyof typeof select ]
+		);
+	} ),
+	useDispatch: jest.fn( () => ( {} ) ),
+} ) );
 
 // Mock @wordpress/components
-jest.mock('@wordpress/components', () => ({
-  TextControl: ({ label, help, placeholder }: any) => (
-    <div>
-      <label>{label}</label>
-      {help && <span>{help}</span>}
-      {placeholder && <span>{placeholder}</span>}
-    </div>
-  ),
-  TextareaControl: ({ label, help, placeholder }: any) => (
-    <div>
-      <label>{label}</label>
-      {help && <span>{help}</span>}
-      {placeholder && <span>{placeholder}</span>}
-    </div>
-  ),
-  Button: ({ children }: any) => <button>{children}</button>,
-  ButtonGroup: ({ children }: any) => <div>{children}</div>,
-  ToggleControl: ({ label, help }: any) => (
-    <div>
-      <label>{label}</label>
-      {help && <span>{help}</span>}
-    </div>
-  ),
-  Spinner: () => <span>Loading...</span>,
-  SelectControl: ({ label, help }: any) => (
-    <div>
-      <label>{label}</label>
-      {help && <span>{help}</span>}
-    </div>
-  ),
-}));
+jest.mock( '@wordpress/components', () => ( {
+	TextControl: ( { label, help, placeholder }: any ) => (
+		<div>
+			<label>{ label }</label>
+			{ help && <span>{ help }</span> }
+			{ placeholder && <span>{ placeholder }</span> }
+		</div>
+	),
+	TextareaControl: ( { label, help, placeholder }: any ) => (
+		<div>
+			<label>{ label }</label>
+			{ help && <span>{ help }</span> }
+			{ placeholder && <span>{ placeholder }</span> }
+		</div>
+	),
+	Button: ( { children }: any ) => <button>{ children }</button>,
+	ButtonGroup: ( { children }: any ) => <div>{ children }</div>,
+	ToggleControl: ( { label, help }: any ) => (
+		<div>
+			<label>{ label }</label>
+			{ help && <span>{ help }</span> }
+		</div>
+	),
+	Spinner: () => <span>Loading...</span>,
+	SelectControl: ( { label, help }: any ) => (
+		<div>
+			<label>{ label }</label>
+			{ help && <span>{ help }</span> }
+		</div>
+	),
+} ) );
 
 // Mock @wordpress/block-editor
-jest.mock('@wordpress/block-editor', () => ({
-  MediaUpload: ({ render }: any) => render({ open: jest.fn() }),
-}));
+jest.mock( '@wordpress/block-editor', () => ( {
+	MediaUpload: ( { render }: any ) => render( { open: jest.fn() } ),
+} ) );
 
 // Mock hooks
-jest.mock('../../../hooks/useEntityPropBinding', () => ({
-  useEntityPropBinding: jest.fn(() => ['', jest.fn()]),
-}));
+jest.mock( '../../../hooks/useEntityPropBinding', () => ( {
+	useEntityPropBinding: jest.fn( () => [ '', jest.fn() ] ),
+} ) );
 
 // Mock apiFetch
-jest.mock('@wordpress/api-fetch', () => jest.fn());
+jest.mock( '@wordpress/api-fetch', () => jest.fn() );
 
-describe('Tab Components i18n', () => {
-  const { __ } = require('@wordpress/i18n');
+describe( 'Tab Components i18n', () => {
+	const { __ } = require( '@wordpress/i18n' );
 
-  beforeEach(() => {
-    translationCalls.length = 0;
-    jest.clearAllMocks();
-  });
+	beforeEach( () => {
+		translationCalls.length = 0;
+		jest.clearAllMocks();
+	} );
 
-  describe('General Tab Components', () => {
-    it('should translate FocusKeywordInput strings', () => {
-      render(<FocusKeywordInput />);
+	describe( 'General Tab Components', () => {
+		it( 'should translate FocusKeywordInput strings', () => {
+			render( <FocusKeywordInput /> );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Focus Keyword');
-      
-      // Verify all use meowseo domain
-      translationCalls.forEach(call => {
-        expect(call.domain).toBe('meowseo');
-      });
-    });
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Focus Keyword' );
 
-    it('should translate DirectAnswerField strings', () => {
-      render(<DirectAnswerField />);
+			// Verify all use meowseo domain
+			translationCalls.forEach( ( call ) => {
+				expect( call.domain ).toBe( 'meowseo' );
+			} );
+		} );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Direct Answer');
-      
-      translationCalls.forEach(call => {
-        expect(call.domain).toBe('meowseo');
-      });
-    });
+		it( 'should translate DirectAnswerField strings', () => {
+			render( <DirectAnswerField /> );
 
-    it('should translate SerpPreview strings', () => {
-      render(<SerpPreview />);
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Direct Answer' );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Search Preview');
-      expect(texts).toContain('Desktop');
-      expect(texts).toContain('Mobile');
-      
-      translationCalls.forEach(call => {
-        expect(call.domain).toBe('meowseo');
-      });
-    });
+			translationCalls.forEach( ( call ) => {
+				expect( call.domain ).toBe( 'meowseo' );
+			} );
+		} );
 
-    it('should translate InternalLinkSuggestions strings', () => {
-      const { useEntityPropBinding } = require('../../../hooks/useEntityPropBinding');
-      useEntityPropBinding.mockReturnValue(['test keyword', jest.fn()]);
-      
-      render(<InternalLinkSuggestions />);
+		it( 'should translate SerpPreview strings', () => {
+			render( <SerpPreview /> );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Internal Link Suggestions');
-      
-      translationCalls.forEach(call => {
-        expect(call.domain).toBe('meowseo');
-      });
-    });
-  });
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Search Preview' );
+			expect( texts ).toContain( 'Desktop' );
+			expect( texts ).toContain( 'Mobile' );
 
-  describe('Social Tab Components', () => {
-    it('should translate SocialTabContent strings', () => {
-      render(<SocialTabContent />);
+			translationCalls.forEach( ( call ) => {
+				expect( call.domain ).toBe( 'meowseo' );
+			} );
+		} );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Facebook');
-      expect(texts).toContain('Twitter');
-      
-      translationCalls.forEach(call => {
-        expect(call.domain).toBe('meowseo');
-      });
-    });
+		it( 'should translate InternalLinkSuggestions strings', () => {
+			const {
+				useEntityPropBinding,
+			} = require( '../../../hooks/useEntityPropBinding' );
+			useEntityPropBinding.mockReturnValue( [
+				'test keyword',
+				jest.fn(),
+			] );
 
-    it('should translate FacebookSubTab strings', () => {
-      render(<FacebookSubTab />);
+			render( <InternalLinkSuggestions /> );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Facebook Title');
-      expect(texts).toContain('Facebook Description');
-      expect(texts).toContain('Facebook Image');
-      expect(texts).toContain('Facebook Preview');
-      
-      translationCalls.forEach(call => {
-        expect(call.domain).toBe('meowseo');
-      });
-    });
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Internal Link Suggestions' );
 
-    it('should translate TwitterSubTab strings', () => {
-      render(<TwitterSubTab />);
+			translationCalls.forEach( ( call ) => {
+				expect( call.domain ).toBe( 'meowseo' );
+			} );
+		} );
+	} );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Use Open Graph for Twitter');
-      expect(texts).toContain('Twitter Title');
-      expect(texts).toContain('Twitter Description');
-      expect(texts).toContain('Twitter Image');
-      expect(texts).toContain('Twitter Preview');
-      
-      translationCalls.forEach(call => {
-        expect(call.domain).toBe('meowseo');
-      });
-    });
-  });
+	describe( 'Social Tab Components', () => {
+		it( 'should translate SocialTabContent strings', () => {
+			render( <SocialTabContent /> );
 
-  describe('Advanced Tab Components', () => {
-    it('should translate RobotsToggles strings', () => {
-      render(<RobotsToggles />);
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Facebook' );
+			expect( texts ).toContain( 'Twitter' );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Robots Meta Directives');
-      expect(texts).toContain('No Index');
-      expect(texts).toContain('No Follow');
-      
-      translationCalls.forEach(call => {
-        expect(call.domain).toBe('meowseo');
-      });
-    });
+			translationCalls.forEach( ( call ) => {
+				expect( call.domain ).toBe( 'meowseo' );
+			} );
+		} );
 
-    it('should translate CanonicalURLInput strings', () => {
-      render(<CanonicalURLInput />);
+		it( 'should translate FacebookSubTab strings', () => {
+			render( <FacebookSubTab /> );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Canonical URL');
-      expect(texts).toContain('Custom Canonical URL');
-      expect(texts).toContain('Resolved Canonical URL');
-      
-      translationCalls.forEach(call => {
-        expect(call.domain).toBe('meowseo');
-      });
-    });
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Facebook Title' );
+			expect( texts ).toContain( 'Facebook Description' );
+			expect( texts ).toContain( 'Facebook Image' );
+			expect( texts ).toContain( 'Facebook Preview' );
 
-    it('should translate GSCIntegration strings', () => {
-      render(<GSCIntegration />);
+			translationCalls.forEach( ( call ) => {
+				expect( call.domain ).toBe( 'meowseo' );
+			} );
+		} );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Google Search Console');
-      expect(texts).toContain('Last Indexing Request');
-      expect(texts).toContain('Request Indexing');
-      
-      translationCalls.forEach(call => {
-        expect(call.domain).toBe('meowseo');
-      });
-    });
-  });
+		it( 'should translate TwitterSubTab strings', () => {
+			render( <TwitterSubTab /> );
 
-  describe('Help Text Translation', () => {
-    it('should translate help text in FocusKeywordInput', () => {
-      render(<FocusKeywordInput />);
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Use Open Graph for Twitter' );
+			expect( texts ).toContain( 'Twitter Title' );
+			expect( texts ).toContain( 'Twitter Description' );
+			expect( texts ).toContain( 'Twitter Image' );
+			expect( texts ).toContain( 'Twitter Preview' );
 
-      const texts = translationCalls.map(call => call.text);
-      const hasHelpText = texts.some(text => 
-        text.includes('Enter the main keyword')
-      );
-      expect(hasHelpText).toBe(true);
-    });
+			translationCalls.forEach( ( call ) => {
+				expect( call.domain ).toBe( 'meowseo' );
+			} );
+		} );
+	} );
 
-    it('should translate help text in DirectAnswerField', () => {
-      render(<DirectAnswerField />);
+	describe( 'Advanced Tab Components', () => {
+		it( 'should translate RobotsToggles strings', () => {
+			render( <RobotsToggles /> );
 
-      const texts = translationCalls.map(call => call.text);
-      const hasHelpText = texts.some(text => 
-        text.includes('Provide a concise answer')
-      );
-      expect(hasHelpText).toBe(true);
-    });
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Robots Meta Directives' );
+			expect( texts ).toContain( 'No Index' );
+			expect( texts ).toContain( 'No Follow' );
 
-    it('should translate help text in RobotsToggles', () => {
-      render(<RobotsToggles />);
+			translationCalls.forEach( ( call ) => {
+				expect( call.domain ).toBe( 'meowseo' );
+			} );
+		} );
 
-      const texts = translationCalls.map(call => call.text);
-      const hasNoIndexHelp = texts.some(text => 
-        text.includes('Prevent search engines from indexing')
-      );
-      const hasNoFollowHelp = texts.some(text => 
-        text.includes('Prevent search engines from following links')
-      );
-      expect(hasNoIndexHelp).toBe(true);
-      expect(hasNoFollowHelp).toBe(true);
-    });
-  });
+		it( 'should translate CanonicalURLInput strings', () => {
+			render( <CanonicalURLInput /> );
 
-  describe('Placeholder Text Translation', () => {
-    it('should translate placeholder text in FocusKeywordInput', () => {
-      render(<FocusKeywordInput />);
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Canonical URL' );
+			expect( texts ).toContain( 'Custom Canonical URL' );
+			expect( texts ).toContain( 'Resolved Canonical URL' );
 
-      const texts = translationCalls.map(call => call.text);
-      const hasPlaceholder = texts.some(text => 
-        text.includes('wordpress seo')
-      );
-      expect(hasPlaceholder).toBe(true);
-    });
+			translationCalls.forEach( ( call ) => {
+				expect( call.domain ).toBe( 'meowseo' );
+			} );
+		} );
 
-    it('should translate placeholder text in DirectAnswerField', () => {
-      render(<DirectAnswerField />);
+		it( 'should translate GSCIntegration strings', () => {
+			render( <GSCIntegration /> );
 
-      const texts = translationCalls.map(call => call.text);
-      const hasPlaceholder = texts.some(text => 
-        text.includes('WordPress SEO is the practice')
-      );
-      expect(hasPlaceholder).toBe(true);
-    });
-  });
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Google Search Console' );
+			expect( texts ).toContain( 'Last Indexing Request' );
+			expect( texts ).toContain( 'Request Indexing' );
 
-  describe('Button Text Translation', () => {
-    it('should translate button text in FacebookSubTab', () => {
-      render(<FacebookSubTab />);
+			translationCalls.forEach( ( call ) => {
+				expect( call.domain ).toBe( 'meowseo' );
+			} );
+		} );
+	} );
 
-      const texts = translationCalls.map(call => call.text);
-      // Check for button text - "Select Image" is always rendered
-      expect(texts).toContain('Select Image');
-      // "Change Image" and "Remove Image" are conditional based on image presence
-    });
+	describe( 'Help Text Translation', () => {
+		it( 'should translate help text in FocusKeywordInput', () => {
+			render( <FocusKeywordInput /> );
 
-    it('should translate button text in TwitterSubTab', () => {
-      render(<TwitterSubTab />);
+			const texts = translationCalls.map( ( call ) => call.text );
+			const hasHelpText = texts.some( ( text ) =>
+				text.includes( 'Enter the main keyword' )
+			);
+			expect( hasHelpText ).toBe( true );
+		} );
 
-      const texts = translationCalls.map(call => call.text);
-      // Check for button text - "Select Image" is always rendered
-      expect(texts).toContain('Select Image');
-      // "Change Image" is conditional based on image presence
-    });
+		it( 'should translate help text in DirectAnswerField', () => {
+			render( <DirectAnswerField /> );
 
-    it('should translate button text in GSCIntegration', () => {
-      render(<GSCIntegration />);
+			const texts = translationCalls.map( ( call ) => call.text );
+			const hasHelpText = texts.some( ( text ) =>
+				text.includes( 'Provide a concise answer' )
+			);
+			expect( hasHelpText ).toBe( true );
+		} );
 
-      const texts = translationCalls.map(call => call.text);
-      expect(texts).toContain('Request Indexing');
-    });
-  });
+		it( 'should translate help text in RobotsToggles', () => {
+			render( <RobotsToggles /> );
 
-  describe('No Hardcoded English Text', () => {
-    it('should not have hardcoded English in any tab component', () => {
-      const components = [
-        FocusKeywordInput,
-        DirectAnswerField,
-        // SerpPreview, // Skip due to mock complexity
-        RobotsToggles,
-        // CanonicalURLInput, // Skip due to mock complexity
-        GSCIntegration,
-        SocialTabContent,
-        FacebookSubTab,
-        TwitterSubTab,
-      ];
+			const texts = translationCalls.map( ( call ) => call.text );
+			const hasNoIndexHelp = texts.some( ( text ) =>
+				text.includes( 'Prevent search engines from indexing' )
+			);
+			const hasNoFollowHelp = texts.some( ( text ) =>
+				text.includes( 'Prevent search engines from following links' )
+			);
+			expect( hasNoIndexHelp ).toBe( true );
+			expect( hasNoFollowHelp ).toBe( true );
+		} );
+	} );
 
-      components.forEach(Component => {
-        translationCalls.length = 0;
-        render(<Component />);
-        
-        // All components should have translation calls
-        expect(translationCalls.length).toBeGreaterThan(0);
-        
-        // All should use meowseo domain
-        translationCalls.forEach(call => {
-          expect(call.domain).toBe('meowseo');
-        });
-      });
-    });
-  });
+	describe( 'Placeholder Text Translation', () => {
+		it( 'should translate placeholder text in FocusKeywordInput', () => {
+			render( <FocusKeywordInput /> );
 
-  describe('Consistent Text Domain', () => {
-    it('should use meowseo domain consistently across all tab components', () => {
-      const components = [
-        { name: 'FocusKeywordInput', component: <FocusKeywordInput /> },
-        { name: 'DirectAnswerField', component: <DirectAnswerField /> },
-        // { name: 'SerpPreview', component: <SerpPreview /> }, // Skip due to mock complexity
-        { name: 'RobotsToggles', component: <RobotsToggles /> },
-        // { name: 'CanonicalURLInput', component: <CanonicalURLInput /> }, // Skip due to mock complexity
-        { name: 'GSCIntegration', component: <GSCIntegration /> },
-        { name: 'SocialTabContent', component: <SocialTabContent /> },
-        { name: 'FacebookSubTab', component: <FacebookSubTab /> },
-        { name: 'TwitterSubTab', component: <TwitterSubTab /> },
-      ];
+			const texts = translationCalls.map( ( call ) => call.text );
+			const hasPlaceholder = texts.some( ( text ) =>
+				text.includes( 'wordpress seo' )
+			);
+			expect( hasPlaceholder ).toBe( true );
+		} );
 
-      components.forEach(({ name, component }) => {
-        translationCalls.length = 0;
-        render(component);
-        
-        translationCalls.forEach(call => {
-          expect(call.domain).toBe('meowseo');
-        });
-      });
-    });
-  });
-});
+		it( 'should translate placeholder text in DirectAnswerField', () => {
+			render( <DirectAnswerField /> );
+
+			const texts = translationCalls.map( ( call ) => call.text );
+			const hasPlaceholder = texts.some( ( text ) =>
+				text.includes( 'WordPress SEO is the practice' )
+			);
+			expect( hasPlaceholder ).toBe( true );
+		} );
+	} );
+
+	describe( 'Button Text Translation', () => {
+		it( 'should translate button text in FacebookSubTab', () => {
+			render( <FacebookSubTab /> );
+
+			const texts = translationCalls.map( ( call ) => call.text );
+			// Check for button text - "Select Image" is always rendered
+			expect( texts ).toContain( 'Select Image' );
+			// "Change Image" and "Remove Image" are conditional based on image presence
+		} );
+
+		it( 'should translate button text in TwitterSubTab', () => {
+			render( <TwitterSubTab /> );
+
+			const texts = translationCalls.map( ( call ) => call.text );
+			// Check for button text - "Select Image" is always rendered
+			expect( texts ).toContain( 'Select Image' );
+			// "Change Image" is conditional based on image presence
+		} );
+
+		it( 'should translate button text in GSCIntegration', () => {
+			render( <GSCIntegration /> );
+
+			const texts = translationCalls.map( ( call ) => call.text );
+			expect( texts ).toContain( 'Request Indexing' );
+		} );
+	} );
+
+	describe( 'No Hardcoded English Text', () => {
+		it( 'should not have hardcoded English in any tab component', () => {
+			const components = [
+				FocusKeywordInput,
+				DirectAnswerField,
+				// SerpPreview, // Skip due to mock complexity
+				RobotsToggles,
+				// CanonicalURLInput, // Skip due to mock complexity
+				GSCIntegration,
+				SocialTabContent,
+				FacebookSubTab,
+				TwitterSubTab,
+			];
+
+			components.forEach( ( Component ) => {
+				translationCalls.length = 0;
+				render( <Component /> );
+
+				// All components should have translation calls
+				expect( translationCalls.length ).toBeGreaterThan( 0 );
+
+				// All should use meowseo domain
+				translationCalls.forEach( ( call ) => {
+					expect( call.domain ).toBe( 'meowseo' );
+				} );
+			} );
+		} );
+	} );
+
+	describe( 'Consistent Text Domain', () => {
+		it( 'should use meowseo domain consistently across all tab components', () => {
+			const components = [
+				{ name: 'FocusKeywordInput', component: <FocusKeywordInput /> },
+				{ name: 'DirectAnswerField', component: <DirectAnswerField /> },
+				// { name: 'SerpPreview', component: <SerpPreview /> }, // Skip due to mock complexity
+				{ name: 'RobotsToggles', component: <RobotsToggles /> },
+				// { name: 'CanonicalURLInput', component: <CanonicalURLInput /> }, // Skip due to mock complexity
+				{ name: 'GSCIntegration', component: <GSCIntegration /> },
+				{ name: 'SocialTabContent', component: <SocialTabContent /> },
+				{ name: 'FacebookSubTab', component: <FacebookSubTab /> },
+				{ name: 'TwitterSubTab', component: <TwitterSubTab /> },
+			];
+
+			components.forEach( ( { name, component } ) => {
+				translationCalls.length = 0;
+				render( component );
+
+				translationCalls.forEach( ( call ) => {
+					expect( call.domain ).toBe( 'meowseo' );
+				} );
+			} );
+		} );
+	} );
+} );

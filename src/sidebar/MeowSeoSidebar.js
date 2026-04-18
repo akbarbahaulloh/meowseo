@@ -4,7 +4,7 @@
  * Main Gutenberg sidebar component with tabbed interface.
  * Registers PluginSidebar and renders tab navigation.
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 
@@ -34,16 +34,13 @@ export default function MeowSeoSidebar() {
 	}
 
 	const { setActiveTab, clearError } = useDispatch( 'meowseo/data' );
-	const { activeTab, error } = useSelect(
-		( select ) => {
-			const store = select( 'meowseo/data' );
-			return {
-				activeTab: store?.getActiveTab?.() || 'meta',
-				error: store?.getError?.() || null,
-			};
-		},
-		[]
-	);
+	const { activeTab, error } = useSelect( ( select ) => {
+		const store = select( 'meowseo/data' );
+		return {
+			activeTab: store?.getActiveTab?.() || 'meta',
+			error: store?.getError?.() || null,
+		};
+	}, [] );
 
 	// Define tabs
 	const tabs = [
@@ -107,7 +104,10 @@ export default function MeowSeoSidebar() {
 			console.error( 'MeowSEO: Error rendering tab', tab.name, tabError );
 			return (
 				<Notice status="error" isDismissible={ false }>
-					{ __( 'Error loading tab content. Please refresh the page.', 'meowseo' ) }
+					{ __(
+						'Error loading tab content. Please refresh the page.',
+						'meowseo'
+					) }
 				</Notice>
 			);
 		}
@@ -144,7 +144,10 @@ export default function MeowSeoSidebar() {
 							try {
 								setActiveTab( tabName );
 							} catch ( selectError ) {
-								console.error( 'MeowSEO: Error selecting tab', selectError );
+								console.error(
+									'MeowSEO: Error selecting tab',
+									selectError
+								);
 							}
 						} }
 					>

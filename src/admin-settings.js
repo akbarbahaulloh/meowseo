@@ -3,7 +3,7 @@
  *
  * Renders the settings page interface.
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 
@@ -21,6 +21,7 @@ if ( settingsRoot ) {
 		render( <SettingsApp />, settingsRoot );
 	} catch ( error ) {
 		console.error( 'MeowSEO: Error rendering settings app', error );
-		settingsRoot.innerHTML = '<div class="notice notice-error"><p>MeowSEO: Failed to load settings interface. Please check the browser console for details.</p></div>';
+		settingsRoot.innerHTML =
+			'<div class="notice notice-error"><p>MeowSEO: Failed to load settings interface. Please check the browser console for details.</p></div>';
 	}
 }

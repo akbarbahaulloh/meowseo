@@ -1,9 +1,9 @@
 /**
  * Property-Based Tests for Sidebar Component
- * 
+ *
  * Property 1: Single content sync source
  * **Validates: Requirements 2.1, 2.6, 2.7**
- * 
+ *
  * This test verifies the critical architectural constraint that ONLY
  * useContentSync reads from core/editor. No other component should
  * subscribe to core/editor directly.
@@ -15,209 +15,232 @@ import * as fc from 'fast-check';
 import { Sidebar } from '../Sidebar';
 
 // Mock WordPress dependencies
-jest.mock('@wordpress/data', () => ({
-  useSelect: jest.fn(),
-  useDispatch: jest.fn(() => ({
-    updateContentSnapshot: jest.fn(),
-    setActiveTab: jest.fn(),
-    analyzeContent: jest.fn(),
-  })),
-  createReduxStore: jest.fn(),
-  register: jest.fn(),
-}));
+jest.mock( '@wordpress/data', () => ( {
+	useSelect: jest.fn(),
+	useDispatch: jest.fn( () => ( {
+		updateContentSnapshot: jest.fn(),
+		setActiveTab: jest.fn(),
+		analyzeContent: jest.fn(),
+	} ) ),
+	createReduxStore: jest.fn(),
+	register: jest.fn(),
+} ) );
 
 // Mock the store module
-jest.mock('../../store', () => ({
-  STORE_NAME: 'meowseo/data',
-}));
+jest.mock( '../../store', () => ( {
+	STORE_NAME: 'meowseo/data',
+} ) );
 
 // Mock useContentSync hook
-jest.mock('../../hooks/useContentSync', () => ({
-  useContentSync: jest.fn(),
-}));
+jest.mock( '../../hooks/useContentSync', () => ( {
+	useContentSync: jest.fn(),
+} ) );
 
 // Mock child components
-jest.mock('../ContentScoreWidget', () => ({
-  ContentScoreWidget: () => <div data-testid="content-score-widget">Score Widget</div>,
-}));
+jest.mock( '../ContentScoreWidget', () => ( {
+	ContentScoreWidget: () => (
+		<div data-testid="content-score-widget">Score Widget</div>
+	),
+} ) );
 
-jest.mock('../TabBar', () => ({
-  TabBar: () => <div data-testid="tab-bar">Tab Bar</div>,
-}));
+jest.mock( '../TabBar', () => ( {
+	TabBar: () => <div data-testid="tab-bar">Tab Bar</div>,
+} ) );
 
-jest.mock('../TabContent', () => ({
-  TabContent: () => <div data-testid="tab-content">Tab Content</div>,
-}));
+jest.mock( '../TabContent', () => ( {
+	TabContent: () => <div data-testid="tab-content">Tab Content</div>,
+} ) );
 
-describe('Sidebar - Property 1: Single content sync source', () => {
-  beforeEach(() => {
-    // Reset mocks before each test
-    jest.clearAllMocks();
-    
-    // Setup default useSelect mock
-    const { useSelect } = require('@wordpress/data');
-    useSelect.mockImplementation((selector: any) => {
-      const mockSelect = (storeName: string) => {
-        if (storeName === 'meowseo/data') {
-          return {
-            getActiveTab: () => 'general',
-            getSeoScore: () => 50,
-            getReadabilityScore: () => 60,
-            getIsAnalyzing: () => false,
-          };
-        }
-        if (storeName === 'core/editor') {
-          return {
-            getEditedPostAttribute: () => '',
-            getCurrentPostType: () => 'post',
-            getCurrentPostId: () => 1,
-            getPermalink: () => '',
-          };
-        }
-        return {};
-      };
-      return selector(mockSelect);
-    });
-  });
+describe( 'Sidebar - Property 1: Single content sync source', () => {
+	beforeEach( () => {
+		// Reset mocks before each test
+		jest.clearAllMocks();
 
-  /**
-   * Property: Only useContentSync reads from core/editor
-   * 
-   * This property verifies that:
-   * 1. useContentSync is the ONLY component that reads from core/editor
-   * 2. No other sidebar components subscribe to core/editor
-   * 3. All other components read from meowseo/data store
-   * 
-   * This is a critical architectural constraint for performance.
-   */
-  it('should ensure only useContentSync reads from core/editor (property test)', () => {
-    fc.assert(
-      fc.property(
-        // Generate random render counts to test multiple renders
-        fc.integer({ min: 1, max: 10 }),
-        (renderCount) => {
-          // Render the Sidebar component multiple times
-          for (let i = 0; i < renderCount; i++) {
-            const { unmount } = render(<Sidebar />);
-            unmount();
-          }
+		// Setup default useSelect mock
+		const { useSelect } = require( '@wordpress/data' );
+		useSelect.mockImplementation( ( selector: any ) => {
+			const mockSelect = ( storeName: string ) => {
+				if ( storeName === 'meowseo/data' ) {
+					return {
+						getActiveTab: () => 'general',
+						getSeoScore: () => 50,
+						getReadabilityScore: () => 60,
+						getIsAnalyzing: () => false,
+						getContentSnapshot: () => ( {
+							title: '',
+							content: '',
+							excerpt: '',
+							focusKeyword: '',
+							postType: 'post',
+							permalink: '',
+						} ),
+						getDirectAnswer: () => '',
+						getSchemaType: () => '',
+					};
+				}
+				if ( storeName === 'core/editor' ) {
+					return {
+						getEditedPostAttribute: () => '',
+						getCurrentPostType: () => 'post',
+						getCurrentPostId: () => 1,
+						getPermalink: () => '',
+					};
+				}
+				return {};
+			};
+			return selector( mockSelect );
+		} );
+	} );
 
-          // Verify that useContentSync was called
-          const { useContentSync } = require('../../hooks/useContentSync');
-          expect(useContentSync).toHaveBeenCalled();
+	/**
+	 * Property: Only useContentSync reads from core/editor
+	 *
+	 * This property verifies that:
+	 * 1. useContentSync is the ONLY component that reads from core/editor
+	 * 2. No other sidebar components subscribe to core/editor
+	 * 3. All other components read from meowseo/data store
+	 *
+	 * This is a critical architectural constraint for performance.
+	 */
+	it( 'should ensure only useContentSync reads from core/editor (property test)', () => {
+		fc.assert(
+			fc.property(
+				// Generate random render counts to test multiple renders
+				fc.integer( { min: 1, max: 10 } ),
+				( renderCount ) => {
+					// Render the Sidebar component multiple times
+					for ( let i = 0; i < renderCount; i++ ) {
+						const { unmount } = render( <Sidebar /> );
+						unmount();
+					}
 
-          // All reads should come from useContentSync or its internal implementation
-          // No other component should read from core/editor
-          // This is verified by the fact that we only mock useContentSync to read from core/editor
-          // and all other components are mocked to not access it
+					// Verify that useContentSync was called
+					const {
+						useContentSync,
+					} = require( '../../hooks/useContentSync' );
+					expect( useContentSync ).toHaveBeenCalled();
 
-          return true;
-        }
-      ),
-      {
-        numRuns: 20,
-      }
-    );
-  });
+					// All reads should come from useContentSync or its internal implementation
+					// No other component should read from core/editor
+					// This is verified by the fact that we only mock useContentSync to read from core/editor
+					// and all other components are mocked to not access it
 
-  /**
-   * Property: Sidebar components read from meowseo/data store
-   * 
-   * This property verifies that:
-   * 1. Sidebar and its child components read from meowseo/data
-   * 2. They do NOT read from core/editor directly
-   */
-  it('should ensure sidebar components read from meowseo/data store (property test)', () => {
-    fc.assert(
-      fc.property(
-        fc.constantFrom('general', 'social', 'schema', 'advanced'),
-        (activeTab) => {
-          // Mock useSelect to track store access
-          const { useSelect } = require('@wordpress/data');
-          const storeAccess: string[] = [];
+					return true;
+				}
+			),
+			{
+				numRuns: 20,
+			}
+		);
+	} );
 
-          useSelect.mockImplementation((selector: any) => {
-            const mockSelect = (storeName: string) => {
-              storeAccess.push(storeName);
+	/**
+	 * Property: Sidebar components read from meowseo/data store
+	 *
+	 * This property verifies that:
+	 * 1. Sidebar and its child components read from meowseo/data
+	 * 2. They do NOT read from core/editor directly
+	 */
+	it( 'should ensure sidebar components read from meowseo/data store (property test)', () => {
+		fc.assert(
+			fc.property(
+				fc.constantFrom( 'general', 'social', 'schema', 'advanced' ),
+				( activeTab ) => {
+					// Mock useSelect to track store access
+					const { useSelect } = require( '@wordpress/data' );
+					const storeAccess: string[] = [];
 
-              if (storeName === 'meowseo/data') {
-                return {
-                  getActiveTab: () => activeTab,
-                  getSeoScore: () => 50,
-                  getReadabilityScore: () => 60,
-                  getIsAnalyzing: () => false,
-                };
-              }
+					useSelect.mockImplementation( ( selector: any ) => {
+						const mockSelect = ( storeName: string ) => {
+							storeAccess.push( storeName );
 
-              if (storeName === 'core/editor') {
-                return {
-                  getEditedPostAttribute: () => '',
-                  getCurrentPostType: () => 'post',
-                  getCurrentPostId: () => 1,
-                  getPermalink: () => '',
-                };
-              }
+							if ( storeName === 'meowseo/data' ) {
+								return {
+									getActiveTab: () => activeTab,
+									getSeoScore: () => 50,
+									getReadabilityScore: () => 60,
+									getIsAnalyzing: () => false,
+									getContentSnapshot: () => ( {
+										title: '',
+										content: '',
+										excerpt: '',
+										focusKeyword: '',
+										postType: 'post',
+										permalink: '',
+									} ),
+									getDirectAnswer: () => '',
+									getSchemaType: () => '',
+								};
+							}
 
-              return {};
-            };
+							if ( storeName === 'core/editor' ) {
+								return {
+									getEditedPostAttribute: () => '',
+									getCurrentPostType: () => 'post',
+									getCurrentPostId: () => 1,
+									getPermalink: () => '',
+								};
+							}
 
-            return selector(mockSelect);
-          });
+							return {};
+						};
 
-          // Render the Sidebar
-          const { unmount } = render(<Sidebar />);
+						return selector( mockSelect );
+					} );
 
-          // Verify that meowseo/data was accessed
-          expect(storeAccess).toContain('meowseo/data');
+					// Render the Sidebar
+					const { unmount } = render( <Sidebar /> );
 
-          // Clean up
-          unmount();
+					// Verify that meowseo/data was accessed
+					expect( storeAccess ).toContain( 'meowseo/data' );
 
-          return true;
-        }
-      ),
-      {
-        numRuns: 20,
-      }
-    );
-  });
+					// Clean up
+					unmount();
 
-  /**
-   * Property: Content sync is centralized
-   * 
-   * This property verifies that:
-   * 1. There is exactly ONE point of content synchronization
-   * 2. useContentSync is called exactly once per Sidebar render
-   * 3. No duplicate subscriptions to core/editor
-   */
-  it('should have exactly one content sync point (property test)', () => {
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 5 }),
-        (renderCount) => {
-          // Track useContentSync calls
-          const { useContentSync } = require('../../hooks/useContentSync');
-          let syncCallCount = 0;
+					return true;
+				}
+			),
+			{
+				numRuns: 20,
+			}
+		);
+	} );
 
-          useContentSync.mockImplementation(() => {
-            syncCallCount++;
-          });
+	/**
+	 * Property: Content sync is centralized
+	 *
+	 * This property verifies that:
+	 * 1. There is exactly ONE point of content synchronization
+	 * 2. useContentSync is called exactly once per Sidebar render
+	 * 3. No duplicate subscriptions to core/editor
+	 */
+	it( 'should have exactly one content sync point (property test)', () => {
+		fc.assert(
+			fc.property( fc.integer( { min: 1, max: 5 } ), ( renderCount ) => {
+				// Track useContentSync calls
+				const {
+					useContentSync,
+				} = require( '../../hooks/useContentSync' );
+				let syncCallCount = 0;
 
-          // Render the Sidebar multiple times
-          for (let i = 0; i < renderCount; i++) {
-            const { unmount } = render(<Sidebar />);
-            unmount();
-          }
+				useContentSync.mockImplementation( () => {
+					syncCallCount++;
+				} );
 
-          // useContentSync should be called exactly once per render
-          expect(syncCallCount).toBe(renderCount);
+				// Render the Sidebar multiple times
+				for ( let i = 0; i < renderCount; i++ ) {
+					const { unmount } = render( <Sidebar /> );
+					unmount();
+				}
 
-          return true;
-        }
-      ),
-      {
-        numRuns: 15,
-      }
-    );
-  });
-});
+				// useContentSync should be called exactly once per render
+				expect( syncCallCount ).toBe( renderCount );
+
+				return true;
+			} ),
+			{
+				numRuns: 15,
+			}
+		);
+	} );
+} );

@@ -4,7 +4,7 @@
  * Registers the Redux store and Gutenberg sidebar.
  * Initializes all JavaScript components.
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 
@@ -37,7 +37,7 @@ import LogViewer from './admin/LogViewer';
 function MeowSeoPlugin() {
 	try {
 		const dispatch = useDispatch( 'meowseo/data' );
-		
+
 		// Check if store is available
 		if ( ! dispatch ) {
 			console.error( 'MeowSEO: Store not available' );
@@ -53,18 +53,71 @@ function MeowSeoPlugin() {
 		);
 
 		// Load meta from postmeta with error handling
-		let metaTitle, metaDescription, metaRobots, metaCanonical, focusKeyword, schemaType, socialTitle, socialDescription, socialImageId;
-		
+		let metaTitle,
+			metaDescription,
+			metaRobots,
+			metaCanonical,
+			focusKeyword,
+			schemaType,
+			socialTitle,
+			socialDescription,
+			socialImageId;
+
 		try {
-			[ metaTitle ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_title' );
-			[ metaDescription ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_description' );
-			[ metaRobots ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_robots' );
-			[ metaCanonical ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_canonical' );
-			[ focusKeyword ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_focus_keyword' );
-			[ schemaType ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_schema_type' );
-			[ socialTitle ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_social_title' );
-			[ socialDescription ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_social_description' );
-			[ socialImageId ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_social_image_id' );
+			[ metaTitle ] = useEntityProp(
+				'postType',
+				postType,
+				'meta',
+				'meowseo_title'
+			);
+			[ metaDescription ] = useEntityProp(
+				'postType',
+				postType,
+				'meta',
+				'meowseo_description'
+			);
+			[ metaRobots ] = useEntityProp(
+				'postType',
+				postType,
+				'meta',
+				'meowseo_robots'
+			);
+			[ metaCanonical ] = useEntityProp(
+				'postType',
+				postType,
+				'meta',
+				'meowseo_canonical'
+			);
+			[ focusKeyword ] = useEntityProp(
+				'postType',
+				postType,
+				'meta',
+				'meowseo_focus_keyword'
+			);
+			[ schemaType ] = useEntityProp(
+				'postType',
+				postType,
+				'meta',
+				'meowseo_schema_type'
+			);
+			[ socialTitle ] = useEntityProp(
+				'postType',
+				postType,
+				'meta',
+				'meowseo_social_title'
+			);
+			[ socialDescription ] = useEntityProp(
+				'postType',
+				postType,
+				'meta',
+				'meowseo_social_description'
+			);
+			[ socialImageId ] = useEntityProp(
+				'postType',
+				postType,
+				'meta',
+				'meowseo_social_image_id'
+			);
 		} catch ( error ) {
 			console.error( 'MeowSEO: Error loading meta from postmeta', error );
 			// Use default values
@@ -129,7 +182,8 @@ if ( settingsRoot ) {
 		render( <SettingsApp />, settingsRoot );
 	} catch ( error ) {
 		console.error( 'MeowSEO: Error rendering settings app', error );
-		settingsRoot.innerHTML = '<div class="notice notice-error"><p>MeowSEO: Failed to load settings interface. Please check the browser console for details.</p></div>';
+		settingsRoot.innerHTML =
+			'<div class="notice notice-error"><p>MeowSEO: Failed to load settings interface. Please check the browser console for details.</p></div>';
 	}
 } else if ( logViewerRoot ) {
 	// Render log viewer app on admin page with error handling
@@ -137,7 +191,8 @@ if ( settingsRoot ) {
 		render( <LogViewer />, logViewerRoot );
 	} catch ( error ) {
 		console.error( 'MeowSEO: Error rendering log viewer app', error );
-		logViewerRoot.innerHTML = '<div class="notice notice-error"><p>MeowSEO: Failed to load log viewer interface. Please check the browser console for details.</p></div>';
+		logViewerRoot.innerHTML =
+			'<div class="notice notice-error"><p>MeowSEO: Failed to load log viewer interface. Please check the browser console for details.</p></div>';
 	}
 } else {
 	// Register the Gutenberg plugin with error handling

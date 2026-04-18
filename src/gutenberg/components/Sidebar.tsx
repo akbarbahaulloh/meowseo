@@ -1,15 +1,16 @@
 /**
  * Sidebar Component
- * 
+ *
  * Main sidebar component that brings together all previously implemented components.
  * This is the ONLY component that calls useContentSync hook to read from core/editor.
  * All other components read from the meowseo/data Redux store.
- * 
- * Requirements: 1.6, 1.7, 2.6, 2.7
+ *
+ * Requirements: 1.6, 1.7, 2.6, 2.7, 6.5
  */
 
 import { useSelect } from '@wordpress/data';
 import { useContentSync } from '../hooks/useContentSync';
+import { useAnalysis } from '../hooks/useAnalysis';
 import { ContentScoreWidget } from './ContentScoreWidget';
 import { TabBar } from './TabBar';
 import { TabContent } from './TabContent';
@@ -17,41 +18,48 @@ import { STORE_NAME } from '../store';
 import './Sidebar.css';
 
 export const Sidebar: React.FC = () => {
-  // This is the ONLY place we call useContentSync
-  // useContentSync is the ONLY hook allowed to read from core/editor
-  useContentSync();
+	// This is the ONLY place we call useContentSync
+	// useContentSync is the ONLY hook allowed to read from core/editor
+	useContentSync();
 
-  // Read activeTab from meowseo/data store (NOT from core/editor)
-  const { activeTab } = useSelect((select) => {
-    try {
-      const store = select(STORE_NAME) as any;
-      if (!store) {
-        console.warn('MeowSEO: meowseo/data store not available');
-        return {
-          activeTab: 'general' as const,
-        };
-      }
-      return {
-        activeTab: store.getActiveTab(),
-      };
-    } catch (error) {
-      console.error('MeowSEO: Error reading from meowseo/data store:', error);
-      return {
-        activeTab: 'general' as const,
-      };
-    }
-  }, []);
+	// Call useAnalysis hook to trigger analysis on content changes
+	// Requirement 6.5: Add useAnalysis hook to main Gutenberg component
+	useAnalysis();
 
-  return (
-    <div className="meowseo-sidebar" data-testid="meowseo-sidebar">
-      {/* ContentScoreWidget is always visible at the top */}
-      <ContentScoreWidget />
-      
-      {/* Tab navigation */}
-      <TabBar />
-      
-      {/* Active tab content */}
-      <TabContent />
-    </div>
-  );
+	// Read activeTab from meowseo/data store (NOT from core/editor)
+	const { activeTab } = useSelect( ( select ) => {
+		try {
+			const store = select( STORE_NAME ) as any;
+			if ( ! store ) {
+				console.warn( 'MeowSEO: meowseo/data store not available' );
+				return {
+					activeTab: 'general' as const,
+				};
+			}
+			return {
+				activeTab: store.getActiveTab(),
+			};
+		} catch ( error ) {
+			console.error(
+				'MeowSEO: Error reading from meowseo/data store:',
+				error
+			);
+			return {
+				activeTab: 'general' as const,
+			};
+		}
+	}, [] );
+
+	return (
+		<div className="meowseo-sidebar" data-testid="meowseo-sidebar">
+			{ /* ContentScoreWidget is always visible at the top */ }
+			<ContentScoreWidget />
+
+			{ /* Tab navigation */ }
+			<TabBar />
+
+			{ /* Active tab content */ }
+			<TabContent />
+		</div>
+	);
 };

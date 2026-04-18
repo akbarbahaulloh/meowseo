@@ -1,16 +1,16 @@
 /**
  * AI Generator Panel Component
- * 
+ *
  * Main component for the AI Generator sidebar panel in Gutenberg.
  * Provides UI for generating SEO content and featured images.
- * 
+ *
  * Accessibility Features (Requirements 34.1-34.6):
  * - ARIA labels for all buttons
  * - ARIA live regions for status messages
  * - Full keyboard navigation support
  * - Focus indicators for all focusable elements
  * - Proper semantic HTML structure
- * 
+ *
  * Requirements: 7.1, 7.2, 7.3, 7.7, 7.8, 7.9, 8.1-8.7, 9.1-9.5, 10.1-10.4, 11.1-11.5, 34.1-34.6
  */
 
@@ -31,19 +31,19 @@ import '../styles/ai-generator-panel.css';
 
 /**
  * AiGeneratorPanel Component
- * 
+ *
  * Manages the generation workflow:
  * 1. Display generation buttons
  * 2. Handle API calls to generate content
  * 3. Display preview of generated content
  * 4. Allow user to apply content to post fields
- * 
+ *
  * Accessibility Features:
  * - ARIA labels for all buttons (Requirements 34.1)
  * - ARIA live regions for status messages (Requirements 34.2)
  * - Full keyboard navigation with proper tab order (Requirements 34.3, 34.4)
  * - Focus indicators via CSS (Requirements 34.4)
- * 
+ *
  * Requirements: 7.1, 7.2, 7.3, 7.7, 7.8, 7.9, 34.1-34.6
  */
 export function AiGeneratorPanel() {
@@ -69,7 +69,7 @@ export function AiGeneratorPanel() {
 
 	/**
 	 * Handle generation request
-	 * 
+	 *
 	 * Requirements: 7.2, 7.7, 28.1-28.8, 34.2
 	 */
 	const handleGenerate = useCallback(
@@ -82,7 +82,10 @@ export function AiGeneratorPanel() {
 
 			// Announce to screen readers that generation is starting
 			if ( statusLiveRegionRef.current ) {
-				statusLiveRegionRef.current.textContent = __( 'Generating content, please wait...', 'meowseo' );
+				statusLiveRegionRef.current.textContent = __(
+					'Generating content, please wait…',
+					'meowseo'
+				);
 			}
 
 			try {
@@ -94,7 +97,7 @@ export function AiGeneratorPanel() {
 					},
 					data: {
 						post_id: postId,
-						type: type,
+						type,
 						generate_image: type === 'all' || type === 'image',
 						bypass_cache: false,
 					},
@@ -104,15 +107,20 @@ export function AiGeneratorPanel() {
 					setGeneratedContent( response.data );
 					setUsedProvider( response.data.provider );
 					setIsFallback( response.data.is_fallback || false );
-					
+
 					// Announce success to screen readers
 					if ( statusLiveRegionRef.current ) {
-						statusLiveRegionRef.current.textContent = __( 'Content generated successfully. Review the preview below.', 'meowseo' );
+						statusLiveRegionRef.current.textContent = __(
+							'Content generated successfully. Review the preview below.',
+							'meowseo'
+						);
 					}
 				} else {
-					const errorMsg = response.message || __( 'Generation failed', 'meowseo' );
+					const errorMsg =
+						response.message ||
+						__( 'Generation failed', 'meowseo' );
 					setError( errorMsg );
-					
+
 					// Announce error to screen readers
 					if ( errorLiveRegionRef.current ) {
 						errorLiveRegionRef.current.textContent = errorMsg;
@@ -120,18 +128,30 @@ export function AiGeneratorPanel() {
 				}
 			} catch ( err ) {
 				// Handle specific error cases
-				let errorMsg = __( 'Generation failed. Please check provider configuration.', 'meowseo' );
-				
+				let errorMsg = __(
+					'Generation failed. Please check provider configuration.',
+					'meowseo'
+				);
+
 				if ( err.status === 403 ) {
-					errorMsg = __( 'You do not have permission to generate content', 'meowseo' );
-				} else if ( err.message && err.message.includes( '300 words' ) ) {
-					errorMsg = __( 'Content must be at least 300 words for generation', 'meowseo' );
+					errorMsg = __(
+						'You do not have permission to generate content',
+						'meowseo'
+					);
+				} else if (
+					err.message &&
+					err.message.includes( '300 words' )
+				) {
+					errorMsg = __(
+						'Content must be at least 300 words for generation',
+						'meowseo'
+					);
 				} else if ( err.message ) {
 					errorMsg = err.message;
 				}
-				
+
 				setError( errorMsg );
-				
+
 				// Announce error to screen readers
 				if ( errorLiveRegionRef.current ) {
 					errorLiveRegionRef.current.textContent = errorMsg;
@@ -145,7 +165,7 @@ export function AiGeneratorPanel() {
 
 	/**
 	 * Handle applying generated content to post fields
-	 * 
+	 *
 	 * Requirements: 8.7, 27.1-27.10, 34.2
 	 */
 	const handleApply = useCallback(
@@ -156,7 +176,10 @@ export function AiGeneratorPanel() {
 
 			// Announce to screen readers that content is being applied
 			if ( statusLiveRegionRef.current ) {
-				statusLiveRegionRef.current.textContent = __( 'Applying content to post fields...', 'meowseo' );
+				statusLiveRegionRef.current.textContent = __(
+					'Applying content to post fields…',
+					'meowseo'
+				);
 			}
 
 			try {
@@ -168,34 +191,42 @@ export function AiGeneratorPanel() {
 					},
 					data: {
 						post_id: postId,
-						content: content,
+						content,
 					},
 				} );
 
 				if ( response.success ) {
 					setGeneratedContent( null );
-					setSuccessMessage( __( 'Content applied successfully!', 'meowseo' ) );
-					
+					setSuccessMessage(
+						__( 'Content applied successfully!', 'meowseo' )
+					);
+
 					// Announce success to screen readers
 					if ( statusLiveRegionRef.current ) {
-						statusLiveRegionRef.current.textContent = __( 'Content applied successfully to post fields.', 'meowseo' );
+						statusLiveRegionRef.current.textContent = __(
+							'Content applied successfully to post fields.',
+							'meowseo'
+						);
 					}
-					
+
 					// Trigger editor update to reflect changes
 					window.wp.data.dispatch( 'core/editor' ).editPost( {} );
 				} else {
-					const errorMsg = response.message || __( 'Failed to apply content', 'meowseo' );
+					const errorMsg =
+						response.message ||
+						__( 'Failed to apply content', 'meowseo' );
 					setError( errorMsg );
-					
+
 					// Announce error to screen readers
 					if ( errorLiveRegionRef.current ) {
 						errorLiveRegionRef.current.textContent = errorMsg;
 					}
 				}
 			} catch ( err ) {
-				const errorMsg = err.message || __( 'Failed to apply content', 'meowseo' );
+				const errorMsg =
+					err.message || __( 'Failed to apply content', 'meowseo' );
 				setError( errorMsg );
-				
+
 				// Announce error to screen readers
 				if ( errorLiveRegionRef.current ) {
 					errorLiveRegionRef.current.textContent = errorMsg;
@@ -209,7 +240,7 @@ export function AiGeneratorPanel() {
 
 	/**
 	 * Handle retry after error
-	 * 
+	 *
 	 * Requirements: 11.1-11.5, 34.1
 	 */
 	const handleRetry = useCallback( () => {
@@ -219,7 +250,7 @@ export function AiGeneratorPanel() {
 
 	return (
 		<div className="meowseo-ai-generator-panel">
-			{/* ARIA live regions for status announcements (Requirement 34.2) */}
+			{ /* ARIA live regions for status announcements (Requirement 34.2) */ }
 			<div
 				ref={ statusLiveRegionRef }
 				className="meowseo-sr-only"
@@ -236,28 +267,48 @@ export function AiGeneratorPanel() {
 			/>
 
 			<Panel>
-				<PanelBody title={ __( 'AI Generator', 'meowseo' ) } initialOpen={ true }>
+				<PanelBody
+					title={ __( 'AI Generator', 'meowseo' ) }
+					initialOpen={ true }
+				>
 					{ /* Display success message if content was applied */ }
 					{ successMessage && (
-						<Notice status="success" isDismissible={ true } onRemove={ () => setSuccessMessage( null ) }>
+						<Notice
+							status="success"
+							isDismissible={ true }
+							onRemove={ () => setSuccessMessage( null ) }
+						>
 							<p>{ successMessage }</p>
 						</Notice>
 					) }
 
 					{ /* Display error message if generation failed */ }
 					{ error && (
-						<Notice status="error" isDismissible={ true } onRemove={ () => setError( null ) }>
+						<Notice
+							status="error"
+							isDismissible={ true }
+							onRemove={ () => setError( null ) }
+						>
 							<p>{ error }</p>
 							<div className="meowseo-ai-error-actions">
 								<Button
 									isSecondary
 									onClick={ handleRetry }
 									disabled={ isGenerating }
-									aria-label={ __( 'Retry content generation', 'meowseo' ) }
+									aria-label={ __(
+										'Retry content generation',
+										'meowseo'
+									) }
 								>
 									{ __( 'Retry', 'meowseo' ) }
 								</Button>
-								<a href={ window.meowseoAiData?.settingsUrl || '#' } target="_blank" rel="noopener noreferrer">
+								<a
+									href={
+										window.meowseoAiData?.settingsUrl || '#'
+									}
+									target="_blank"
+									rel="noopener noreferrer"
+								>
 									{ __( 'Settings', 'meowseo' ) }
 								</a>
 							</div>
@@ -269,9 +320,18 @@ export function AiGeneratorPanel() {
 						<Notice status="warning" isDismissible={ false }>
 							{ __( 'Generated via ', 'meowseo' ) }
 							<strong>{ usedProvider }</strong>
-							{ __( ' (primary provider unavailable)', 'meowseo' ) }
+							{ __(
+								' (primary provider unavailable)',
+								'meowseo'
+							) }
 							<br />
-							<a href={ window.meowseoAiData?.settingsUrl || '#' } target="_blank" rel="noopener noreferrer">
+							<a
+								href={
+									window.meowseoAiData?.settingsUrl || '#'
+								}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
 								{ __( 'Configure providers', 'meowseo' ) }
 							</a>
 						</Notice>
@@ -286,13 +346,16 @@ export function AiGeneratorPanel() {
 									onClick={ () => handleGenerate( 'all' ) }
 									disabled={ isGenerating }
 									className="meowseo-ai-generate-all"
-									aria-label={ __( 'Generate all SEO content including title, description, keywords, and featured image', 'meowseo' ) }
+									aria-label={ __(
+										'Generate all SEO content including title, description, keywords, and featured image',
+										'meowseo'
+									) }
 									aria-busy={ isGenerating }
 								>
 									{ isGenerating ? (
 										<>
 											<Spinner />
-											{ __( 'Generating...', 'meowseo' ) }
+											{ __( 'Generating…', 'meowseo' ) }
 										</>
 									) : (
 										__( 'Generate All SEO', 'meowseo' )
@@ -306,7 +369,10 @@ export function AiGeneratorPanel() {
 									onClick={ () => handleGenerate( 'text' ) }
 									disabled={ isGenerating }
 									className="meowseo-ai-generate-text"
-									aria-label={ __( 'Generate text content only (title, description, keywords)', 'meowseo' ) }
+									aria-label={ __(
+										'Generate text content only (title, description, keywords)',
+										'meowseo'
+									) }
 									aria-busy={ isGenerating }
 								>
 									{ __( 'Text Only', 'meowseo' ) }
@@ -316,7 +382,10 @@ export function AiGeneratorPanel() {
 									onClick={ () => handleGenerate( 'image' ) }
 									disabled={ isGenerating }
 									className="meowseo-ai-generate-image"
-									aria-label={ __( 'Generate featured image only', 'meowseo' ) }
+									aria-label={ __(
+										'Generate featured image only',
+										'meowseo'
+									) }
 									aria-busy={ isGenerating }
 								>
 									{ __( 'Image Only', 'meowseo' ) }
@@ -326,7 +395,10 @@ export function AiGeneratorPanel() {
 							{ /* Display provider indicator */ }
 							{ usedProvider && (
 								<PanelRow>
-									<div className="meowseo-ai-provider-badge" role="status">
+									<div
+										className="meowseo-ai-provider-badge"
+										role="status"
+									>
 										{ __( 'Generated via: ', 'meowseo' ) }
 										<strong>{ usedProvider }</strong>
 									</div>

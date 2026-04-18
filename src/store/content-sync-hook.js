@@ -6,13 +6,13 @@
  * Dispatches derived SEO signals to meowseo/data only.
  * Never dispatches back to core/editor from useEffect.
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 
 import { useEffect } from '@wordpress/element';
 import { useSelect, useDispatch, subscribe } from '@wordpress/data';
-import { computeAnalysis } from '../analysis/compute-analysis';
+import { analyzeContent } from '../analysis/analysis-engine';
 
 /**
  * Content Sync Hook
@@ -33,29 +33,55 @@ export function useContentSync() {
 				const { select } = window.wp.data;
 
 				// Read post data from core/editor (read-only)
-				const content = select( 'core/editor' )?.getEditedPostContent?.() || '';
-				const title = select( 'core/editor' )?.getEditedPostAttribute?.( 'title' ) || '';
-				const excerpt = select( 'core/editor' )?.getEditedPostAttribute?.( 'excerpt' ) || '';
-				const slug = select( 'core/editor' )?.getEditedPostAttribute?.( 'slug' ) || '';
+				const content =
+					select( 'core/editor' )?.getEditedPostContent?.() || '';
+				const title =
+					select( 'core/editor' )?.getEditedPostAttribute?.(
+						'title'
+					) || '';
+				const excerpt =
+					select( 'core/editor' )?.getEditedPostAttribute?.(
+						'excerpt'
+					) || '';
+				const slug =
+					select( 'core/editor' )?.getEditedPostAttribute?.(
+						'slug'
+					) || '';
 
 				// Get current focus keyword from meowseo/data
-				const keyword = select( 'meowseo/data' )?.getMetaField?.( 'focusKeyword' ) || '';
+				const keyword =
+					select( 'meowseo/data' )?.getMetaField?.(
+						'focusKeyword'
+					) || '';
 
-				// Compute analysis
-				const analysis = computeAnalysis( {
+				// Get directAnswer and schemaType from meowseo/data
+				const directAnswer =
+					select( 'meowseo/data' )?.getMetaField?.(
+						'directAnswer'
+					) || '';
+				const schemaType =
+					select( 'meowseo/data' )?.getMetaField?.(
+						'schemaType'
+					) || '';
+
+				// Compute analysis using new analysis engine
+				const analysis = analyzeContent( {
 					content,
 					title,
-					excerpt,
+					description: excerpt,
 					slug,
 					keyword,
+					directAnswer,
+					schemaType,
 				} );
 
 				// Dispatch to meowseo/data only (never to core/editor)
+				// Map new analysis format to old setAnalysis action
 				setAnalysis(
 					analysis.seoScore,
-					analysis.seoChecks,
+					analysis.seoResults,
 					analysis.readabilityScore,
-					analysis.readabilityChecks
+					analysis.readabilityResults
 				);
 			} catch ( error ) {
 				// Silently handle errors to avoid breaking the editor

@@ -4,7 +4,7 @@
  * Registered via @wordpress/data as 'meowseo/data'.
  * Manages SEO meta, analysis results, and UI state.
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 
@@ -60,10 +60,10 @@ const actions = {
 	/**
 	 * Set analysis results (called by ContentSyncHook only)
 	 *
-	 * @param {number} seoScore           SEO score (0-100)
-	 * @param {Array}  seoChecks          Array of SEO check results
-	 * @param {number} readabilityScore   Readability score (0-100)
-	 * @param {Array}  readabilityChecks  Array of readability check results
+	 * @param {number} seoScore          SEO score (0-100)
+	 * @param {Array}  seoChecks         Array of SEO check results
+	 * @param {number} readabilityScore  Readability score (0-100)
+	 * @param {Array}  readabilityChecks Array of readability check results
 	 * @return {Object} Action object
 	 */
 	setAnalysis( seoScore, seoChecks, readabilityScore, readabilityChecks ) {

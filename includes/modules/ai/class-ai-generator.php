@@ -259,10 +259,149 @@ class AI_Generator {
 	}
 
 	/**
+	 * Extract analysis results from post meta.
+	 *
+	 * Retrieves current SEO and readability analysis results stored in postmeta,
+	 * which are populated by the readability-keyword-analysis-engine.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array Analysis results with scores and metrics.
+	 */
+	private function get_analysis_results( int $post_id ): array {
+		$analysis = [
+			'seo_score'           => (int) get_post_meta( $post_id, '_meowseo_seo_score', true ) ?: 0,
+			'readability_score'   => (int) get_post_meta( $post_id, '_meowseo_readability_score', true ) ?: 0,
+			'keyword_density'     => (float) get_post_meta( $post_id, '_meowseo_keyword_density', true ) ?: 0,
+			'flesch_score'        => (int) get_post_meta( $post_id, '_meowseo_flesch_score', true ) ?: 0,
+			'word_count'          => (int) get_post_meta( $post_id, '_meowseo_word_count', true ) ?: 0,
+			'passive_voice_pct'   => (float) get_post_meta( $post_id, '_meowseo_passive_voice_pct', true ) ?: 0,
+			'transition_words_pct' => (float) get_post_meta( $post_id, '_meowseo_transition_words_pct', true ) ?: 0,
+			'keyword_in_title'    => (bool) get_post_meta( $post_id, '_meowseo_keyword_in_title', true ),
+			'keyword_in_description' => (bool) get_post_meta( $post_id, '_meowseo_keyword_in_description', true ),
+			'keyword_in_first_paragraph' => (bool) get_post_meta( $post_id, '_meowseo_keyword_in_first_paragraph', true ),
+		];
+
+		return $analysis;
+	}
+
+	/**
+	 * Format analysis context for prompt.
+	 *
+	 * Converts analysis results into human-readable recommendations
+	 * to inform AI generation strategy.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $analysis Analysis results from get_analysis_results().
+	 * @return string Formatted analysis context for prompt.
+	 */
+	private function format_analysis_context( array $analysis ): string {
+		$context = "\n=== CURRENT CONTENT ANALYSIS ===\n";
+
+		// Add SEO score and recommendations.
+		$seo_score = $analysis['seo_score'] ?? 0;
+		$context .= "SEO Score: {$seo_score}/100\n";
+
+		if ( $seo_score < 50 ) {
+			$context .= "⚠️ SEO score is low. Focus on improving keyword optimization and content structure.\n";
+		} elseif ( $seo_score < 70 ) {
+			$context .= "📊 SEO score is moderate. Look for opportunities to improve keyword placement and content depth.\n";
+		} else {
+			$context .= "✓ SEO score is good. Maintain current optimization level.\n";
+		}
+
+		// Add readability score and recommendations.
+		$readability_score = $analysis['readability_score'] ?? 0;
+		$context .= "Readability Score: {$readability_score}/100\n";
+
+		if ( $readability_score < 50 ) {
+			$context .= "⚠️ Readability is low. Simplify language, shorten sentences, and improve structure.\n";
+		} elseif ( $readability_score < 70 ) {
+			$context .= "📊 Readability is moderate. Consider breaking up long paragraphs and using more transition words.\n";
+		} else {
+			$context .= "✓ Readability is good. Content is well-structured and easy to understand.\n";
+		}
+
+		// Add keyword density analysis.
+		$keyword_density = $analysis['keyword_density'] ?? 0;
+		if ( $keyword_density > 0 ) {
+			$context .= "\nKeyword Density: {$keyword_density}%\n";
+			if ( $keyword_density < 0.5 ) {
+				$context .= "→ Increase keyword usage (target: 1.5-2.0%)\n";
+			} elseif ( $keyword_density > 3.5 ) {
+				$context .= "→ Reduce keyword usage to avoid over-optimization (target: 1.5-2.0%)\n";
+			} else {
+				$context .= "→ Keyword density is optimal\n";
+			}
+		}
+
+		// Add Flesch reading ease score.
+		$flesch_score = $analysis['flesch_score'] ?? 0;
+		if ( $flesch_score > 0 ) {
+			$context .= "\nFlesch Reading Ease: {$flesch_score}/100\n";
+			if ( $flesch_score >= 60 ) {
+				$context .= "→ Easy to read (good for general audience)\n";
+			} elseif ( $flesch_score >= 40 ) {
+				$context .= "→ Moderate difficulty (consider simplifying)\n";
+			} else {
+				$context .= "→ Difficult to read (simplify language and sentence structure)\n";
+			}
+		}
+
+		// Add passive voice analysis.
+		$passive_voice_pct = $analysis['passive_voice_pct'] ?? 0;
+		if ( $passive_voice_pct > 0 ) {
+			$context .= "\nPassive Voice: {$passive_voice_pct}%\n";
+			if ( $passive_voice_pct > 15 ) {
+				$context .= "→ High passive voice usage. Use more active voice (target: <10%)\n";
+			} elseif ( $passive_voice_pct > 10 ) {
+				$context .= "→ Moderate passive voice. Consider using more active voice.\n";
+			}
+		}
+
+		// Add transition words analysis.
+		$transition_words_pct = $analysis['transition_words_pct'] ?? 0;
+		if ( $transition_words_pct > 0 ) {
+			$context .= "\nTransition Words: {$transition_words_pct}%\n";
+			if ( $transition_words_pct < 20 ) {
+				$context .= "→ Low transition word usage. Add more connecting words for better flow (target: >30%)\n";
+			} elseif ( $transition_words_pct < 30 ) {
+				$context .= "→ Moderate transition word usage. Could improve content flow.\n";
+			}
+		}
+
+		// Add keyword placement analysis.
+		$context .= "\nKeyword Placement:\n";
+		if ( $analysis['keyword_in_title'] ?? false ) {
+			$context .= "✓ Keyword appears in title\n";
+		} else {
+			$context .= "→ Add keyword to title for better SEO\n";
+		}
+
+		if ( $analysis['keyword_in_description'] ?? false ) {
+			$context .= "✓ Keyword appears in meta description\n";
+		} else {
+			$context .= "→ Add keyword to meta description\n";
+		}
+
+		if ( $analysis['keyword_in_first_paragraph'] ?? false ) {
+			$context .= "✓ Keyword appears in first paragraph\n";
+		} else {
+			$context .= "→ Add keyword to first paragraph for better SEO\n";
+		}
+
+		$context .= "\n=== END ANALYSIS ===\n";
+
+		return $context;
+	}
+
+	/**
 	 * Build text generation prompt.
 	 *
 	 * Constructs a comprehensive prompt for SEO metadata generation,
-	 * including post content, taxonomy, and output format specifications.
+	 * including post content, taxonomy, analysis results, and output format specifications.
 	 *
 	 * @since 1.0.0
 	 *
@@ -283,6 +422,9 @@ class AI_Generator {
 		// Get settings.
 		$language = $this->options->get( 'ai_output_language', 'auto' );
 		$custom_instructions = $this->options->get( 'ai_custom_instructions', '' );
+
+		// Get analysis results.
+		$analysis = $this->get_analysis_results( $post->ID );
 
 		// Build prompt.
 		$prompt = "You are an SEO expert. Generate SEO metadata for the following article.\n\n";
@@ -305,6 +447,10 @@ class AI_Generator {
 			);
 			$prompt .= 'Tags: ' . implode( ', ', $tag_names ) . "\n";
 		}
+
+		// Add analysis context to inform generation strategy.
+		$analysis_context = $this->format_analysis_context( $analysis );
+		$prompt .= $analysis_context;
 
 		// Add language preference.
 		if ( 'auto' !== $language ) {

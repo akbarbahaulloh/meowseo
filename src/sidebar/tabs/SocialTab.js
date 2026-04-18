@@ -4,7 +4,7 @@
  * Open Graph and Twitter Card overrides.
  * Reads from meowseo/data store and persists via useEntityProp.
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 
@@ -28,9 +28,24 @@ export default function SocialTab() {
 	);
 
 	// Use useEntityProp for postmeta persistence
-	const [ socialTitle, setSocialTitle ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_social_title' );
-	const [ socialDescription, setSocialDescription ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_social_description' );
-	const [ socialImageId, setSocialImageId ] = useEntityProp( 'postType', postType, 'meta', 'meowseo_social_image_id' );
+	const [ socialTitle, setSocialTitle ] = useEntityProp(
+		'postType',
+		postType,
+		'meta',
+		'meowseo_social_title'
+	);
+	const [ socialDescription, setSocialDescription ] = useEntityProp(
+		'postType',
+		postType,
+		'meta',
+		'meowseo_social_description'
+	);
+	const [ socialImageId, setSocialImageId ] = useEntityProp(
+		'postType',
+		postType,
+		'meta',
+		'meowseo_social_image_id'
+	);
 
 	// Get social image URL
 	const socialImageUrl = useSelect(
@@ -76,20 +91,31 @@ export default function SocialTab() {
 		<div className="meowseo-social-tab">
 			<h3>{ __( 'Open Graph & Twitter Card', 'meowseo' ) }</h3>
 			<p className="description">
-				{ __( 'Customize how your content appears when shared on social media.', 'meowseo' ) }
+				{ __(
+					'Customize how your content appears when shared on social media.',
+					'meowseo'
+				) }
 			</p>
 
 			<TextControl
 				label={ __( 'Social Title', 'meowseo' ) }
 				value={ socialTitle || '' }
-				onChange={ ( value ) => handleChange( 'socialTitle', value, setSocialTitle ) }
+				onChange={ ( value ) =>
+					handleChange( 'socialTitle', value, setSocialTitle )
+				}
 				help={ __( 'Leave empty to use SEO title', 'meowseo' ) }
 			/>
 
 			<TextareaControl
 				label={ __( 'Social Description', 'meowseo' ) }
 				value={ socialDescription || '' }
-				onChange={ ( value ) => handleChange( 'socialDescription', value, setSocialDescription ) }
+				onChange={ ( value ) =>
+					handleChange(
+						'socialDescription',
+						value,
+						setSocialDescription
+					)
+				}
 				help={ __( 'Leave empty to use meta description', 'meowseo' ) }
 				rows={ 3 }
 			/>
@@ -104,7 +130,10 @@ export default function SocialTab() {
 
 				{ socialImageUrl && (
 					<div className="meowseo-social-image-preview">
-						<img src={ socialImageUrl } alt={ __( 'Social preview', 'meowseo' ) } />
+						<img
+							src={ socialImageUrl }
+							alt={ __( 'Social preview', 'meowseo' ) }
+						/>
 						<Button
 							isDestructive
 							isSmall
@@ -121,10 +150,7 @@ export default function SocialTab() {
 						allowedTypes={ [ 'image' ] }
 						value={ socialImageId }
 						render={ ( { open } ) => (
-							<Button
-								onClick={ open }
-								variant="secondary"
-							>
+							<Button onClick={ open } variant="secondary">
 								{ socialImageId
 									? __( 'Change Image', 'meowseo' )
 									: __( 'Select Image', 'meowseo' ) }

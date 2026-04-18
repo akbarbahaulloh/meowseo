@@ -4,7 +4,7 @@
  * Google Search Console performance data.
  * Fetches data from GSC Module REST API.
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 
@@ -23,13 +23,10 @@ export default function GscTab() {
 	const [ error, setError ] = useState( null );
 
 	// Get current post permalink
-	const postUrl = useSelect(
-		( select ) => {
-			const postId = select( 'core/editor' ).getCurrentPostId();
-			return select( 'core/editor' ).getPermalink();
-		},
-		[]
-	);
+	const postUrl = useSelect( ( select ) => {
+		const postId = select( 'core/editor' ).getCurrentPostId();
+		return select( 'core/editor' ).getPermalink();
+	}, [] );
 
 	/**
 	 * Fetch GSC performance data
@@ -48,7 +45,9 @@ export default function GscTab() {
 			} );
 			setGscData( response );
 		} catch ( err ) {
-			setError( err.message || __( 'Failed to load GSC data', 'meowseo' ) );
+			setError(
+				err.message || __( 'Failed to load GSC data', 'meowseo' )
+			);
 		} finally {
 			setLoading( false );
 		}
@@ -68,7 +67,7 @@ export default function GscTab() {
 		return (
 			<div className="meowseo-gsc-tab meowseo-loading">
 				<Spinner />
-				<p>{ __( 'Loading GSC data...', 'meowseo' ) }</p>
+				<p>{ __( 'Loading GSC data…', 'meowseo' ) }</p>
 			</div>
 		);
 	}
@@ -114,9 +113,13 @@ export default function GscTab() {
 		{ clicks: 0, impressions: 0 }
 	);
 
-	const avgCtr = totals.impressions > 0 ? ( totals.clicks / totals.impressions ) * 100 : 0;
+	const avgCtr =
+		totals.impressions > 0
+			? ( totals.clicks / totals.impressions ) * 100
+			: 0;
 	const avgPosition =
-		gscData.data.reduce( ( sum, row ) => sum + ( row.position || 0 ), 0 ) / gscData.data.length;
+		gscData.data.reduce( ( sum, row ) => sum + ( row.position || 0 ), 0 ) /
+		gscData.data.length;
 
 	return (
 		<div className="meowseo-gsc-tab">
@@ -128,23 +131,39 @@ export default function GscTab() {
 			{ /* Performance Summary */ }
 			<div className="meowseo-gsc-summary">
 				<div className="meowseo-gsc-metric">
-					<div className="meowseo-gsc-metric-label">{ __( 'Total Clicks', 'meowseo' ) }</div>
-					<div className="meowseo-gsc-metric-value">{ totals.clicks.toLocaleString() }</div>
+					<div className="meowseo-gsc-metric-label">
+						{ __( 'Total Clicks', 'meowseo' ) }
+					</div>
+					<div className="meowseo-gsc-metric-value">
+						{ totals.clicks.toLocaleString() }
+					</div>
 				</div>
 
 				<div className="meowseo-gsc-metric">
-					<div className="meowseo-gsc-metric-label">{ __( 'Total Impressions', 'meowseo' ) }</div>
-					<div className="meowseo-gsc-metric-value">{ totals.impressions.toLocaleString() }</div>
+					<div className="meowseo-gsc-metric-label">
+						{ __( 'Total Impressions', 'meowseo' ) }
+					</div>
+					<div className="meowseo-gsc-metric-value">
+						{ totals.impressions.toLocaleString() }
+					</div>
 				</div>
 
 				<div className="meowseo-gsc-metric">
-					<div className="meowseo-gsc-metric-label">{ __( 'Average CTR', 'meowseo' ) }</div>
-					<div className="meowseo-gsc-metric-value">{ avgCtr.toFixed( 2 ) }%</div>
+					<div className="meowseo-gsc-metric-label">
+						{ __( 'Average CTR', 'meowseo' ) }
+					</div>
+					<div className="meowseo-gsc-metric-value">
+						{ avgCtr.toFixed( 2 ) }%
+					</div>
 				</div>
 
 				<div className="meowseo-gsc-metric">
-					<div className="meowseo-gsc-metric-label">{ __( 'Average Position', 'meowseo' ) }</div>
-					<div className="meowseo-gsc-metric-value">{ avgPosition.toFixed( 1 ) }</div>
+					<div className="meowseo-gsc-metric-label">
+						{ __( 'Average Position', 'meowseo' ) }
+					</div>
+					<div className="meowseo-gsc-metric-value">
+						{ avgPosition.toFixed( 1 ) }
+					</div>
 				</div>
 			</div>
 
@@ -163,15 +182,19 @@ export default function GscTab() {
 							</tr>
 						</thead>
 						<tbody>
-							{ gscData.data.slice( 0, 10 ).map( ( row, index ) => (
-								<tr key={ index }>
-									<td>{ row.date }</td>
-									<td>{ row.clicks }</td>
-									<td>{ row.impressions }</td>
-									<td>{ ( row.ctr * 100 ).toFixed( 2 ) }%</td>
-									<td>{ row.position.toFixed( 1 ) }</td>
-								</tr>
-							) ) }
+							{ gscData.data
+								.slice( 0, 10 )
+								.map( ( row, index ) => (
+									<tr key={ index }>
+										<td>{ row.date }</td>
+										<td>{ row.clicks }</td>
+										<td>{ row.impressions }</td>
+										<td>
+											{ ( row.ctr * 100 ).toFixed( 2 ) }%
+										</td>
+										<td>{ row.position.toFixed( 1 ) }</td>
+									</tr>
+								) ) }
 						</tbody>
 					</table>
 				</div>

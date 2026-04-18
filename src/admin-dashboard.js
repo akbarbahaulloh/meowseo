@@ -3,7 +3,7 @@
  *
  * Loads dashboard widget async functionality and styles.
  *
- * @package MeowSEO
+ * @package
  * @since 1.0.0
  */
 

@@ -1,0 +1,85 @@
+/**
+ * AnalyzerResultItem Styles
+ * 
+ * Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 22.7
+ */
+
+.meowseo-analyzer-result-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.meowseo-analyzer-result-item:last-child {
+  border-bottom: none;
+}
+
+.meowseo-analyzer-result-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.meowseo-analyzer-status-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.4;
+}
+
+.meowseo-analyzer-message {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1e1e1e;
+}
+
+.meowseo-analyzer-details-toggle {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #757575;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.meowseo-analyzer-details-toggle:hover {
+  color: #0073aa;
+}
+
+.meowseo-analyzer-details-toggle:focus {
+  outline: 2px solid #0073aa;
+  outline-offset: 2px;
+}
+
+.meowseo-analyzer-details {
+  margin-top: 8px;
+  margin-left: 24px;
+  padding: 8px 12px;
+  background: #f7f7f7;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.meowseo-analyzer-detail-row {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.meowseo-analyzer-detail-key {
+  font-weight: 500;
+  color: #555;
+  text-transform: capitalize;
+}
+
+.meowseo-analyzer-detail-key::after {
+  content: '';
+}
+
+.meowseo-analyzer-detail-value {
+  color: #1e1e1e;
+  word-break: break-word;
+}
