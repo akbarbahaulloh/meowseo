@@ -10,7 +10,7 @@ The implementation follows MeowSEO's module-based architecture with options-base
 
 ### 1. Global Schema Identity Markup
 
-- [ ] 1.1 Create Global Schema Generator infrastructure
+- [x] 1.1 Create Global Schema Generator infrastructure
   - Create `includes/modules/schema/class-global-schema-generator.php`
   - Implement constructor accepting Options dependency
   - Implement `generate_global_schema()` method returning array of schema objects
@@ -18,7 +18,7 @@ The implementation follows MeowSEO's module-based architecture with options-base
   - Hook into existing `Schema_Output` class via `meowseo_schema_output` filter
   - _Requirements: 1.1, 1.2, 1.6_
 
-- [ ] 1.2 Implement WebSite schema generator
+- [x] 1.2 Implement WebSite schema generator
   - Create `includes/modules/schema/generators/class-website-schema.php`
   - Generate WebSite schema with @type, @id, url, name properties
   - Add potentialAction with SearchAction for sitelinks search box
@@ -26,7 +26,7 @@ The implementation follows MeowSEO's module-based architecture with options-base
   - Return properly structured schema array
   - _Requirements: 1.1_
 
-- [ ] 1.3 Implement Organization schema generator
+- [x] 1.3 Implement Organization schema generator
   - Create `includes/modules/schema/generators/class-organization-schema.php`
   - Generate Organization schema with @type, @id, name, url properties
   - Add logo property with ImageObject when configured
@@ -36,7 +36,7 @@ The implementation follows MeowSEO's module-based architecture with options-base
   - Validate and sanitize all URLs with `esc_url()`
   - _Requirements: 1.2, 1.3, 1.5_
 
-- [ ] 1.4 Create Organization settings UI
+- [x] 1.4 Create Organization settings UI
   - Extend `includes/admin/class-settings-manager.php`
   - Add "Organization" tab to settings page
   - Add input fields: organization name, logo URL, logo width, logo height, contact email
@@ -46,7 +46,7 @@ The implementation follows MeowSEO's module-based architecture with options-base
   - Validate URLs and email format on save
   - _Requirements: 1.4_
 
-- [ ] 1.5 Integrate global schema output with wp_head
+- [x] 1.5 Integrate global schema output with wp_head
   - Modify `includes/modules/schema/class-schema-output.php`
   - Hook `generate_global_schema()` into wp_head (priority 1)
   - Output WebSite and Organization as separate JSON-LD script blocks

@@ -80,6 +80,11 @@ class Settings_Manager {
 				'icon'   => 'dashicons-admin-settings',
 				'method' => 'render_general_tab',
 			),
+			'organization'    => array(
+				'title'  => __( 'Organization', 'meowseo' ),
+				'icon'   => 'dashicons-building',
+				'method' => 'render_organization_tab',
+			),
 			'social-profiles' => array(
 				'title'  => __( 'Social Profiles', 'meowseo' ),
 				'icon'   => 'dashicons-share',
@@ -658,6 +663,145 @@ class Settings_Manager {
 	}
 
 	/**
+	 * Render Organization settings tab
+	 *
+	 * Requirements: 1.4
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function render_organization_tab(): void {
+		$organization = $this->options->get( 'organization', array() );
+		$organization_name = $organization['name'] ?? '';
+		$organization_logo_url = $organization['logo_url'] ?? '';
+		$organization_logo_width = $organization['logo_width'] ?? '';
+		$organization_logo_height = $organization['logo_height'] ?? '';
+		$organization_contact_email = $organization['contact_email'] ?? '';
+		$social_profiles = $organization['social_profiles'] ?? array();
+		$facebook_url = $social_profiles['facebook'] ?? '';
+		$twitter_url = $social_profiles['twitter'] ?? '';
+		$instagram_url = $social_profiles['instagram'] ?? '';
+		$linkedin_url = $social_profiles['linkedin'] ?? '';
+		$youtube_url = $social_profiles['youtube'] ?? '';
+		?>
+		<h2><?php esc_html_e( 'Organization Settings', 'meowseo' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Configure your organization information for schema.org structured data. This helps search engines display rich results like knowledge panels and sitelinks search box.', 'meowseo' ); ?></p>
+
+		<table class="form-table" role="presentation">
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Organization Identity', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<th scope="row"><label for="organization_name"><?php esc_html_e( 'Organization Name', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="text" name="organization_name" id="organization_name" value="<?php echo esc_attr( $organization_name ); ?>" class="regular-text">
+					<p class="description"><?php esc_html_e( 'The official name of your organization or business.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="organization_contact_email"><?php esc_html_e( 'Contact Email', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="email" name="organization_contact_email" id="organization_contact_email" value="<?php echo esc_attr( $organization_contact_email ); ?>" class="regular-text">
+					<p class="description"><?php esc_html_e( 'Customer service or general contact email address.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Organization Logo', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<th scope="row"><label for="organization_logo_url"><?php esc_html_e( 'Logo URL', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="url" name="organization_logo_url" id="organization_logo_url" value="<?php echo esc_url( $organization_logo_url ); ?>" class="large-text">
+					<p class="description">
+						<?php esc_html_e( 'Full URL to your organization logo. Google recommends a logo that is 600px wide and 60px tall.', 'meowseo' ); ?>
+						<br>
+						<?php esc_html_e( 'Learn more about logo requirements:', 'meowseo' ); ?>
+						<a href="https://developers.google.com/search/docs/appearance/structured-data/logo" target="_blank" rel="noopener noreferrer">
+							<?php esc_html_e( 'Google Logo Guidelines', 'meowseo' ); ?>
+						</a>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="organization_logo_width"><?php esc_html_e( 'Logo Width', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="number" name="organization_logo_width" id="organization_logo_width" value="<?php echo esc_attr( $organization_logo_width ); ?>" class="small-text" min="1" step="1">
+					<span><?php esc_html_e( 'pixels', 'meowseo' ); ?></span>
+					<p class="description"><?php esc_html_e( 'Width of your logo in pixels.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="organization_logo_height"><?php esc_html_e( 'Logo Height', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="number" name="organization_logo_height" id="organization_logo_height" value="<?php echo esc_attr( $organization_logo_height ); ?>" class="small-text" min="1" step="1">
+					<span><?php esc_html_e( 'pixels', 'meowseo' ); ?></span>
+					<p class="description"><?php esc_html_e( 'Height of your logo in pixels.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Social Media Profiles', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<td colspan="2">
+					<p class="description">
+						<?php esc_html_e( 'Add your organization\'s social media profile URLs. These will be included in your Organization schema markup to help search engines understand your brand presence.', 'meowseo' ); ?>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="organization_facebook_url"><?php esc_html_e( 'Facebook URL', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="url" name="organization_facebook_url" id="organization_facebook_url" value="<?php echo esc_url( $facebook_url ); ?>" class="regular-text" placeholder="https://facebook.com/yourpage">
+					<p class="description"><?php esc_html_e( 'Full URL to your Facebook page.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="organization_twitter_url"><?php esc_html_e( 'Twitter URL', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="url" name="organization_twitter_url" id="organization_twitter_url" value="<?php echo esc_url( $twitter_url ); ?>" class="regular-text" placeholder="https://twitter.com/yourhandle">
+					<p class="description"><?php esc_html_e( 'Full URL to your Twitter profile.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="organization_instagram_url"><?php esc_html_e( 'Instagram URL', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="url" name="organization_instagram_url" id="organization_instagram_url" value="<?php echo esc_url( $instagram_url ); ?>" class="regular-text" placeholder="https://instagram.com/yourprofile">
+					<p class="description"><?php esc_html_e( 'Full URL to your Instagram profile.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="organization_linkedin_url"><?php esc_html_e( 'LinkedIn URL', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="url" name="organization_linkedin_url" id="organization_linkedin_url" value="<?php echo esc_url( $linkedin_url ); ?>" class="regular-text" placeholder="https://linkedin.com/company/yourcompany">
+					<p class="description"><?php esc_html_e( 'Full URL to your LinkedIn company page or profile.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="organization_youtube_url"><?php esc_html_e( 'YouTube URL', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="url" name="organization_youtube_url" id="organization_youtube_url" value="<?php echo esc_url( $youtube_url ); ?>" class="regular-text" placeholder="https://youtube.com/@yourchannel">
+					<p class="description"><?php esc_html_e( 'Full URL to your YouTube channel.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+		</table>
+
+		<div class="meowseo-schema-help" style="margin-top: 20px; padding: 15px; background: #f0f6fc; border-left: 4px solid #0073aa; border-radius: 3px;">
+			<h4 style="margin-top: 0;"><?php esc_html_e( 'About Schema.org Structured Data', 'meowseo' ); ?></h4>
+			<p>
+				<?php esc_html_e( 'This information is used to generate Organization and WebSite schema markup that helps search engines understand your business. This can result in:', 'meowseo' ); ?>
+			</p>
+			<ul style="margin-left: 20px;">
+				<li><?php esc_html_e( 'Knowledge panels in Google search results', 'meowseo' ); ?></li>
+				<li><?php esc_html_e( 'Sitelinks search box for your website', 'meowseo' ); ?></li>
+				<li><?php esc_html_e( 'Enhanced brand visibility in search results', 'meowseo' ); ?></li>
+				<li><?php esc_html_e( 'Better understanding of your organization by search engines', 'meowseo' ); ?></li>
+			</ul>
+			<p>
+				<a href="https://schema.org/Organization" target="_blank" rel="noopener noreferrer">
+					<?php esc_html_e( 'Learn more about Organization schema', 'meowseo' ); ?>
+				</a>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Render Social Profiles settings tab
 	 *
 	 * Requirements: 6.1, 6.2
@@ -1150,6 +1294,84 @@ class Settings_Manager {
 			// Remove @ if present.
 			$twitter_username = ltrim( $twitter_username, '@' );
 			$validated['twitter_username'] = $twitter_username;
+		}
+
+		// Validate organization settings (Requirement 1.4).
+		$organization = array();
+		
+		// Validate organization name.
+		if ( isset( $settings['organization_name'] ) && ! empty( $settings['organization_name'] ) ) {
+			$organization['name'] = sanitize_text_field( $settings['organization_name'] );
+		}
+		
+		// Validate organization contact email.
+		if ( isset( $settings['organization_contact_email'] ) && ! empty( $settings['organization_contact_email'] ) ) {
+			$email = sanitize_email( $settings['organization_contact_email'] );
+			if ( is_email( $email ) ) {
+				$organization['contact_email'] = $email;
+			} else {
+				$this->errors['organization_contact_email'] = __( 'Please enter a valid email address.', 'meowseo' );
+			}
+		}
+		
+		// Validate organization logo URL.
+		if ( isset( $settings['organization_logo_url'] ) && ! empty( $settings['organization_logo_url'] ) ) {
+			$logo_url = esc_url_raw( trim( $settings['organization_logo_url'] ) );
+			if ( filter_var( $logo_url, FILTER_VALIDATE_URL ) ) {
+				$organization['logo_url'] = $logo_url;
+			} else {
+				$this->errors['organization_logo_url'] = __( 'Please enter a valid logo URL.', 'meowseo' );
+			}
+		}
+		
+		// Validate organization logo width.
+		if ( isset( $settings['organization_logo_width'] ) && ! empty( $settings['organization_logo_width'] ) ) {
+			$logo_width = absint( $settings['organization_logo_width'] );
+			if ( $logo_width > 0 ) {
+				$organization['logo_width'] = $logo_width;
+			} else {
+				$this->errors['organization_logo_width'] = __( 'Logo width must be a positive number.', 'meowseo' );
+			}
+		}
+		
+		// Validate organization logo height.
+		if ( isset( $settings['organization_logo_height'] ) && ! empty( $settings['organization_logo_height'] ) ) {
+			$logo_height = absint( $settings['organization_logo_height'] );
+			if ( $logo_height > 0 ) {
+				$organization['logo_height'] = $logo_height;
+			} else {
+				$this->errors['organization_logo_height'] = __( 'Logo height must be a positive number.', 'meowseo' );
+			}
+		}
+		
+		// Validate organization social profiles.
+		$social_profiles = array();
+		$social_url_fields = array(
+			'organization_facebook_url' => 'facebook',
+			'organization_twitter_url' => 'twitter',
+			'organization_instagram_url' => 'instagram',
+			'organization_linkedin_url' => 'linkedin',
+			'organization_youtube_url' => 'youtube',
+		);
+		
+		foreach ( $social_url_fields as $field => $network ) {
+			if ( isset( $settings[ $field ] ) && ! empty( $settings[ $field ] ) ) {
+				$sanitized_url = $this->sanitize_social_url( $settings[ $field ] );
+				if ( is_wp_error( $sanitized_url ) ) {
+					$this->errors[ $field ] = $sanitized_url->get_error_message();
+				} else {
+					$social_profiles[ $network ] = $sanitized_url;
+				}
+			}
+		}
+		
+		if ( ! empty( $social_profiles ) ) {
+			$organization['social_profiles'] = $social_profiles;
+		}
+		
+		// Save organization settings if any fields are set.
+		if ( ! empty( $organization ) ) {
+			$validated['organization'] = $organization;
 		}
 
 		// Validate enabled modules.

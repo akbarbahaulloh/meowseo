@@ -54,6 +54,14 @@ class Schema implements Module {
 	private Schema_Builder $schema_builder;
 
 	/**
+	 * Global Schema Generator instance
+	 *
+	 * @since 1.0.0
+	 * @var Global_Schema_Generator
+	 */
+	private Global_Schema_Generator $global_schema_generator;
+
+	/**
 	 * Breadcrumbs instance
 	 *
 	 * @since 1.0.0
@@ -70,6 +78,7 @@ class Schema implements Module {
 	public function __construct( Options $options ) {
 		$this->options = $options;
 		$this->schema_builder = new Schema_Builder( $options );
+		$this->global_schema_generator = new Global_Schema_Generator( $options );
 	}
 
 	/**
@@ -100,6 +109,9 @@ class Schema implements Module {
 
 		// Register breadcrumb shortcode and template function (Requirements 8.8, 8.9).
 		$this->register_breadcrumb_shortcode();
+
+		// Hook global schema generator into schema output (Requirement 1.6).
+		add_filter( 'meowseo_schema_graph', array( $this, 'add_global_schema' ), 10, 2 );
 	}
 
 	/**
@@ -556,6 +568,26 @@ class Schema implements Module {
 		);
 
 		return $this->render_breadcrumbs( $atts['class'], $atts['separator'] );
+	}
+
+	/**
+	 * Add global schema to graph
+	 *
+	 * Hooks into meowseo_schema_graph filter to add WebSite and Organization schema.
+	 * Requirement 1.6: Hook into existing Schema_Output class via meowseo_schema_output filter.
+	 *
+	 * @since 1.0.0
+	 * @param array $nodes   Array of schema nodes.
+	 * @param int   $post_id Post ID.
+	 * @return array Modified array of schema nodes.
+	 */
+	public function add_global_schema( array $nodes, int $post_id ): array {
+		// Generate global schema (WebSite and Organization).
+		$global_schemas = $this->global_schema_generator->generate_global_schema();
+
+		// Prepend global schemas to the beginning of the graph.
+		// This ensures WebSite and Organization appear first in the @graph array.
+		return array_merge( $global_schemas, $nodes );
 	}
 
 	/**
