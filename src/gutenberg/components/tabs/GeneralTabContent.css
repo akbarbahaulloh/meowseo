@@ -1,0 +1,41 @@
+/**
+ * General Tab Content Styles
+ *
+ * Styling for the General tab including field groups and spacing.
+ * Requirements: 2.6
+ *
+ * @package MeowSEO
+ * @since 2.0.0
+ */
+
+.meowseo-general-tab {
+	padding: 16px;
+}
+
+.meowseo-field-group {
+	margin-bottom: 24px;
+}
+
+.meowseo-field-group .components-base-control {
+	margin-bottom: 0;
+}
+
+.meowseo-field-group .components-base-control__help {
+	margin-top: 8px;
+	margin-bottom: 8px;
+}
+
+/* Ensure proper spacing between components */
+.meowseo-general-tab > * + * {
+	margin-top: 20px;
+}
+
+/* TextControl styling adjustments */
+.meowseo-field-group .components-text-control__input {
+	width: 100%;
+}
+
+/* Ensure SERP Preview is prominent */
+.meowseo-general-tab .meowseo-serp-preview {
+	margin-bottom: 24px;
+}

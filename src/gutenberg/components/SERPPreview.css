@@ -1,0 +1,139 @@
+/**
+ * SERP Preview Component Styles
+ *
+ * Google-style search result preview with mobile/desktop modes.
+ * Requirements: 2.1, 2.12, 2.13, 2.14
+ *
+ * @package MeowSEO
+ * @since 2.0.0
+ */
+
+.meowseo-serp-preview {
+	margin-bottom: 20px;
+	padding: 16px;
+	background: #f9f9f9;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.meowseo-serp-preview__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12px;
+}
+
+.meowseo-serp-preview__label {
+	font-weight: 600;
+	font-size: 13px;
+	color: #1e1e1e;
+}
+
+.meowseo-serp-preview__toggle {
+	display: flex;
+	gap: 0;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.meowseo-serp-preview__toggle-btn {
+	padding: 4px 12px;
+	font-size: 12px;
+	background: #fff;
+	border: none;
+	border-right: 1px solid #ddd;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.meowseo-serp-preview__toggle-btn:last-child {
+	border-right: none;
+}
+
+.meowseo-serp-preview__toggle-btn:hover {
+	background: #f0f0f0;
+}
+
+.meowseo-serp-preview__toggle-btn.is-active {
+	background: #2271b1;
+	color: #fff;
+}
+
+.meowseo-serp-preview__toggle-btn:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: -2px;
+	z-index: 1;
+}
+
+/* Google-style search result card */
+.meowseo-serp-preview__content {
+	padding: 16px;
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	font-family: Arial, sans-serif;
+}
+
+/* Requirement 2.13: Desktop mode - 600px width */
+.meowseo-serp-preview__content--desktop {
+	max-width: 600px;
+}
+
+/* Requirement 2.14: Mobile mode - 360px width */
+.meowseo-serp-preview__content--mobile {
+	max-width: 360px;
+}
+
+/* Green URL breadcrumb */
+.meowseo-serp-preview__url {
+	font-size: 14px;
+	line-height: 1.3;
+	color: #5f6368;
+	margin-bottom: 4px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Blue clickable title */
+.meowseo-serp-preview__title {
+	font-size: 20px;
+	line-height: 1.3;
+	color: #1a0dab;
+	font-weight: 400;
+	margin-bottom: 4px;
+	cursor: pointer;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+}
+
+.meowseo-serp-preview__title:hover {
+	text-decoration: underline;
+}
+
+/* Gray description text */
+.meowseo-serp-preview__description {
+	font-size: 14px;
+	line-height: 1.58;
+	color: #4d5156;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+}
+
+/* Placeholder text styling */
+.meowseo-serp-preview__title:empty::before,
+.meowseo-serp-preview__description:empty::before {
+	content: attr(data-placeholder);
+	color: #999;
+	font-style: italic;
+}
+
+/* Mobile-specific adjustments */
+.meowseo-serp-preview__content--mobile .meowseo-serp-preview__title {
+	font-size: 18px;
+}
+
+.meowseo-serp-preview__content--mobile .meowseo-serp-preview__description {
+	font-size: 13px;
+}

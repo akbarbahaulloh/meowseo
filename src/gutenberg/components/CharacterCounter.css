@@ -1,0 +1,114 @@
+/**
+ * Character Counter Component Styles
+ *
+ * Color-coded character count display with status indicators.
+ * Requirements: 2.4, 2.5
+ *
+ * @package MeowSEO
+ * @since 2.0.0
+ */
+
+.meowseo-character-counter {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 8px 12px;
+	margin-top: 4px;
+	font-size: 12px;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+}
+
+.meowseo-character-counter__label {
+	font-weight: 500;
+	color: #1e1e1e;
+}
+
+.meowseo-character-counter__count {
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.meowseo-character-counter__current {
+	font-size: 14px;
+}
+
+.meowseo-character-counter__separator {
+	margin: 0 2px;
+	opacity: 0.6;
+}
+
+.meowseo-character-counter__max {
+	opacity: 0.7;
+}
+
+/* Status: Good (Green) - Optimal length */
+.meowseo-character-counter--good {
+	background-color: #e7f5e9;
+	border: 1px solid #46b450;
+}
+
+.meowseo-character-counter--good .meowseo-character-counter__count {
+	color: #2d7a39;
+}
+
+/* Status: Warning (Orange) - Suboptimal but acceptable */
+.meowseo-character-counter--warning {
+	background-color: #fff4e5;
+	border: 1px solid #f56e28;
+}
+
+.meowseo-character-counter--warning .meowseo-character-counter__count {
+	color: #c44c0f;
+}
+
+/* Status: Error (Red) - Exceeds maximum */
+.meowseo-character-counter--error {
+	background-color: #fce8e8;
+	border: 1px solid #dc3232;
+}
+
+.meowseo-character-counter--error .meowseo-character-counter__count {
+	color: #a82828;
+}
+
+/* Animation for status changes */
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.8;
+	}
+}
+
+.meowseo-character-counter__count {
+	animation: pulse 0.3s ease-in-out;
+}
+
+/* Accessibility: High contrast mode support */
+@media (prefers-contrast: high) {
+	.meowseo-character-counter--good {
+		border-width: 2px;
+	}
+
+	.meowseo-character-counter--warning {
+		border-width: 2px;
+	}
+
+	.meowseo-character-counter--error {
+		border-width: 2px;
+	}
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+	.meowseo-character-counter {
+		transition: none;
+	}
+
+	.meowseo-character-counter__count {
+		animation: none;
+	}
+}
