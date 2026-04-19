@@ -49,6 +49,7 @@ class Module_Manager {
 		'social'        => 'Modules\Social\Social',
 		'woocommerce'   => 'Modules\WooCommerce\WooCommerce',
 		'ai'            => 'Modules\AI\AI_Module',
+		'import'        => 'Modules\Import\Import',
 	);
 
 	/**

@@ -1,39 +1,1031 @@
-# MeowSEO Analysis Engine - API Documentation
+# MeowSEO - API Documentation
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Analysis Engine](#analysis-engine)
-3. [Utility Functions](#utility-functions)
-4. [SEO Analyzers](#seo-analyzers)
-5. [Readability Analyzers](#readability-analyzers)
-6. [Web Worker API](#web-worker-api)
-7. [React Hooks](#react-hooks)
-8. [Redux Store](#redux-store)
-9. [Type Definitions](#type-definitions)
+2. [Import System](#import-system)
+3. [Keyword Management](#keyword-management)
+4. [Admin UI](#admin-ui)
+5. [Meta Output](#meta-output)
+6. [Analysis Engine](#analysis-engine)
+7. [Utility Functions](#utility-functions)
+8. [SEO Analyzers](#seo-analyzers)
+9. [Readability Analyzers](#readability-analyzers)
+10. [Web Worker API](#web-worker-api)
+11. [React Hooks](#react-hooks)
+12. [Redux Store](#redux-store)
+13. [Type Definitions](#type-definitions)
 
 ---
 
 ## Overview
 
-This document provides complete API reference for the MeowSEO Analysis Engine. All functions are documented with parameters, return values, and usage examples.
+This document provides complete API reference for MeowSEO. All classes, functions, and methods are documented with parameters, return values, and usage examples.
 
 ### Module Structure
 
 ```
+includes/
+├── modules/
+│   ├── import/                     # Import System
+│   │   ├── class-import-manager.php
+│   │   ├── class-batch-processor.php
+│   │   └── importers/
+│   │       ├── class-base-importer.php
+│   │       └── class-yoast-importer.php
+│   ├── keywords/                   # Keyword Management
+│   │   ├── class-keyword-manager.php
+│   │   └── class-keyword-analyzer.php
+│   ├── admin/                      # Admin UI
+│   │   └── class-list-table-columns.php
+│   └── meta/                       # Meta Output
+│       ├── class-meta-resolver.php
+│       └── class-title-patterns.php
 src/
-├── analysis/
-│   ├── analysis-engine.js          # Main orchestration
+├── analysis/                       # Analysis Engine
+│   ├── analysis-engine.js
 │   ├── analyzers/
-│   │   ├── seo/                    # SEO analyzers
-│   │   └── readability/            # Readability analyzers
-│   └── utils/                      # Utility functions
-├── gutenberg/
-│   ├── workers/
-│   │   └── analysis-worker.ts      # Web Worker
-│   ├── hooks/
-│   │   └── useAnalysis.ts          # Analysis hook
-│   └── store/                      # Redux store
+│   │   ├── seo/
+│   │   └── readability/
+│   └── utils/
+└── gutenberg/                      # Gutenberg Integration
+    ├── workers/
+    ├── hooks/
+    └── store/
+```
+
+---
+
+## Import System
+
+The Import System migrates SEO data from competitor plugins (Yoast SEO, RankMath) to MeowSEO. It handles postmeta, termmeta, options, and redirects with batch processing to prevent timeouts.
+
+### Import_Manager
+
+**Namespace**: `MeowSEO\Modules\Import`
+
+**Responsibility**: Orchestrates the import process, detects installed plugins, and manages import state.
+
+#### `__construct( Options $options, Batch_Processor $processor )`
+
+Creates a new Import_Manager instance.
+
+**Parameters**:
+- `$options` (Options): Options instance
+- `$processor` (Batch_Processor): Batch processor instance
+
+**Example**:
+```php
+use MeowSEO\Modules\Import\Import_Manager;
+use MeowSEO\Modules\Import\Batch_Processor;
+use MeowSEO\Options;
+
+$options = new Options();
+$processor = new Batch_Processor( 100 );
+$manager = new Import_Manager( $options, $processor );
+```
+
+---
+
+#### `register_importer( string $slug, Base_Importer $importer ): void`
+
+Registers an importer for a specific plugin.
+
+**Parameters**:
+- `$slug` (string): Plugin slug (e.g., 'yoast', 'rankmath')
+- `$importer` (Base_Importer): Importer instance
+
+**Example**:
+```php
+$yoast_importer = new Yoast_Importer( $processor );
+$manager->register_importer( 'yoast', $yoast_importer );
+```
+
+---
+
+#### `detect_installed_plugins(): array`
+
+Scans for installed competitor plugins by checking for option keys and plugin files.
+
+**Returns**: `array` - Array of detected plugins
+```php
+[
+    [
+        'slug' => 'yoast',
+        'name' => 'Yoast SEO',
+        'installed' => true,
+    ],
+]
+```
+
+**Example**:
+```php
+$detected = $manager->detect_installed_plugins();
+foreach ( $detected as $plugin ) {
+    echo $plugin['name'] . ' is installed';
+}
+```
+
+---
+
+#### `start_import( string $plugin_slug ): array`
+
+Starts an import process for a specific plugin.
+
+**Parameters**:
+- `$plugin_slug` (string): Plugin slug to import from
+
+**Returns**: `array` - Import job data or error array
+```php
+[
+    'import_id' => 'yoast_20240115_123456',
+    'status' => 'pending',
+    'plugin' => 'yoast',
+    'started_at' => 1705324456,
+    'progress' => [
+        'posts' => ['processed' => 0, 'total' => 0],
+        'terms' => ['processed' => 0, 'total' => 0],
+        'options' => ['processed' => 0, 'total' => 0],
+        'redirects' => ['processed' => 0, 'total' => 0],
+    ],
+]
+```
+
+**Example**:
+```php
+$job = $manager->start_import( 'yoast' );
+if ( isset( $job['error'] ) ) {
+    echo 'Error: ' . $job['message'];
+} else {
+    echo 'Import started: ' . $job['import_id'];
+}
+```
+
+---
+
+#### `get_import_status( string $import_id ): array`
+
+Retrieves the current status of an import job.
+
+**Parameters**:
+- `$import_id` (string): Import ID
+
+**Returns**: `array` - Import job data or error array
+
+**Example**:
+```php
+$status = $manager->get_import_status( 'yoast_20240115_123456' );
+echo 'Processed: ' . $status['progress']['posts']['processed'];
+echo ' / ' . $status['progress']['posts']['total'];
+```
+
+---
+
+#### `cancel_import( string $import_id ): bool`
+
+Cancels an in-progress import.
+
+**Parameters**:
+- `$import_id` (string): Import ID
+
+**Returns**: `bool` - True on success, false on failure
+
+---
+
+#### `update_progress( string $import_id, array $progress ): bool`
+
+Updates import job progress data.
+
+**Parameters**:
+- `$import_id` (string): Import ID
+- `$progress` (array): Progress data to merge
+
+**Returns**: `bool` - True on success, false on failure
+
+---
+
+#### `complete_import( string $import_id, array $summary ): bool`
+
+Marks an import as completed and updates summary.
+
+**Parameters**:
+- `$import_id` (string): Import ID
+- `$summary` (array): Summary data
+
+**Returns**: `bool` - True on success, false on failure
+
+---
+
+#### `log_error( string $import_id, array $error ): bool`
+
+Logs an import error.
+
+**Parameters**:
+- `$import_id` (string): Import ID
+- `$error` (array): Error data with keys: post_id, field, error
+
+**Returns**: `bool` - True on success, false on failure
+
+---
+
+### Batch_Processor
+
+**Namespace**: `MeowSEO\Modules\Import`
+
+**Responsibility**: Processes large datasets in chunks to prevent PHP timeouts and memory exhaustion.
+
+#### `__construct( int $batch_size = 100 )`
+
+Creates a new Batch_Processor instance.
+
+**Parameters**:
+- `$batch_size` (int): Number of items per batch (default: 100)
+
+**Example**:
+```php
+$processor = new Batch_Processor( 50 ); // Process 50 items at a time
+```
+
+---
+
+#### `process_posts( callable $callback, array $args = [] ): array`
+
+Processes posts in batches using WP_Query.
+
+**Parameters**:
+- `$callback` (callable): Function to process each post. Receives post ID, should return true/false
+- `$args` (array): WP_Query arguments (optional)
+
+**Returns**: `array` - Processing results
+```php
+[
+    'processed' => 150,
+    'total' => 500,
+    'errors' => 3,
+]
+```
+
+**Example**:
+```php
+$results = $processor->process_posts(
+    function( $post_id ) {
+        // Process post
+        return update_post_meta( $post_id, '_meowseo_title', 'New Title' );
+    },
+    [ 'post_type' => 'post' ]
+);
+```
+
+---
+
+#### `process_terms( callable $callback, array $args = [] ): array`
+
+Processes terms in batches using get_terms.
+
+**Parameters**:
+- `$callback` (callable): Function to process each term. Receives term ID, should return true/false
+- `$args` (array): get_terms arguments (optional)
+
+**Returns**: `array` - Processing results
+
+**Example**:
+```php
+$results = $processor->process_terms(
+    function( $term_id ) {
+        // Process term
+        return update_term_meta( $term_id, '_meowseo_title', 'New Title' );
+    },
+    [ 'taxonomy' => 'category' ]
+);
+```
+
+---
+
+#### `get_progress(): array`
+
+Returns current progress data.
+
+**Returns**: `array` - Progress with keys: processed, total, errors
+
+---
+
+### Base_Importer
+
+**Namespace**: `MeowSEO\Modules\Import\Importers`
+
+**Responsibility**: Abstract base class defining the import contract and shared logic.
+
+#### Abstract Methods
+
+##### `get_plugin_name(): string`
+
+Returns the plugin name (e.g., "Yoast SEO").
+
+##### `is_plugin_installed(): bool`
+
+Checks if the plugin is installed by looking for option keys or files.
+
+##### `get_postmeta_mappings(): array`
+
+Returns postmeta field mappings.
+
+**Returns**: `array`
+```php
+[
+    'source_key' => 'meowseo_key',
+]
+```
+
+##### `get_termmeta_mappings(): array`
+
+Returns termmeta field mappings.
+
+##### `get_options_mappings(): array`
+
+Returns options field mappings.
+
+**Returns**: `array`
+```php
+[
+    'source_option' => [
+        'source_key' => 'meowseo_key',
+    ],
+]
+```
+
+##### `import_redirects(): array`
+
+Imports redirects from plugin-specific storage.
+
+**Returns**: `array`
+```php
+[
+    'imported' => 10,
+    'errors' => 1,
+]
+```
+
+---
+
+#### Public Methods
+
+##### `import_postmeta( array $post_ids = [] ): array`
+
+Imports postmeta for all posts or specific post IDs.
+
+**Parameters**:
+- `$post_ids` (array): Optional array of post IDs
+
+**Returns**: `array` - Import results
+
+##### `import_termmeta( array $term_ids = [] ): array`
+
+Imports termmeta for all terms or specific term IDs.
+
+**Parameters**:
+- `$term_ids` (array): Optional array of term IDs
+
+**Returns**: `array` - Import results
+
+##### `import_options(): array`
+
+Imports plugin settings from options table.
+
+**Returns**: `array` - Import results
+
+---
+
+#### Protected Methods
+
+##### `validate_and_transform( string $key, mixed $value ): mixed`
+
+Validates and transforms a value before storage.
+
+**Parameters**:
+- `$key` (string): MeowSEO meta key
+- `$value` (mixed): Value to validate
+
+**Returns**: `mixed` - Transformed value or false on failure
+
+**Validation**:
+- Checks UTF-8 encoding
+- Sanitizes strings
+- Handles empty values
+- Plugin-specific transformations
+
+---
+
+### Yoast_Importer
+
+**Namespace**: `MeowSEO\Modules\Import\Importers`
+
+**Extends**: `Base_Importer`
+
+**Responsibility**: Imports SEO data from Yoast SEO plugin.
+
+#### Postmeta Mappings
+
+```php
+[
+    '_yoast_wpseo_title' => '_meowseo_title',
+    '_yoast_wpseo_metadesc' => '_meowseo_description',
+    '_yoast_wpseo_focuskw' => '_meowseo_focus_keyword',
+    '_yoast_wpseo_canonical' => '_meowseo_canonical_url',
+    '_yoast_wpseo_meta-robots-noindex' => '_meowseo_robots_noindex',
+    '_yoast_wpseo_meta-robots-nofollow' => '_meowseo_robots_nofollow',
+    '_yoast_wpseo_opengraph-title' => '_meowseo_og_title',
+    '_yoast_wpseo_opengraph-description' => '_meowseo_og_description',
+    '_yoast_wpseo_twitter-title' => '_meowseo_twitter_title',
+    '_yoast_wpseo_twitter-description' => '_meowseo_twitter_description',
+]
+```
+
+#### Termmeta Mappings
+
+```php
+[
+    '_wpseo_title' => '_meowseo_title',
+    '_wpseo_desc' => '_meowseo_description',
+]
+```
+
+#### Title Pattern Transformation
+
+Yoast uses `%%variable%%` syntax, MeowSEO uses `{variable}` syntax.
+
+**Variable Mappings**:
+```php
+[
+    '%%title%%' => '{title}',
+    '%%sitename%%' => '{site_name}',
+    '%%sep%%' => '{sep}',
+    '%%page%%' => '{page}',
+    '%%category%%' => '{category}',
+    '%%tag%%' => '{tag}',
+    // ... and more
+]
+```
+
+---
+
+## Keyword Management
+
+The Keyword Management system supports up to 5 focus keywords per post (1 primary + 4 secondary) with per-keyword analysis.
+
+### Keyword_Manager
+
+**Namespace**: `MeowSEO\Modules\Keywords`
+
+**Responsibility**: Manages storage and retrieval of primary and secondary keywords.
+
+#### Constants
+
+- `MAX_KEYWORDS` = 5 (1 primary + 4 secondary)
+
+---
+
+#### `__construct( Options $options )`
+
+Creates a new Keyword_Manager instance.
+
+**Parameters**:
+- `$options` (Options): Options instance
+
+---
+
+#### `get_keywords( int $post_id ): array`
+
+Retrieves all keywords for a post.
+
+**Parameters**:
+- `$post_id` (int): Post ID
+
+**Returns**: `array`
+```php
+[
+    'primary' => 'wordpress seo',
+    'secondary' => ['seo plugin', 'search optimization'],
+]
+```
+
+**Example**:
+```php
+$keywords = $manager->get_keywords( 123 );
+echo 'Primary: ' . $keywords['primary'];
+echo 'Secondary: ' . implode( ', ', $keywords['secondary'] );
+```
+
+---
+
+#### `set_primary_keyword( int $post_id, string $keyword ): bool`
+
+Sets the primary keyword for a post.
+
+**Parameters**:
+- `$post_id` (int): Post ID
+- `$keyword` (string): Keyword to set (empty string clears it)
+
+**Returns**: `bool` - True on success, false on failure
+
+**Example**:
+```php
+$manager->set_primary_keyword( 123, 'wordpress seo' );
+```
+
+---
+
+#### `add_secondary_keyword( int $post_id, string $keyword ): bool|array`
+
+Adds a secondary keyword.
+
+**Parameters**:
+- `$post_id` (int): Post ID
+- `$keyword` (string): Keyword to add
+
+**Returns**: `bool|array` - True on success, error array on failure
+
+**Error Response**:
+```php
+[
+    'error' => true,
+    'message' => 'Maximum of 5 keywords allowed.',
+]
+```
+
+**Example**:
+```php
+$result = $manager->add_secondary_keyword( 123, 'seo plugin' );
+if ( is_array( $result ) && $result['error'] ) {
+    echo 'Error: ' . $result['message'];
+}
+```
+
+---
+
+#### `remove_secondary_keyword( int $post_id, string $keyword ): bool`
+
+Removes a secondary keyword.
+
+**Parameters**:
+- `$post_id` (int): Post ID
+- `$keyword` (string): Keyword to remove
+
+**Returns**: `bool` - True on success, false on failure
+
+---
+
+#### `reorder_secondary_keywords( int $post_id, array $keywords ): bool|array`
+
+Reorders secondary keywords.
+
+**Parameters**:
+- `$post_id` (int): Post ID
+- `$keywords` (array): Keywords in desired order
+
+**Returns**: `bool|array` - True on success, error array on failure
+
+---
+
+#### `validate_keyword_count( int $post_id ): bool`
+
+Validates that keyword count doesn't exceed maximum.
+
+**Parameters**:
+- `$post_id` (int): Post ID
+
+**Returns**: `bool` - True if valid, false if exceeds maximum
+
+---
+
+#### `get_keyword_count( int $post_id ): int`
+
+Returns total keyword count for a post.
+
+**Parameters**:
+- `$post_id` (int): Post ID
+
+**Returns**: `int` - Total keyword count
+
+---
+
+### Keyword_Analyzer
+
+**Namespace**: `MeowSEO\Modules\Keywords`
+
+**Responsibility**: Runs keyword-based analysis checks for each focus keyword.
+
+#### `__construct( Keyword_Manager $keyword_manager )`
+
+Creates a new Keyword_Analyzer instance.
+
+**Parameters**:
+- `$keyword_manager` (Keyword_Manager): Keyword Manager instance
+
+---
+
+#### `analyze_all_keywords( int $post_id, string $content, array $context = [] ): array`
+
+Analyzes all keywords for a post.
+
+**Parameters**:
+- `$post_id` (int): Post ID
+- `$content` (string): Post content (HTML)
+- `$context` (array): Additional context (title, description, slug)
+
+**Returns**: `array` - Analysis results keyed by keyword
+```php
+[
+    'wordpress seo' => [
+        'density' => ['score' => 85, 'status' => 'good', 'value' => 1.2],
+        'in_title' => ['score' => 100, 'status' => 'good'],
+        'in_headings' => ['score' => 100, 'status' => 'good'],
+        'in_slug' => ['score' => 100, 'status' => 'good'],
+        'in_first_paragraph' => ['score' => 100, 'status' => 'good'],
+        'in_meta_description' => ['score' => 100, 'status' => 'good'],
+        'overall_score' => 97,
+    ],
+]
+```
+
+**Example**:
+```php
+$results = $analyzer->analyze_all_keywords(
+    123,
+    '<p>Your content...</p>',
+    [
+        'title' => 'WordPress SEO Guide',
+        'description' => 'Learn WordPress SEO',
+        'slug' => 'wordpress-seo-guide',
+    ]
+);
+```
+
+---
+
+#### `analyze_single_keyword( string $keyword, string $content, array $context = [] ): array`
+
+Analyzes a single keyword.
+
+**Parameters**:
+- `$keyword` (string): Focus keyword
+- `$content` (string): Post content (HTML)
+- `$context` (array): Additional context
+
+**Returns**: `array` - Analysis result with individual check scores
+
+**Analysis Checks**:
+1. **Keyword Density** - Optimal range: 0.5% - 2.5%
+2. **Keyword in Title** - Checks SEO title
+3. **Keyword in Headings** - Checks H1-H6 tags
+4. **Keyword in Slug** - Checks URL slug
+5. **Keyword in First Paragraph** - Checks first 200 characters
+6. **Keyword in Meta Description** - Checks meta description field
+
+---
+
+## Admin UI
+
+### List_Table_Columns
+
+**Namespace**: `MeowSEO\Modules\Admin`
+
+**Responsibility**: Adds SEO Score column to WordPress admin list tables with sorting support.
+
+#### `__construct( Options $options )`
+
+Creates a new List_Table_Columns instance.
+
+**Parameters**:
+- `$options` (Options): Options instance
+
+---
+
+#### `register_hooks(): void`
+
+Registers WordPress hooks for all public post types.
+
+**Excluded Post Types**:
+- attachment
+- revision
+- nav_menu_item
+
+**Example**:
+```php
+$columns = new List_Table_Columns( $options );
+$columns->register_hooks();
+```
+
+---
+
+#### `add_seo_score_column( array $columns ): array`
+
+Adds SEO Score column to list table.
+
+**Parameters**:
+- `$columns` (array): Existing columns
+
+**Returns**: `array` - Modified columns
+
+**Position**: After "Title" column
+
+---
+
+#### `render_seo_score_column( string $column_name, int $post_id ): void`
+
+Renders SEO Score column content.
+
+**Parameters**:
+- `$column_name` (string): Column name
+- `$post_id` (int): Post ID
+
+**Output**: Colored indicator based on score range
+
+**Score Ranges**:
+- 0-40: Red (poor)
+- 41-70: Orange (ok)
+- 71-100: Green (good)
+- null: Gray dash (no score)
+
+**HTML Output**:
+```html
+<span class="meowseo-score-indicator meowseo-score-good" 
+      title="SEO Score: 85/100" 
+      aria-label="SEO Score: 85 out of 100">
+    <span class="meowseo-score-circle"></span>
+    <span class="meowseo-score-text">85</span>
+</span>
+```
+
+---
+
+#### `register_sortable_column( array $columns ): array`
+
+Registers SEO Score as sortable column.
+
+**Parameters**:
+- `$columns` (array): Sortable columns
+
+**Returns**: `array` - Modified sortable columns
+
+---
+
+#### `handle_seo_score_sorting( WP_Query $query ): void`
+
+Modifies query to sort by SEO score.
+
+**Parameters**:
+- `$query` (WP_Query): WordPress query object
+
+**Sorting**: By `_meowseo_seo_score` postmeta (numeric)
+
+---
+
+## Meta Output
+
+### Meta_Resolver
+
+**Namespace**: `MeowSEO\Modules\Meta`
+
+**Responsibility**: Resolves meta field values with fallback chains and archive-specific logic.
+
+#### Archive Type Constants
+
+```php
+const ARCHIVE_TYPE_AUTHOR = 'author_archive';
+const ARCHIVE_TYPE_DATE = 'date_archive';
+const ARCHIVE_TYPE_CATEGORY = 'category_archive';
+const ARCHIVE_TYPE_TAG = 'tag_archive';
+const ARCHIVE_TYPE_SEARCH = 'search_results';
+const ARCHIVE_TYPE_ATTACHMENT = 'attachment';
+```
+
+---
+
+#### `get_archive_robots( string $archive_type ): string`
+
+Resolves robots meta tags for archive pages.
+
+**Parameters**:
+- `$archive_type` (string): Archive type constant
+
+**Returns**: `string` - Robots directives (e.g., "noindex, follow")
+
+**Resolution Logic**:
+1. Check for term-specific override (for category/tag archives)
+2. Fall back to global setting
+3. Format as comma-separated string
+
+**Example**:
+```php
+$robots = $resolver->get_archive_robots( Meta_Resolver::ARCHIVE_TYPE_AUTHOR );
+// Returns: "noindex, follow"
+```
+
+**Global Settings**:
+- `robots_author_archive`
+- `robots_date_archive`
+- `robots_category_archive`
+- `robots_tag_archive`
+- `robots_search_results`
+- `robots_attachment`
+
+**Term-Specific Override**:
+For category/tag archives, checks termmeta:
+- `_meowseo_robots_noindex`
+- `_meowseo_robots_nofollow`
+
+---
+
+#### `resolve_robots_for_archive(): string`
+
+Resolves robots directives for the current archive page.
+
+**Returns**: `string` - Robots directives
+
+**Example**:
+```php
+// On author archive page
+$robots = $resolver->resolve_robots_for_archive();
+// Returns: "noindex, follow" (based on global setting)
+```
+
+---
+
+### Title_Patterns
+
+**Namespace**: `MeowSEO\Modules\Meta`
+
+**Responsibility**: Parses, validates, and resolves title patterns with variable substitution.
+
+#### Supported Variables
+
+```php
+[
+    'title', 'sep', 'site_name', 'tagline', 'page',
+    'term_name', 'term_description', 'author_name',
+    'current_year', 'current_month', 'category', 'tag',
+    'term', 'date', 'name', 'searchphrase', 'posttype',
+]
+```
+
+---
+
+#### `__construct( Options $options )`
+
+Creates a new Title_Patterns instance.
+
+**Parameters**:
+- `$options` (Options): Options instance
+
+---
+
+#### `resolve( string $pattern, array $context ): string`
+
+Resolves pattern with context variables.
+
+**Parameters**:
+- `$pattern` (string): Pattern string with variables
+- `$context` (array): Variable values
+
+**Returns**: `string` - Resolved pattern
+
+**Example**:
+```php
+$resolved = $patterns->resolve(
+    '{title} {sep} {site_name}',
+    [
+        'title' => 'My Post',
+        'site_name' => 'My Site',
+    ]
+);
+// Returns: "My Post | My Site"
+```
+
+---
+
+#### `parse( string $pattern ): array|object`
+
+Parses pattern into structured representation.
+
+**Parameters**:
+- `$pattern` (string): Pattern string
+
+**Returns**: `array|object` - Parsed structure or error object
+
+**Parsed Structure**:
+```php
+[
+    ['type' => 'literal', 'value' => 'Welcome to '],
+    ['type' => 'variable', 'name' => 'site_name'],
+]
+```
+
+**Error Object**:
+```php
+(object) [
+    'error' => true,
+    'message' => 'Unbalanced curly braces at position 5',
+]
+```
+
+---
+
+#### `validate( string $pattern ): bool|object`
+
+Validates pattern syntax.
+
+**Parameters**:
+- `$pattern` (string): Pattern string
+
+**Returns**: `bool|object` - True if valid, error object if invalid
+
+**Example**:
+```php
+$result = $patterns->validate( '{title} {sep} {site_name}' );
+if ( $result === true ) {
+    echo 'Valid pattern';
+} else {
+    echo 'Error: ' . $result->message;
+}
+```
+
+---
+
+#### `get_pattern_for_post_type( string $post_type ): string`
+
+Gets title pattern for a post type.
+
+**Parameters**:
+- `$post_type` (string): Post type
+
+**Returns**: `string` - Pattern string
+
+---
+
+#### `get_pattern_for_archive_type( string $archive_type ): string`
+
+Gets title pattern for an archive type.
+
+**Parameters**:
+- `$archive_type` (string): Archive type
+
+**Returns**: `string` - Pattern string
+
+**Archive Types**:
+- `category_archive`
+- `tag_archive`
+- `author_page`
+- `search_results`
+- `date_archive`
+- `404_page`
+- `homepage`
+
+---
+
+#### `resolve_archive_variables(): array`
+
+Builds context array with archive-specific variables.
+
+**Returns**: `array` - Context with resolved variables
+
+**Example**:
+```php
+// On category archive page
+$context = $patterns->resolve_archive_variables();
+// Returns: ['category' => 'News', 'term' => 'News']
+```
+
+**Resolved Variables**:
+- `page_number` - For paginated archives
+- `category` - Category name
+- `tag` - Tag name
+- `term` - Generic term name
+- `name` - Author display name
+- `searchphrase` - Search query
+- `date` - Formatted archive date
+- `posttype` - Post type label
+
+---
+
+#### `get_default_patterns(): array`
+
+Returns default patterns for all page types.
+
+**Returns**: `array` - Default patterns
+
+**Default Patterns**:
+```php
+[
+    'post' => '{title} {sep} {site_name}',
+    'page' => '{title} {sep} {site_name}',
+    'homepage' => '{site_name} {sep} {tagline}',
+    'category_archive' => '{category} Archives {sep} {site_name}',
+    'tag_archive' => '{tag} Tag {sep} {site_name}',
+    'author_page' => '{name} {sep} {site_name}',
+    'search_results' => 'Search Results for {searchphrase} {sep} {site_name}',
+    'date_archive' => '{date} Archives {sep} {site_name}',
+    '404_page' => 'Page Not Found {sep} {site_name}',
+]
 ```
 
 ---

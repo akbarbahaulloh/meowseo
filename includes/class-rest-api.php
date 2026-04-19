@@ -90,6 +90,9 @@ class REST_API {
 		// Register suggestion endpoint (Requirement 15.1).
 		$this->register_suggestion_routes();
 
+		// Register keyword management endpoint (Requirements 2.1, 2.2, 2.9, 2.10, 2.11).
+		$this->register_keyword_routes();
+
 		// Register public SEO endpoints (Requirements 17.1-17.7, 18.1-18.6, 27.1-27.5).
 		$this->register_public_seo_routes();
 
@@ -302,6 +305,49 @@ class REST_API {
 						'required'          => true,
 						'type'              => 'integer',
 						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Register keyword management endpoint
+	 *
+	 * Provides keyword update and analysis triggering.
+	 * Requirements: 2.1, 2.2, 2.9, 2.10, 2.11
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	private function register_keyword_routes(): void {
+		// POST /meowseo/v1/keywords/{post_id} - Update keywords and trigger analysis.
+		register_rest_route(
+			self::NAMESPACE,
+			'/keywords/(?P<post_id>\d+)',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'update_keywords' ),
+				'permission_callback' => array( $this, 'update_meta_permission' ),
+				'args'                => array(
+					'post_id'   => array(
+						'required'          => true,
+						'type'              => 'integer',
+						'sanitize_callback' => 'absint',
+						'validate_callback' => array( $this, 'validate_post_id' ),
+					),
+					'primary'   => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'secondary' => array(
+						'required'          => false,
+						'type'              => 'array',
+						'items'             => array(
+							'type' => 'string',
+						),
+						'sanitize_callback' => array( $this, 'sanitize_keyword_array' ),
 					),
 				),
 			)
@@ -1054,6 +1100,148 @@ class REST_API {
 	}
 
 	/**
+	 * Update keywords for a post
+	 *
+	 * Updates primary and secondary keywords, validates count, and triggers analysis.
+	 * Requirements: 2.1, 2.2, 2.9, 2.10, 2.11
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $request REST request object.
+	 * @return \WP_REST_Response REST response.
+	 */
+	public function update_keywords( \WP_REST_Request $request ): \WP_REST_Response {
+		// Verify nonce (Requirement 15.2).
+		if ( ! $this->verify_nonce( $request ) ) {
+			// Log the failed nonce verification.
+			\MeowSEO\Helpers\Logger::warning(
+				'REST request failed: invalid nonce',
+				array(
+					'endpoint' => 'keywords/update',
+					'user_id'  => get_current_user_id(),
+				)
+			);
+
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Security verification failed. Please refresh the page and try again.', 'meowseo' ),
+					'code'    => 'rest_invalid_nonce',
+				),
+				403
+			);
+		}
+
+		$post_id = (int) $request['post_id'];
+		$primary = $request->get_param( 'primary' );
+		$secondary = $request->get_param( 'secondary' );
+
+		// Get Keyword_Manager instance.
+		$keyword_manager = new \MeowSEO\Modules\Keywords\Keyword_Manager( $this->options );
+
+		try {
+			// Update primary keyword if provided.
+			if ( null !== $primary ) {
+				$result = $keyword_manager->set_primary_keyword( $post_id, $primary );
+				if ( ! $result ) {
+					return new \WP_REST_Response(
+						array(
+							'success' => false,
+							'message' => __( 'Failed to update primary keyword.', 'meowseo' ),
+							'code'    => 'update_failed',
+						),
+						500
+					);
+				}
+			}
+
+			// Update secondary keywords if provided.
+			if ( null !== $secondary && is_array( $secondary ) ) {
+				// Validate keyword count (Requirement 2.2).
+				$current_keywords = $keyword_manager->get_keywords( $post_id );
+				$primary_count = ! empty( $current_keywords['primary'] ) ? 1 : 0;
+				$total_count = $primary_count + count( $secondary );
+
+				if ( $total_count > 5 ) {
+					return new \WP_REST_Response(
+						array(
+							'success' => false,
+							'message' => __( 'Maximum of 5 keywords allowed (1 primary + 4 secondary).', 'meowseo' ),
+							'code'    => 'keyword_count_exceeded',
+						),
+						400
+					);
+				}
+
+				// Update secondary keywords by replacing the entire array.
+				update_post_meta( $post_id, '_meowseo_secondary_keywords', wp_json_encode( $secondary ) );
+			}
+
+			// Trigger analysis on keyword change (Requirement 2.9).
+			$post = get_post( $post_id );
+			if ( $post ) {
+				$keyword_analyzer = new \MeowSEO\Modules\Keywords\Keyword_Analyzer( $keyword_manager );
+				
+				// Get post content and context.
+				$content = $post->post_content;
+				$context = array(
+					'title'       => get_post_meta( $post_id, '_meowseo_title', true ) ?: $post->post_title,
+					'description' => get_post_meta( $post_id, '_meowseo_description', true ) ?: '',
+					'slug'        => $post->post_name,
+				);
+
+				// Run analysis for all keywords.
+				$analysis_results = $keyword_analyzer->analyze_all_keywords( $post_id, $content, $context );
+
+				// Return updated analysis results (Requirement 2.9).
+				$response = new \WP_REST_Response(
+					array(
+						'success'  => true,
+						'message'  => __( 'Keywords updated successfully.', 'meowseo' ),
+						'keywords' => $keyword_manager->get_keywords( $post_id ),
+						'analysis' => $analysis_results,
+					),
+					200
+				);
+
+				// No cache for mutations.
+				$response->header( 'Cache-Control', 'no-store' );
+
+				return $response;
+			}
+
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Post not found.', 'meowseo' ),
+					'code'    => 'post_not_found',
+				),
+				404
+			);
+		} catch ( \Exception $e ) {
+			// Log the error with context.
+			\MeowSEO\Helpers\Logger::error(
+				'Failed to update keywords',
+				array(
+					'endpoint'  => 'keywords/update',
+					'user_id'   => get_current_user_id(),
+					'post_id'   => $post_id,
+					'error_msg' => $e->getMessage(),
+				)
+			);
+
+			// Return user-friendly error message.
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'An error occurred while updating keywords. Please try again.', 'meowseo' ),
+					'code'    => 'database_error',
+				),
+				500
+			);
+		}
+	}
+
+	/**
 	 * Permission callback for GET meta requests
 	 *
 	 * Requirement: 13.2, 29.2
@@ -1501,6 +1689,36 @@ class REST_API {
 			// Only allow valid public post types.
 			if ( isset( $valid_post_types[ $post_type ] ) ) {
 				$sanitized[] = $post_type;
+			}
+		}
+
+		return array_values( $sanitized );
+	}
+
+	/**
+	 * Sanitize keyword array
+	 *
+	 * Security: Sanitizes keyword strings and removes empty values.
+	 * Requirements: 2.1, 2.2
+	 *
+	 * @since 1.0.0
+	 * @param array $keywords Keyword array.
+	 * @return array Sanitized keywords.
+	 */
+	public function sanitize_keyword_array( $keywords ): array {
+		if ( ! is_array( $keywords ) ) {
+			return array();
+		}
+
+		$sanitized = array();
+
+		foreach ( $keywords as $keyword ) {
+			$keyword = sanitize_text_field( $keyword );
+			$keyword = trim( $keyword );
+			
+			// Only include non-empty keywords.
+			if ( ! empty( $keyword ) ) {
+				$sanitized[] = $keyword;
 			}
 		}
 

@@ -194,6 +194,124 @@ POST /meowseo/v1/settings
 
 ### Module Endpoints
 
+#### Keywords Module
+
+##### Update Keywords
+
+Update primary and secondary keywords for a post and trigger analysis.
+
+```http
+POST /meowseo/v1/keywords/{post_id}
+```
+
+**Parameters**:
+- `post_id` (integer, required): Post ID
+
+**Request Body**:
+```json
+{
+  "primary": "wordpress seo",
+  "secondary": ["seo plugin", "search optimization"]
+}
+```
+
+**Request Fields**:
+- `primary` (string, optional): Primary focus keyword
+- `secondary` (array, optional): Array of secondary keywords (max 4)
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "Keywords updated successfully.",
+  "keywords": {
+    "primary": "wordpress seo",
+    "secondary": ["seo plugin", "search optimization"]
+  },
+  "analysis": {
+    "wordpress seo": {
+      "density": {
+        "score": 85,
+        "status": "good",
+        "value": 1.2
+      },
+      "in_title": {
+        "score": 100,
+        "status": "good"
+      },
+      "in_headings": {
+        "score": 100,
+        "status": "good"
+      },
+      "in_slug": {
+        "score": 100,
+        "status": "good"
+      },
+      "in_first_paragraph": {
+        "score": 100,
+        "status": "good"
+      },
+      "in_meta_description": {
+        "score": 100,
+        "status": "good"
+      },
+      "overall_score": 97
+    },
+    "seo plugin": {
+      "density": {
+        "score": 70,
+        "status": "ok",
+        "value": 0.8
+      },
+      "in_title": {
+        "score": 0,
+        "status": "poor"
+      },
+      "in_headings": {
+        "score": 100,
+        "status": "good"
+      },
+      "in_slug": {
+        "score": 0,
+        "status": "poor"
+      },
+      "in_first_paragraph": {
+        "score": 100,
+        "status": "good"
+      },
+      "in_meta_description": {
+        "score": 0,
+        "status": "poor"
+      },
+      "overall_score": 62
+    }
+  }
+}
+```
+
+**Error Response** (400 Bad Request - Keyword Count Exceeded):
+```json
+{
+  "success": false,
+  "message": "Maximum of 5 keywords allowed (1 primary + 4 secondary).",
+  "code": "keyword_count_exceeded"
+}
+```
+
+**Validation Rules**:
+- Maximum 5 total keywords (1 primary + 4 secondary)
+- Keywords are trimmed and sanitized
+- Empty keywords are ignored
+- Duplicate keywords are allowed but not recommended
+
+**Cache Headers**: `Cache-Control: no-store`
+
+**Required**: `edit_post` capability for the specified post
+
+**Requirements**: 2.1, 2.2, 2.9, 2.10, 2.11
+
+---
+
 #### Redirects Module
 
 ##### List Redirects

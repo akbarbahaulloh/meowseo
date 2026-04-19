@@ -44,8 +44,8 @@ class MigrationTest extends TestCase {
 		// Run migrations.
 		Migration::run();
 
-		// Version should be updated.
-		$this->assertSame( '2.0.0', Migration::get_version() );
+		// Version should be updated to latest.
+		$this->assertSame( '2.1.0', Migration::get_version() );
 
 		// Migration should no longer be needed.
 		$this->assertFalse( Migration::is_migration_needed() );
@@ -247,6 +247,143 @@ class MigrationTest extends TestCase {
 		// Verify old options are deleted.
 		$this->assertFalse( get_option( 'meowseo_separator' ) );
 		$this->assertFalse( get_option( 'meowseo_default_og_image' ) );
+	}
+
+	/**
+	 * Test migration 2.1.0 adds secondary keywords postmeta
+	 *
+	 * @return void
+	 */
+	public function test_migrate_2_1_0_adds_secondary_keywords_postmeta(): void {
+		global $wpdb, $wp_post_meta_storage;
+
+		// Create test posts.
+		$post_id_1 = wp_insert_post( array(
+			'post_title'  => 'Test Post 1',
+			'post_status' => 'publish',
+			'post_type'   => 'post',
+		) );
+		$post_id_2 = wp_insert_post( array(
+			'post_title'  => 'Test Post 2',
+			'post_status' => 'publish',
+			'post_type'   => 'post',
+		) );
+
+		// Verify postmeta doesn't exist yet.
+		$this->assertEmpty( get_post_meta( $post_id_1, '_meowseo_secondary_keywords', true ) );
+		$this->assertEmpty( get_post_meta( $post_id_2, '_meowseo_secondary_keywords', true ) );
+
+		// Run migration.
+		Migration::run();
+
+		// Verify postmeta was added with default value.
+		$this->assertSame( '[]', get_post_meta( $post_id_1, '_meowseo_secondary_keywords', true ) );
+		$this->assertSame( '[]', get_post_meta( $post_id_2, '_meowseo_secondary_keywords', true ) );
+	}
+
+	/**
+	 * Test migration 2.1.0 adds keyword analysis postmeta
+	 *
+	 * @return void
+	 */
+	public function test_migrate_2_1_0_adds_keyword_analysis_postmeta(): void {
+		global $wpdb, $wp_post_meta_storage;
+
+		// Create test posts.
+		$post_id_1 = wp_insert_post( array(
+			'post_title'  => 'Test Post 1',
+			'post_status' => 'publish',
+			'post_type'   => 'post',
+		) );
+		$post_id_2 = wp_insert_post( array(
+			'post_title'  => 'Test Post 2',
+			'post_status' => 'publish',
+			'post_type'   => 'post',
+		) );
+
+		// Verify postmeta doesn't exist yet.
+		$this->assertEmpty( get_post_meta( $post_id_1, '_meowseo_keyword_analysis', true ) );
+		$this->assertEmpty( get_post_meta( $post_id_2, '_meowseo_keyword_analysis', true ) );
+
+		// Run migration.
+		Migration::run();
+
+		// Verify postmeta was added with default value.
+		$this->assertSame( '{}', get_post_meta( $post_id_1, '_meowseo_keyword_analysis', true ) );
+		$this->assertSame( '{}', get_post_meta( $post_id_2, '_meowseo_keyword_analysis', true ) );
+	}
+
+	/**
+	 * Test migration 2.1.0 does not overwrite existing postmeta
+	 *
+	 * @return void
+	 */
+	public function test_migrate_2_1_0_does_not_overwrite_existing_postmeta(): void {
+		global $wpdb, $wp_post_meta_storage;
+
+		// Create test post.
+		$post_id = wp_insert_post( array(
+			'post_title'  => 'Test Post',
+			'post_status' => 'publish',
+			'post_type'   => 'post',
+		) );
+
+		// Set existing postmeta.
+		add_post_meta( $post_id, '_meowseo_secondary_keywords', '["keyword1","keyword2"]', true );
+		add_post_meta( $post_id, '_meowseo_keyword_analysis', '{"keyword1":{"score":85}}', true );
+
+		// Run migration.
+		Migration::run();
+
+		// Verify existing postmeta was not overwritten.
+		$this->assertSame( '["keyword1","keyword2"]', get_post_meta( $post_id, '_meowseo_secondary_keywords', true ) );
+		$this->assertSame( '{"keyword1":{"score":85}}', get_post_meta( $post_id, '_meowseo_keyword_analysis', true ) );
+	}
+
+	/**
+	 * Test migration 2.1.0 processes multiple post types
+	 *
+	 * @return void
+	 */
+	public function test_migrate_2_1_0_processes_multiple_post_types(): void {
+		global $wpdb, $wp_post_meta_storage;
+
+		// Create posts of different types.
+		$post_id = wp_insert_post( array(
+			'post_title'  => 'Test Post',
+			'post_status' => 'publish',
+			'post_type'   => 'post',
+		) );
+		$page_id = wp_insert_post( array(
+			'post_title'  => 'Test Page',
+			'post_status' => 'publish',
+			'post_type'   => 'page',
+		) );
+
+		// Run migration.
+		Migration::run();
+
+		// Verify both post types were processed.
+		$this->assertSame( '[]', get_post_meta( $post_id, '_meowseo_secondary_keywords', true ) );
+		$this->assertSame( '[]', get_post_meta( $page_id, '_meowseo_secondary_keywords', true ) );
+		$this->assertSame( '{}', get_post_meta( $post_id, '_meowseo_keyword_analysis', true ) );
+		$this->assertSame( '{}', get_post_meta( $page_id, '_meowseo_keyword_analysis', true ) );
+	}
+
+	/**
+	 * Test migration version updated to 2.1.0
+	 *
+	 * @return void
+	 */
+	public function test_migration_version_updated_to_2_1_0(): void {
+		// Run migrations.
+		Migration::run();
+
+		// Version should be updated to 2.1.0.
+		$this->assertSame( '2.1.0', Migration::get_version() );
+
+		// Migration should no longer be needed.
+		$this->assertFalse( Migration::is_migration_needed() );
 	}
 
 	/**

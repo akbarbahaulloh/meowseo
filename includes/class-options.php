@@ -60,7 +60,7 @@ class Options {
 	 */
 	private function set_defaults(): void {
 		$defaults = array(
-			'enabled_modules'        => array( 'meta', 'redirects', 'monitor_404', 'gsc' ), // Core modules enabled by default.
+			'enabled_modules'        => array( 'meta', 'redirects', 'monitor_404', 'gsc', 'import' ), // Core modules enabled by default.
 			'separator'              => '|',
 			'default_social_image'   => '',
 			'delete_on_uninstall'    => false,

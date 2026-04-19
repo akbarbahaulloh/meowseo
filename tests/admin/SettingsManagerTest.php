@@ -362,4 +362,143 @@ class SettingsManagerTest extends TestCase {
 	public function test_get_errors_returns_empty_array_initially(): void {
 		$this->assertEmpty( $this->settings_manager->get_errors() );
 	}
+
+	/**
+	 * Test validate_settings handles archive robots settings
+	 *
+	 * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
+	 *
+	 * @return void
+	 */
+	public function test_validate_settings_handles_archive_robots_settings(): void {
+		$settings = array(
+			'robots_author_archive'   => array(
+				'noindex'  => true,
+				'nofollow' => false,
+			),
+			'robots_date_archive'     => array(
+				'noindex'  => true,
+				'nofollow' => true,
+			),
+			'robots_category_archive' => array(
+				'noindex'  => false,
+				'nofollow' => false,
+			),
+			'robots_tag_archive'      => array(
+				'noindex'  => false,
+				'nofollow' => true,
+			),
+			'robots_search_results'   => array(
+				'noindex'  => true,
+				'nofollow' => false,
+			),
+			'robots_attachment'       => array(
+				'noindex'  => true,
+				'nofollow' => true,
+			),
+		);
+
+		$result = $this->settings_manager->validate_settings( $settings );
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'robots_author_archive', $result );
+		$this->assertTrue( $result['robots_author_archive']['noindex'] );
+		$this->assertFalse( $result['robots_author_archive']['nofollow'] );
+		$this->assertTrue( $result['robots_date_archive']['noindex'] );
+		$this->assertTrue( $result['robots_date_archive']['nofollow'] );
+		$this->assertFalse( $result['robots_category_archive']['noindex'] );
+		$this->assertFalse( $result['robots_category_archive']['nofollow'] );
+	}
+
+	/**
+	 * Test validate_settings sets default values for missing archive robots settings
+	 *
+	 * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
+	 *
+	 * @return void
+	 */
+	public function test_validate_settings_sets_defaults_for_missing_archive_robots(): void {
+		$settings = array(
+			'homepage_title' => 'Test',
+		);
+
+		$result = $this->settings_manager->validate_settings( $settings );
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'robots_author_archive', $result );
+		$this->assertFalse( $result['robots_author_archive']['noindex'] );
+		$this->assertFalse( $result['robots_author_archive']['nofollow'] );
+		$this->assertArrayHasKey( 'robots_date_archive', $result );
+		$this->assertFalse( $result['robots_date_archive']['noindex'] );
+		$this->assertFalse( $result['robots_date_archive']['nofollow'] );
+	}
+
+	/**
+	 * Test validate_settings handles archive robots with only noindex set
+	 *
+	 * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
+	 *
+	 * @return void
+	 */
+	public function test_validate_settings_handles_archive_robots_with_only_noindex(): void {
+		$settings = array(
+			'robots_author_archive' => array(
+				'noindex' => true,
+			),
+		);
+
+		$result = $this->settings_manager->validate_settings( $settings );
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'robots_author_archive', $result );
+		$this->assertTrue( $result['robots_author_archive']['noindex'] );
+		$this->assertFalse( $result['robots_author_archive']['nofollow'] );
+	}
+
+	/**
+	 * Test validate_settings handles archive robots with only nofollow set
+	 *
+	 * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
+	 *
+	 * @return void
+	 */
+	public function test_validate_settings_handles_archive_robots_with_only_nofollow(): void {
+		$settings = array(
+			'robots_search_results' => array(
+				'nofollow' => true,
+			),
+		);
+
+		$result = $this->settings_manager->validate_settings( $settings );
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'robots_search_results', $result );
+		$this->assertFalse( $result['robots_search_results']['noindex'] );
+		$this->assertTrue( $result['robots_search_results']['nofollow'] );
+	}
+
+	/**
+	 * Test validate_settings converts non-boolean values to boolean for archive robots
+	 *
+	 * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
+	 *
+	 * @return void
+	 */
+	public function test_validate_settings_converts_non_boolean_values_for_archive_robots(): void {
+		$settings = array(
+			'robots_attachment' => array(
+				'noindex'  => '1',
+				'nofollow' => '',
+			),
+		);
+
+		$result = $this->settings_manager->validate_settings( $settings );
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'robots_attachment', $result );
+		$this->assertIsBool( $result['robots_attachment']['noindex'] );
+		$this->assertIsBool( $result['robots_attachment']['nofollow'] );
+		$this->assertTrue( $result['robots_attachment']['noindex'] );
+		$this->assertFalse( $result['robots_attachment']['nofollow'] );
+	}
 }

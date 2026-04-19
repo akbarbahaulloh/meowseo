@@ -92,11 +92,18 @@ class Meta_Output {
 	 * Output robots meta tag (Group C)
 	 *
 	 * Ensures Google Discover directives are always present.
+	 * For archive pages, uses archive-specific robots settings.
 	 *
 	 * @return void
 	 */
 	private function output_robots(): void {
-		$robots = $this->resolver->resolve_robots();
+		// Check if this is an archive page.
+		if ( is_archive() || is_search() || is_attachment() ) {
+			$robots = $this->resolver->resolve_robots_for_archive();
+		} else {
+			$robots = $this->resolver->resolve_robots();
+		}
+		
 		if ( ! empty( $robots ) ) {
 			echo '<meta name="robots" content="' . esc_attr( $robots ) . '">' . "\n";
 		}

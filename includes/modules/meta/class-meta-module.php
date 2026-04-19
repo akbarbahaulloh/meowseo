@@ -10,6 +10,8 @@ namespace MeowSEO\Modules\Meta;
 
 use MeowSEO\Contracts\Module;
 use MeowSEO\Options;
+use MeowSEO\Modules\Keywords\Keyword_Manager;
+use MeowSEO\Modules\Keywords\Keyword_Analyzer;
 
 /**
  * Meta_Module class
@@ -82,6 +84,20 @@ class Meta_Module implements Module {
 	private Classic_Editor $classic_editor;
 
 	/**
+	 * Keyword_Manager instance
+	 *
+	 * @var Keyword_Manager
+	 */
+	private Keyword_Manager $keyword_manager;
+
+	/**
+	 * Keyword_Analyzer instance
+	 *
+	 * @var Keyword_Analyzer
+	 */
+	private Keyword_Analyzer $keyword_analyzer;
+
+	/**
 	 * Constructor
 	 *
 	 * Instantiates all module components with proper dependency injection.
@@ -114,6 +130,12 @@ class Meta_Module implements Module {
 
 		// Initialize Classic_Editor for classic editor meta box.
 		$this->classic_editor = new Classic_Editor();
+
+		// Initialize Keyword_Manager for keyword storage and retrieval.
+		$this->keyword_manager = new Keyword_Manager( $this->options );
+
+		// Initialize Keyword_Analyzer for per-keyword analysis.
+		$this->keyword_analyzer = new Keyword_Analyzer( $this->keyword_manager );
 	}
 
 	/**
@@ -161,10 +183,14 @@ class Meta_Module implements Module {
 		// Register save_post hook for classic editor meta save handling.
 		add_action( 'save_post', array( $this, 'handle_save_post' ), 10, 2 );
 
+		// Register save_post hook for keyword analysis (priority 20 to run after meta save).
+		add_action( 'save_post', array( $this, 'trigger_keyword_analysis' ), 20, 2 );
+
 		// Register rest_api_init hook for postmeta exposure.
 		add_action( 'rest_api_init', array( $this, 'register_rest_fields' ) );
 
-
+		// Register rest_api_init hook for keyword REST endpoints.
+		add_action( 'rest_api_init', array( $this, 'register_keyword_rest_routes' ) );
 	}
 
 	/**
@@ -227,6 +253,202 @@ class Meta_Module implements Module {
 	 */
 	public function register_rest_fields(): void {
 		$this->postmeta->register();
+	}
+
+	/**
+	 * Trigger keyword analysis on post save
+	 *
+	 * Runs keyword analysis for all focus keywords when a post is saved.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param object $post    Post object.
+	 * @return void
+	 */
+	public function trigger_keyword_analysis( int $post_id, object $post ): void {
+		// Skip autosaves and revisions.
+		if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) ) {
+			return;
+		}
+
+		// Skip if post is not published or scheduled.
+		if ( ! in_array( $post->post_status, array( 'publish', 'future', 'draft', 'pending' ), true ) ) {
+			return;
+		}
+
+		// Get post content and context.
+		$content = $post->post_content;
+		$context = array(
+			'title'       => get_post_meta( $post_id, '_meowseo_title', true ) ?: $post->post_title,
+			'description' => get_post_meta( $post_id, '_meowseo_description', true ) ?: '',
+			'slug'        => $post->post_name,
+		);
+
+		// Run keyword analysis.
+		$this->keyword_analyzer->analyze_all_keywords( $post_id, $content, $context );
+	}
+
+	/**
+	 * Register keyword REST routes
+	 *
+	 * Registers REST API endpoints for keyword management.
+	 *
+	 * @return void
+	 */
+	public function register_keyword_rest_routes(): void {
+		// Register endpoint for updating keywords.
+		register_rest_route(
+			'meowseo/v1',
+			'/keywords/(?P<post_id>\d+)',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_update_keywords' ),
+				'permission_callback' => function ( $request ) {
+					$post_id = (int) $request->get_param( 'post_id' );
+					return current_user_can( 'edit_post', $post_id );
+				},
+				'args'                => array(
+					'post_id'   => array(
+						'required'          => true,
+						'type'              => 'integer',
+						'sanitize_callback' => 'absint',
+					),
+					'primary'   => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'secondary' => array(
+						'required'          => false,
+						'type'              => 'array',
+						'sanitize_callback' => function ( $value ) {
+							return array_map( 'sanitize_text_field', (array) $value );
+						},
+					),
+				),
+			)
+		);
+
+		// Register endpoint for triggering keyword analysis.
+		register_rest_route(
+			'meowseo/v1',
+			'/keywords/(?P<post_id>\d+)/analyze',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_analyze_keywords' ),
+				'permission_callback' => function ( $request ) {
+					$post_id = (int) $request->get_param( 'post_id' );
+					return current_user_can( 'edit_post', $post_id );
+				},
+				'args'                => array(
+					'post_id' => array(
+						'required'          => true,
+						'type'              => 'integer',
+						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * REST endpoint callback for updating keywords
+	 *
+	 * @param \WP_REST_Request $request REST request object.
+	 * @return \WP_REST_Response REST response.
+	 */
+	public function rest_update_keywords( \WP_REST_Request $request ): \WP_REST_Response {
+		$post_id   = (int) $request->get_param( 'post_id' );
+		$primary   = $request->get_param( 'primary' );
+		$secondary = $request->get_param( 'secondary' );
+
+		// Update primary keyword if provided.
+		if ( null !== $primary ) {
+			$this->keyword_manager->set_primary_keyword( $post_id, $primary );
+		}
+
+		// Update secondary keywords if provided.
+		if ( null !== $secondary && is_array( $secondary ) ) {
+			// Clear existing secondary keywords.
+			delete_post_meta( $post_id, '_meowseo_secondary_keywords' );
+
+			// Add new secondary keywords.
+			foreach ( $secondary as $keyword ) {
+				if ( ! empty( $keyword ) ) {
+					$result = $this->keyword_manager->add_secondary_keyword( $post_id, $keyword );
+					if ( is_array( $result ) && isset( $result['error'] ) ) {
+						return new \WP_REST_Response(
+							array(
+								'success' => false,
+								'message' => $result['message'],
+							),
+							400
+						);
+					}
+				}
+			}
+		}
+
+		// Get updated keywords.
+		$keywords = $this->keyword_manager->get_keywords( $post_id );
+
+		// Trigger analysis.
+		$post = get_post( $post_id );
+		if ( $post ) {
+			$this->trigger_keyword_analysis( $post_id, $post );
+		}
+
+		// Get analysis results.
+		$analysis = get_post_meta( $post_id, '_meowseo_keyword_analysis', true );
+		if ( is_string( $analysis ) ) {
+			$analysis = json_decode( $analysis, true );
+		}
+
+		return new \WP_REST_Response(
+			array(
+				'success'  => true,
+				'keywords' => $keywords,
+				'analysis' => $analysis ?: array(),
+			),
+			200
+		);
+	}
+
+	/**
+	 * REST endpoint callback for analyzing keywords
+	 *
+	 * @param \WP_REST_Request $request REST request object.
+	 * @return \WP_REST_Response REST response.
+	 */
+	public function rest_analyze_keywords( \WP_REST_Request $request ): \WP_REST_Response {
+		$post_id = (int) $request->get_param( 'post_id' );
+		$post    = get_post( $post_id );
+
+		if ( ! $post ) {
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Post not found.', 'meowseo' ),
+				),
+				404
+			);
+		}
+
+		// Trigger analysis.
+		$this->trigger_keyword_analysis( $post_id, $post );
+
+		// Get analysis results.
+		$analysis = get_post_meta( $post_id, '_meowseo_keyword_analysis', true );
+		if ( is_string( $analysis ) ) {
+			$analysis = json_decode( $analysis, true );
+		}
+
+		return new \WP_REST_Response(
+			array(
+				'success'  => true,
+				'analysis' => $analysis ?: array(),
+			),
+			200
+		);
 	}
 
 

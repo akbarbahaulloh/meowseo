@@ -1,0 +1,85 @@
+/**
+ * List Table Columns Styles
+ *
+ * Styles for SEO Score indicators in WordPress admin list tables.
+ *
+ * @package MeowSEO
+ */
+
+/* Score Indicator Container */
+.meowseo-score-indicator {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	line-height: 1;
+}
+
+/* Score Circle */
+.meowseo-score-circle {
+	display: inline-block;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+/* Score Text */
+.meowseo-score-text {
+	font-weight: 500;
+}
+
+/* Score Dash (for no score) */
+.meowseo-score-dash {
+	font-weight: 400;
+	color: #a7aaad;
+}
+
+/* Color Classes - Good Score (71-100) */
+.meowseo-score-good .meowseo-score-circle {
+	background-color: #46b450;
+}
+
+.meowseo-score-good .meowseo-score-text {
+	color: #46b450;
+}
+
+/* Color Classes - OK Score (41-70) */
+.meowseo-score-ok .meowseo-score-circle {
+	background-color: #f56e28;
+}
+
+.meowseo-score-ok .meowseo-score-text {
+	color: #f56e28;
+}
+
+/* Color Classes - Poor Score (0-40) */
+.meowseo-score-poor .meowseo-score-circle {
+	background-color: #dc3232;
+}
+
+.meowseo-score-poor .meowseo-score-text {
+	color: #dc3232;
+}
+
+/* Color Classes - No Score */
+.meowseo-score-none .meowseo-score-circle {
+	background-color: #a7aaad;
+}
+
+/* Sortable Column Header */
+.column-seo_score {
+	width: 100px;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+	.meowseo-score-indicator {
+		font-size: 12px;
+	}
+	
+	.meowseo-score-circle {
+		width: 10px;
+		height: 10px;
+	}
+}

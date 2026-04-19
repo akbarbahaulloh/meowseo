@@ -1,0 +1,91 @@
+/**
+ * SecondaryKeywordsInput Component Styles
+ */
+
+.meowseo-secondary-keywords {
+	margin-top: 20px;
+	padding: 16px;
+	background: #f9f9f9;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.meowseo-secondary-keywords__title {
+	margin: 0 0 8px 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1e1e1e;
+}
+
+.meowseo-secondary-keywords__description {
+	margin: 0 0 16px 0;
+	font-size: 13px;
+	color: #757575;
+}
+
+.meowseo-secondary-keywords__list {
+	margin-bottom: 16px;
+}
+
+.meowseo-secondary-keywords__item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	margin-bottom: 8px;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	transition: box-shadow 0.2s;
+}
+
+.meowseo-secondary-keywords__item:hover {
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.meowseo-secondary-keywords__drag-handle {
+	cursor: grab;
+	color: #757575;
+	font-size: 16px;
+	line-height: 1;
+	user-select: none;
+	padding: 4px;
+}
+
+.meowseo-secondary-keywords__drag-handle:active {
+	cursor: grabbing;
+}
+
+.meowseo-secondary-keywords__keyword {
+	flex: 1;
+	font-size: 14px;
+	color: #1e1e1e;
+}
+
+.meowseo-secondary-keywords__add {
+	display: flex;
+	gap: 8px;
+	align-items: flex-start;
+}
+
+.meowseo-secondary-keywords__add .components-base-control {
+	flex: 1;
+	margin-bottom: 0;
+}
+
+.meowseo-secondary-keywords__error {
+	margin-top: 8px;
+	padding: 8px 12px;
+	background: #f8d7da;
+	border: 1px solid #f5c6cb;
+	border-radius: 4px;
+	color: #721c24;
+	font-size: 13px;
+}
+
+.meowseo-secondary-keywords__count {
+	margin-top: 12px;
+	font-size: 12px;
+	color: #757575;
+	text-align: right;
+}

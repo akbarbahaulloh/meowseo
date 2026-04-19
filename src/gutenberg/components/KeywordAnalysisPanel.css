@@ -1,0 +1,187 @@
+/**
+ * KeywordAnalysisPanel Styles
+ *
+ * Styles for per-keyword analysis display with expandable details.
+ */
+
+.meowseo-keyword-analysis-panel {
+	margin-top: 16px;
+	padding: 16px;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.meowseo-keyword-analysis-title {
+	margin: 0 0 16px 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1e1e1e;
+}
+
+/* Loading State */
+.meowseo-keyword-analysis-loading {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 16px;
+	color: #757575;
+	font-size: 13px;
+}
+
+/* Empty State */
+.meowseo-keyword-analysis-empty {
+	padding: 16px;
+	color: #757575;
+	font-size: 13px;
+	text-align: center;
+}
+
+/* Keyword List */
+.meowseo-keyword-analysis-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+/* Keyword Score Row */
+.meowseo-keyword-score-row {
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.meowseo-keyword-score-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: 12px;
+	background: #f9f9f9;
+	border: none;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+
+.meowseo-keyword-score-header:hover {
+	background: #f0f0f0;
+}
+
+.meowseo-keyword-score-header:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: -2px;
+}
+
+/* Keyword Info */
+.meowseo-keyword-info {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+}
+
+.meowseo-keyword-name {
+	font-size: 14px;
+	font-weight: 500;
+	color: #1e1e1e;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.meowseo-keyword-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	font-size: 11px;
+	font-weight: 600;
+	color: #fff;
+	background: #2271b1;
+	border-radius: 3px;
+	text-transform: uppercase;
+}
+
+/* Keyword Score */
+.meowseo-keyword-score {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.meowseo-keyword-score-value {
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.meowseo-keyword-score-label {
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.meowseo-keyword-toggle {
+	font-size: 12px;
+	color: #757575;
+	margin-left: 8px;
+}
+
+/* Keyword Details */
+.meowseo-keyword-details {
+	padding: 12px;
+	background: #fff;
+	border-top: 1px solid #ddd;
+}
+
+.meowseo-keyword-no-checks {
+	padding: 8px;
+	color: #757575;
+	font-size: 13px;
+	text-align: center;
+}
+
+/* Keyword Check Row */
+.meowseo-keyword-check-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px;
+	border-bottom: 1px solid #f0f0f0;
+}
+
+.meowseo-keyword-check-row:last-child {
+	border-bottom: none;
+}
+
+.meowseo-keyword-check-icon {
+	font-size: 16px;
+	font-weight: bold;
+	width: 20px;
+	text-align: center;
+}
+
+.meowseo-keyword-check-label {
+	flex: 1;
+	font-size: 13px;
+	color: #1e1e1e;
+}
+
+.meowseo-keyword-check-score {
+	font-size: 14px;
+	font-weight: 600;
+	min-width: 30px;
+	text-align: right;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+	.meowseo-keyword-score-header {
+		flex-wrap: wrap;
+	}
+
+	.meowseo-keyword-info {
+		width: 100%;
+		margin-bottom: 8px;
+	}
+
+	.meowseo-keyword-score {
+		margin-left: auto;
+	}
+}

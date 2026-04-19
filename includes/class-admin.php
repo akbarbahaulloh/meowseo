@@ -14,6 +14,7 @@ use MeowSEO\Admin\Log_Viewer;
 use MeowSEO\Admin\Dashboard_Widgets;
 use MeowSEO\Admin\Settings_Manager;
 use MeowSEO\Admin\Tools_Manager;
+use MeowSEO\Modules\Admin\List_Table_Columns;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -69,6 +70,14 @@ class Admin {
 	 * @var Tools_Manager|null
 	 */
 	private ?Tools_Manager $tools_manager = null;
+
+	/**
+	 * List_Table_Columns instance
+	 *
+	 * @since 1.0.0
+	 * @var List_Table_Columns|null
+	 */
+	private ?List_Table_Columns $list_table_columns = null;
 
 	/**
 	 * Module_Manager instance
@@ -128,6 +137,10 @@ class Admin {
 
 		// Initialize Tools_Manager (Requirement 10.1).
 		$this->tools_manager = $this->get_tools_manager();
+
+		// Initialize List_Table_Columns (Requirement 3.1).
+		$this->list_table_columns = new List_Table_Columns( $this->options );
+		$this->list_table_columns->register_hooks();
 
 		// Register admin-post handlers for tools operations.
 		add_action( 'admin_post_meowseo_export_settings', array( $this, 'handle_export_settings' ) );
@@ -367,6 +380,17 @@ class Admin {
 	 * @return void
 	 */
 	public function enqueue_admin_assets( string $hook_suffix ): void {
+		// Enqueue list table columns CSS on all post list pages.
+		$screen = get_current_screen();
+		if ( $screen && $screen->base === 'edit' ) {
+			wp_enqueue_style(
+				'meowseo-list-table-columns',
+				\MEOWSEO_URL . 'admin/css/list-table-columns.css',
+				array(),
+				\MEOWSEO_VERSION
+			);
+		}
+
 		// Map hook suffixes to asset names.
 		$page_assets = array(
 			'toplevel_page_meowseo'           => 'admin-dashboard',

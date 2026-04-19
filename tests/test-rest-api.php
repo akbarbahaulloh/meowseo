@@ -241,4 +241,138 @@ class Test_REST_API extends TestCase {
 		// Assert response is forbidden.
 		$this->assertEquals( 403, $response->get_status() );
 	}
+
+	/**
+	 * Test POST /meowseo/v1/keywords/{post_id} endpoint
+	 *
+	 * Requirements: 2.1, 2.2, 2.9, 2.10, 2.11
+	 *
+	 * @return void
+	 */
+	public function test_update_keywords_endpoint(): void {
+		// Create admin user and authenticate.
+		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $user_id );
+
+		// Create REST request.
+		$request = new WP_REST_Request( 'POST', '/meowseo/v1/keywords/' . $this->post_id );
+		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
+		$request->set_param( 'primary', 'wordpress seo' );
+		$request->set_param( 'secondary', array( 'seo plugin', 'search optimization' ) );
+
+		// Execute request.
+		$response = rest_do_request( $request );
+
+		// Assert response is successful.
+		$this->assertEquals( 200, $response->get_status() );
+
+		// Get response data.
+		$data = $response->get_data();
+
+		// Assert success is true.
+		$this->assertTrue( $data['success'] );
+
+		// Assert keywords were updated.
+		$this->assertEquals( 'wordpress seo', get_post_meta( $this->post_id, '_meowseo_focus_keyword', true ) );
+		
+		$secondary = get_post_meta( $this->post_id, '_meowseo_secondary_keywords', true );
+		$secondary_array = json_decode( $secondary, true );
+		$this->assertIsArray( $secondary_array );
+		$this->assertCount( 2, $secondary_array );
+		$this->assertContains( 'seo plugin', $secondary_array );
+		$this->assertContains( 'search optimization', $secondary_array );
+
+		// Assert analysis results are returned.
+		$this->assertArrayHasKey( 'analysis', $data );
+		$this->assertIsArray( $data['analysis'] );
+
+		// Assert Cache-Control header is set to no-store.
+		$headers = $response->get_headers();
+		$this->assertArrayHasKey( 'Cache-Control', $headers );
+		$this->assertEquals( 'no-store', $headers['Cache-Control'] );
+	}
+
+	/**
+	 * Test POST /meowseo/v1/keywords/{post_id} endpoint with keyword count validation
+	 *
+	 * Requirement: 2.2
+	 *
+	 * @return void
+	 */
+	public function test_update_keywords_endpoint_exceeds_max_count(): void {
+		// Create admin user and authenticate.
+		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $user_id );
+
+		// Set primary keyword first.
+		update_post_meta( $this->post_id, '_meowseo_focus_keyword', 'primary keyword' );
+
+		// Try to add 5 secondary keywords (total 6, exceeds max).
+		$request = new WP_REST_Request( 'POST', '/meowseo/v1/keywords/' . $this->post_id );
+		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
+		$request->set_param( 'secondary', array( 'keyword1', 'keyword2', 'keyword3', 'keyword4', 'keyword5' ) );
+
+		// Execute request.
+		$response = rest_do_request( $request );
+
+		// Assert response is bad request.
+		$this->assertEquals( 400, $response->get_status() );
+
+		// Get response data.
+		$data = $response->get_data();
+
+		// Assert success is false.
+		$this->assertFalse( $data['success'] );
+		$this->assertEquals( 'keyword_count_exceeded', $data['code'] );
+	}
+
+	/**
+	 * Test POST /meowseo/v1/keywords/{post_id} endpoint without nonce
+	 *
+	 * @return void
+	 */
+	public function test_update_keywords_endpoint_without_nonce(): void {
+		// Create admin user and authenticate.
+		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $user_id );
+
+		// Create REST request without nonce.
+		$request = new WP_REST_Request( 'POST', '/meowseo/v1/keywords/' . $this->post_id );
+		$request->set_param( 'primary', 'wordpress seo' );
+
+		// Execute request.
+		$response = rest_do_request( $request );
+
+		// Assert response is forbidden.
+		$this->assertEquals( 403, $response->get_status() );
+
+		// Get response data.
+		$data = $response->get_data();
+
+		// Assert success is false.
+		$this->assertFalse( $data['success'] );
+		$this->assertEquals( 'rest_invalid_nonce', $data['code'] );
+	}
+
+	/**
+	 * Test POST /meowseo/v1/keywords/{post_id} endpoint without permission
+	 *
+	 * @return void
+	 */
+	public function test_update_keywords_endpoint_without_permission(): void {
+		// Create subscriber user and authenticate.
+		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $user_id );
+
+		// Create REST request.
+		$request = new WP_REST_Request( 'POST', '/meowseo/v1/keywords/' . $this->post_id );
+		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
+		$request->set_param( 'primary', 'wordpress seo' );
+
+		// Execute request.
+		$response = rest_do_request( $request );
+
+		// Assert response is forbidden.
+		$this->assertEquals( 403, $response->get_status() );
+	}
 }

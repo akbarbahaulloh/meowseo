@@ -357,8 +357,11 @@ class Settings_Manager {
 				<td><input type="text" name="title_pattern_search" id="title_pattern_search" value="<?php echo esc_attr( $title_pattern_search ); ?>" class="regular-text" data-preview="search"><p class="description meowseo-title-preview" data-for="title_pattern_search"></p></td>
 			</tr>
 		</table>
+
+		<?php $this->render_archive_patterns_section(); ?>
 		<?php
 		$this->render_title_preview_script();
+		$this->render_archive_pattern_preview_script();
 	}
 
 	/**
@@ -392,6 +395,261 @@ class Settings_Manager {
 				inputs.forEach(function(input) {
 					updatePreview(input);
 					input.addEventListener('input', function() { updatePreview(this); });
+				});
+			});
+		})();
+		</script>
+		<?php
+	}
+
+	/**
+	 * Render Archive Patterns section
+	 *
+	 * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11, 5.12, 5.13, 5.14, 5.15, 5.16
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	private function render_archive_patterns_section(): void {
+		// Get stored patterns from options
+		$title_patterns = $this->options->get( 'title_patterns', array() );
+		
+		// Archive pattern types
+		$archive_types = array(
+			'category_archive' => __( 'Category Archives', 'meowseo' ),
+			'tag_archive' => __( 'Tag Archives', 'meowseo' ),
+			'custom_taxonomy_archive' => __( 'Custom Taxonomy Archives', 'meowseo' ),
+			'author_page' => __( 'Author Pages', 'meowseo' ),
+			'search_results' => __( 'Search Results', 'meowseo' ),
+			'date_archive' => __( 'Date Archives', 'meowseo' ),
+			'404_page' => __( '404 Pages', 'meowseo' ),
+			'homepage' => __( 'Homepage', 'meowseo' ),
+		);
+
+		// Default patterns (using %% syntax for UI)
+		$default_patterns = array(
+			'category_archive' => array(
+				'title' => '%%category%% Archives %%sep%% %%sitename%%',
+				'description' => 'Browse all posts in %%category%%',
+			),
+			'tag_archive' => array(
+				'title' => '%%tag%% Tag %%sep%% %%sitename%%',
+				'description' => 'Posts tagged with %%tag%%',
+			),
+			'custom_taxonomy_archive' => array(
+				'title' => '%%term%% %%sep%% %%sitename%%',
+				'description' => 'Browse all posts in %%term%%',
+			),
+			'author_page' => array(
+				'title' => '%%name%% %%sep%% %%sitename%%',
+				'description' => 'Posts by %%name%%',
+			),
+			'search_results' => array(
+				'title' => 'Search Results for %%searchphrase%% %%sep%% %%sitename%%',
+				'description' => 'Search results for %%searchphrase%%',
+			),
+			'date_archive' => array(
+				'title' => '%%date%% Archives %%sep%% %%sitename%%',
+				'description' => 'Posts from %%date%%',
+			),
+			'404_page' => array(
+				'title' => 'Page Not Found %%sep%% %%sitename%%',
+				'description' => 'The page you are looking for could not be found',
+			),
+			'homepage' => array(
+				'title' => '%%sitename%% %%sep%% %%tagline%%',
+				'description' => '',
+			),
+		);
+
+		// Available variables
+		$pattern_variables = array(
+			'%%category%%' => __( 'Category name', 'meowseo' ),
+			'%%tag%%' => __( 'Tag name', 'meowseo' ),
+			'%%term%%' => __( 'Taxonomy term name', 'meowseo' ),
+			'%%date%%' => __( 'Archive date', 'meowseo' ),
+			'%%name%%' => __( 'Author display name', 'meowseo' ),
+			'%%searchphrase%%' => __( 'Search query', 'meowseo' ),
+			'%%posttype%%' => __( 'Post type label', 'meowseo' ),
+			'%%sep%%' => __( 'Separator', 'meowseo' ),
+			'%%page%%' => __( 'Page number', 'meowseo' ),
+			'%%sitename%%' => __( 'Site name', 'meowseo' ),
+			'%%title%%' => __( 'Archive title', 'meowseo' ),
+		);
+		?>
+		<h3><?php esc_html_e( 'Archive Patterns', 'meowseo' ); ?></h3>
+		<p class="description">
+			<?php esc_html_e( 'Configure title and description patterns for archive pages. Use variables to dynamically insert content.', 'meowseo' ); ?>
+		</p>
+		
+		<div class="meowseo-archive-patterns-help" style="margin: 15px 0; padding: 12px; background: #f0f6fc; border-left: 4px solid #0073aa; border-radius: 3px;">
+			<p style="margin: 0 0 8px 0; font-weight: 600;">
+				<?php esc_html_e( 'Available Variables:', 'meowseo' ); ?>
+			</p>
+			<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; font-size: 12px;">
+				<?php foreach ( $pattern_variables as $var => $description ) : ?>
+					<div>
+						<code style="background: #fff; padding: 2px 6px; border-radius: 2px;"><?php echo esc_html( $var ); ?></code>
+						<span style="color: #666;"> - <?php echo esc_html( $description ); ?></span>
+					</div>
+				<?php endforeach; ?>
+			</div>
+		</div>
+
+		<table class="form-table" role="presentation">
+			<?php foreach ( $archive_types as $type_key => $type_label ) : ?>
+				<?php
+				// Get stored values and convert from {} to %% syntax for display
+				$title_value = isset( $title_patterns[ $type_key ]['title'] ) ? $this->convert_pattern_to_display( $title_patterns[ $type_key ]['title'] ) : '';
+				$description_value = isset( $title_patterns[ $type_key ]['description'] ) ? $this->convert_pattern_to_display( $title_patterns[ $type_key ]['description'] ) : '';
+				$title_placeholder = $default_patterns[ $type_key ]['title'];
+				$description_placeholder = $default_patterns[ $type_key ]['description'];
+				?>
+				<tr>
+					<th scope="row" colspan="2">
+						<h4 style="margin: 20px 0 10px 0;"><?php echo esc_html( $type_label ); ?></h4>
+					</th>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="archive_pattern_<?php echo esc_attr( $type_key ); ?>_title">
+							<?php esc_html_e( 'Title Pattern', 'meowseo' ); ?>
+						</label>
+					</th>
+					<td>
+						<input 
+							type="text" 
+							name="archive_pattern_<?php echo esc_attr( $type_key ); ?>_title" 
+							id="archive_pattern_<?php echo esc_attr( $type_key ); ?>_title" 
+							value="<?php echo esc_attr( $title_value ); ?>" 
+							placeholder="<?php echo esc_attr( $title_placeholder ); ?>"
+							class="large-text meowseo-archive-pattern-input" 
+							data-archive-type="<?php echo esc_attr( $type_key ); ?>"
+							data-pattern-type="title"
+						>
+						<p class="description meowseo-archive-pattern-preview" data-for="archive_pattern_<?php echo esc_attr( $type_key ); ?>_title"></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="archive_pattern_<?php echo esc_attr( $type_key ); ?>_description">
+							<?php esc_html_e( 'Description Pattern', 'meowseo' ); ?>
+						</label>
+					</th>
+					<td>
+						<input 
+							type="text" 
+							name="archive_pattern_<?php echo esc_attr( $type_key ); ?>_description" 
+							id="archive_pattern_<?php echo esc_attr( $type_key ); ?>_description" 
+							value="<?php echo esc_attr( $description_value ); ?>" 
+							placeholder="<?php echo esc_attr( $description_placeholder ); ?>"
+							class="large-text meowseo-archive-pattern-input" 
+							data-archive-type="<?php echo esc_attr( $type_key ); ?>"
+							data-pattern-type="description"
+						>
+						<p class="description meowseo-archive-pattern-preview" data-for="archive_pattern_<?php echo esc_attr( $type_key ); ?>_description"></p>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+		</table>
+		<?php
+	}
+
+	/**
+	 * Render archive pattern preview JavaScript
+	 *
+	 * Requirements: 5.4, 5.5
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	private function render_archive_pattern_preview_script(): void {
+		$separator = $this->options->get( 'separator', '|' );
+		$sitename  = get_bloginfo( 'name' );
+		$tagline   = get_bloginfo( 'description' );
+		?>
+		<script>
+		(function() {
+			var separator = <?php echo wp_json_encode( $separator ); ?>;
+			var sitename = <?php echo wp_json_encode( $sitename ); ?>;
+			var tagline = <?php echo wp_json_encode( $tagline ); ?>;
+			
+			// Example data for each archive type
+			var exampleData = {
+				'category_archive': {
+					'%%category%%': 'Technology',
+					'%%term%%': 'Technology',
+					'%%title%%': 'Technology'
+				},
+				'tag_archive': {
+					'%%tag%%': 'WordPress',
+					'%%term%%': 'WordPress',
+					'%%title%%': 'WordPress'
+				},
+				'custom_taxonomy_archive': {
+					'%%term%%': 'Portfolio',
+					'%%title%%': 'Portfolio'
+				},
+				'author_page': {
+					'%%name%%': 'John Doe',
+					'%%title%%': 'John Doe'
+				},
+				'search_results': {
+					'%%searchphrase%%': 'wordpress seo',
+					'%%title%%': 'Search Results'
+				},
+				'date_archive': {
+					'%%date%%': 'January 2024',
+					'%%title%%': 'January 2024'
+				},
+				'404_page': {
+					'%%title%%': 'Page Not Found'
+				},
+				'homepage': {
+					'%%title%%': sitename
+				}
+			};
+			
+			function updateArchivePreview(input) {
+				var pattern = input.value;
+				var archiveType = input.getAttribute('data-archive-type');
+				var preview = document.querySelector('.meowseo-archive-pattern-preview[data-for="' + input.id + '"]');
+				
+				if (!preview) return;
+				
+				// Use placeholder if input is empty
+				if (!pattern) {
+					pattern = input.getAttribute('placeholder');
+				}
+				
+				// Get example data for this archive type
+				var data = exampleData[archiveType] || {};
+				
+				// Replace variables
+				var rendered = pattern;
+				
+				// Replace archive-specific variables
+				for (var variable in data) {
+					rendered = rendered.replace(new RegExp(variable.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), data[variable]);
+				}
+				
+				// Replace common variables
+				rendered = rendered.replace(/%%sitename%%/g, sitename);
+				rendered = rendered.replace(/%%sep%%/g, separator);
+				rendered = rendered.replace(/%%page%%/g, '2');
+				rendered = rendered.replace(/%%posttype%%/g, 'Posts');
+				rendered = rendered.replace(/%%tagline%%/g, tagline);
+				
+				preview.textContent = '<?php esc_html_e( 'Preview:', 'meowseo' ); ?> ' + rendered;
+			}
+			
+			document.addEventListener('DOMContentLoaded', function() {
+				var inputs = document.querySelectorAll('.meowseo-archive-pattern-input');
+				inputs.forEach(function(input) {
+					updateArchivePreview(input);
+					input.addEventListener('input', function() { 
+						updateArchivePreview(this); 
+					});
 				});
 			});
 		})();
@@ -572,6 +830,71 @@ class Settings_Manager {
 						<?php endforeach; ?>
 					</fieldset>
 					<p class="description"><?php esc_html_e( 'Prevent search engines from indexing selected archive types.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Archive Robots', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<td colspan="2">
+					<p class="description" style="margin-top: 0;">
+						<?php esc_html_e( 'Configure robots meta tags for archive pages. These are global defaults that can be overridden on individual taxonomy terms.', 'meowseo' ); ?>
+					</p>
+					<table class="widefat" style="margin-top: 10px;">
+						<thead>
+							<tr>
+								<th style="width: 40%;"><?php esc_html_e( 'Archive Type', 'meowseo' ); ?></th>
+								<th style="width: 30%; text-align: center;"><?php esc_html_e( 'Noindex', 'meowseo' ); ?></th>
+								<th style="width: 30%; text-align: center;"><?php esc_html_e( 'Nofollow', 'meowseo' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php
+							$archive_robots_types = array(
+								'robots_author_archive'   => __( 'Author Archives', 'meowseo' ),
+								'robots_date_archive'     => __( 'Date Archives', 'meowseo' ),
+								'robots_category_archive' => __( 'Category Archives', 'meowseo' ),
+								'robots_tag_archive'      => __( 'Tag Archives', 'meowseo' ),
+								'robots_search_results'   => __( 'Search Results', 'meowseo' ),
+								'robots_attachment'       => __( 'Media Attachments', 'meowseo' ),
+							);
+
+							// Add custom post type archives
+							$post_types = get_post_types( array( 'public' => true, 'has_archive' => true ), 'objects' );
+							foreach ( $post_types as $post_type ) {
+								if ( ! in_array( $post_type->name, array( 'post', 'page', 'attachment' ), true ) ) {
+									$archive_robots_types[ 'robots_post_type_archive_' . $post_type->name ] = sprintf(
+										/* translators: %s: Post type label */
+										__( '%s Archives', 'meowseo' ),
+										$post_type->label
+									);
+								}
+							}
+
+							foreach ( $archive_robots_types as $setting_key => $label ) :
+								$setting_value = $this->options->get( $setting_key, array( 'noindex' => false, 'nofollow' => false ) );
+								$noindex       = isset( $setting_value['noindex'] ) ? $setting_value['noindex'] : false;
+								$nofollow      = isset( $setting_value['nofollow'] ) ? $setting_value['nofollow'] : false;
+								?>
+								<tr>
+									<td><?php echo esc_html( $label ); ?></td>
+									<td style="text-align: center;">
+										<input type="checkbox" 
+											   name="<?php echo esc_attr( $setting_key ); ?>[noindex]" 
+											   value="1" 
+											   <?php checked( $noindex ); ?>
+											   aria-label="<?php echo esc_attr( sprintf( __( 'Noindex %s', 'meowseo' ), $label ) ); ?>">
+									</td>
+									<td style="text-align: center;">
+										<input type="checkbox" 
+											   name="<?php echo esc_attr( $setting_key ); ?>[nofollow]" 
+											   value="1" 
+											   <?php checked( $nofollow ); ?>
+											   aria-label="<?php echo esc_attr( sprintf( __( 'Nofollow %s', 'meowseo' ), $label ) ); ?>">
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
 				</td>
 			</tr>
 
@@ -849,6 +1172,39 @@ class Settings_Manager {
 		$validated['canonical_force_trailing_slash'] = ! empty( $settings['canonical_force_trailing_slash'] );
 		$validated['canonical_force_https'] = ! empty( $settings['canonical_force_https'] );
 
+		// Validate archive robots settings.
+		$archive_robots_keys = array(
+			'robots_author_archive',
+			'robots_date_archive',
+			'robots_category_archive',
+			'robots_tag_archive',
+			'robots_search_results',
+			'robots_attachment',
+		);
+
+		// Add custom post type archive robots settings.
+		$post_types = get_post_types( array( 'public' => true, 'has_archive' => true ), 'objects' );
+		foreach ( $post_types as $post_type ) {
+			if ( ! in_array( $post_type->name, array( 'post', 'page', 'attachment' ), true ) ) {
+				$archive_robots_keys[] = 'robots_post_type_archive_' . $post_type->name;
+			}
+		}
+
+		foreach ( $archive_robots_keys as $key ) {
+			if ( isset( $settings[ $key ] ) && is_array( $settings[ $key ] ) ) {
+				$validated[ $key ] = array(
+					'noindex'  => ! empty( $settings[ $key ]['noindex'] ),
+					'nofollow' => ! empty( $settings[ $key ]['nofollow'] ),
+				);
+			} else {
+				// Set default values if not provided.
+				$validated[ $key ] = array(
+					'noindex'  => false,
+					'nofollow' => false,
+				);
+			}
+		}
+
 		// Validate RSS settings.
 		if ( isset( $settings['rss_before_content'] ) ) {
 			$validated['rss_before_content'] = wp_kses_post( $settings['rss_before_content'] );
@@ -886,12 +1242,204 @@ class Settings_Manager {
 			$validated['breadcrumbs_show_on_taxonomies'] = array();
 		}
 
+		// Validate archive patterns (Requirements: 5.1-5.16).
+		$validated['title_patterns'] = $this->validate_archive_patterns( $settings );
+		if ( is_wp_error( $validated['title_patterns'] ) ) {
+			$this->errors = array_merge( $this->errors, $validated['title_patterns']->get_error_data() );
+			unset( $validated['title_patterns'] );
+		}
+
 		// Return errors if any.
 		if ( ! empty( $this->errors ) ) {
 			return new \WP_Error( 'validation_failed', __( 'Settings validation failed.', 'meowseo' ), $this->errors );
 		}
 
 		return $validated;
+	}
+
+	/**
+	 * Validate archive patterns
+	 *
+	 * Validates archive pattern syntax and sanitizes input.
+	 * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11, 5.12, 5.13, 5.14, 5.15, 5.16
+	 *
+	 * @since 1.0.0
+	 * @param array $settings Settings array containing archive patterns.
+	 * @return array|\WP_Error Validated patterns array or WP_Error on failure.
+	 */
+	private function validate_archive_patterns( array $settings ) {
+		$archive_types = array(
+			'category_archive',
+			'tag_archive',
+			'custom_taxonomy_archive',
+			'author_page',
+			'search_results',
+			'date_archive',
+			'404_page',
+			'homepage',
+		);
+
+		$validated_patterns = array();
+		$errors = array();
+
+		foreach ( $archive_types as $type ) {
+			$title_key = 'archive_pattern_' . $type . '_title';
+			$description_key = 'archive_pattern_' . $type . '_description';
+
+			// Validate title pattern.
+			if ( isset( $settings[ $title_key ] ) ) {
+				$title_pattern = sanitize_text_field( $settings[ $title_key ] );
+				
+				// Validate pattern syntax (check for unmatched %% delimiters).
+				$validation_result = $this->validate_pattern_syntax( $title_pattern );
+				if ( is_wp_error( $validation_result ) ) {
+					$errors[ $title_key ] = sprintf(
+						/* translators: %1$s: Archive type label, %2$s: Error message */
+						__( '%1$s title pattern: %2$s', 'meowseo' ),
+						ucwords( str_replace( '_', ' ', $type ) ),
+						$validation_result->get_error_message()
+					);
+				} else {
+					// Convert %% syntax to {} syntax for internal storage.
+					$validated_patterns[ $type ]['title'] = $this->convert_pattern_to_internal( $title_pattern );
+				}
+			}
+
+			// Validate description pattern.
+			if ( isset( $settings[ $description_key ] ) ) {
+				$description_pattern = sanitize_text_field( $settings[ $description_key ] );
+				
+				// Validate pattern syntax.
+				$validation_result = $this->validate_pattern_syntax( $description_pattern );
+				if ( is_wp_error( $validation_result ) ) {
+					$errors[ $description_key ] = sprintf(
+						/* translators: %1$s: Archive type label, %2$s: Error message */
+						__( '%1$s description pattern: %2$s', 'meowseo' ),
+						ucwords( str_replace( '_', ' ', $type ) ),
+						$validation_result->get_error_message()
+					);
+				} else {
+					// Convert %% syntax to {} syntax for internal storage.
+					$validated_patterns[ $type ]['description'] = $this->convert_pattern_to_internal( $description_pattern );
+				}
+			}
+		}
+
+		if ( ! empty( $errors ) ) {
+			return new \WP_Error( 'pattern_validation_failed', __( 'Pattern validation failed.', 'meowseo' ), $errors );
+		}
+
+		return $validated_patterns;
+	}
+
+	/**
+	 * Validate pattern syntax
+	 *
+	 * Checks for unmatched %% delimiters in pattern string.
+	 * Requirements: 5.2, 5.3
+	 *
+	 * @since 1.0.0
+	 * @param string $pattern Pattern string to validate.
+	 * @return bool|\WP_Error True if valid, WP_Error if invalid.
+	 */
+	private function validate_pattern_syntax( string $pattern ) {
+		// Empty patterns are valid.
+		if ( empty( $pattern ) ) {
+			return true;
+		}
+
+		// Count %% occurrences.
+		$count = substr_count( $pattern, '%%' );
+		
+		// Must have even number of %% (pairs).
+		if ( $count % 2 !== 0 ) {
+			return new \WP_Error( 'unmatched_delimiters', __( 'Unmatched %% delimiters. Variables must be wrapped in pairs like %%variable%%.', 'meowseo' ) );
+		}
+
+		// Check for valid variable names between %% pairs.
+		preg_match_all( '/%%([^%]+)%%/', $pattern, $matches );
+		
+		if ( ! empty( $matches[1] ) ) {
+			$valid_variables = array(
+				'title', 'sitename', 'category', 'tag', 'term', 'date', 'name',
+				'searchphrase', 'posttype', 'sep', 'page', 'tagline',
+			);
+
+			foreach ( $matches[1] as $variable ) {
+				if ( ! in_array( $variable, $valid_variables, true ) ) {
+					return new \WP_Error(
+						'invalid_variable',
+						sprintf(
+							/* translators: %s: Variable name */
+							__( 'Invalid variable: %%%s%%. Please use only supported variables.', 'meowseo' ),
+							esc_html( $variable )
+						)
+					);
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Convert pattern from %% syntax to {} syntax
+	 *
+	 * Converts user-friendly %% syntax to internal {} syntax used by Title_Patterns class.
+	 * Requirements: 5.1, 5.2
+	 *
+	 * @since 1.0.0
+	 * @param string $pattern Pattern string with %% syntax.
+	 * @return string Pattern string with {} syntax.
+	 */
+	private function convert_pattern_to_internal( string $pattern ): string {
+		// Map of %% variables to {} variables.
+		$variable_map = array(
+			'%%title%%' => '{title}',
+			'%%sitename%%' => '{site_name}',
+			'%%category%%' => '{category}',
+			'%%tag%%' => '{tag}',
+			'%%term%%' => '{term}',
+			'%%date%%' => '{date}',
+			'%%name%%' => '{name}',
+			'%%searchphrase%%' => '{searchphrase}',
+			'%%posttype%%' => '{posttype}',
+			'%%sep%%' => '{sep}',
+			'%%page%%' => '{page}',
+			'%%tagline%%' => '{tagline}',
+		);
+
+		return str_replace( array_keys( $variable_map ), array_values( $variable_map ), $pattern );
+	}
+
+	/**
+	 * Convert pattern from {} syntax to %% syntax
+	 *
+	 * Converts internal {} syntax to user-friendly %% syntax for display in UI.
+	 * Requirements: 5.1, 5.2
+	 *
+	 * @since 1.0.0
+	 * @param string $pattern Pattern string with {} syntax.
+	 * @return string Pattern string with %% syntax.
+	 */
+	private function convert_pattern_to_display( string $pattern ): string {
+		// Map of {} variables to %% variables.
+		$variable_map = array(
+			'{title}' => '%%title%%',
+			'{site_name}' => '%%sitename%%',
+			'{category}' => '%%category%%',
+			'{tag}' => '%%tag%%',
+			'{term}' => '%%term%%',
+			'{date}' => '%%date%%',
+			'{name}' => '%%name%%',
+			'{searchphrase}' => '%%searchphrase%%',
+			'{posttype}' => '%%posttype%%',
+			'{sep}' => '%%sep%%',
+			'{page}' => '%%page%%',
+			'{tagline}' => '%%tagline%%',
+		);
+
+		return str_replace( array_keys( $variable_map ), array_values( $variable_map ), $pattern );
 	}
 
 	/**

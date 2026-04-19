@@ -544,6 +544,61 @@ if ( ! isset( $wpdb ) ) {
 			return 0;
 		}
 
+		public function get_col( $query, $column_offset = 0 ) {
+			global $wpdb_storage;
+			
+			// Extract table name from query
+			if ( preg_match( '/FROM\s+(\w+)/i', $query, $matches ) ) {
+				$table = $matches[1];
+				if ( isset( $wpdb_storage[ $table ] ) ) {
+					$results = array();
+					
+					// Apply WHERE conditions if present
+					if ( preg_match( '/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/is', $query, $where_matches ) ) {
+						foreach ( $wpdb_storage[ $table ] as $row ) {
+							if ( $this->matches_where( $row, $where_matches[1] ) ) {
+								$results[] = $row;
+							}
+						}
+					} else {
+						$results = array_values( $wpdb_storage[ $table ] );
+					}
+					
+					// Apply ORDER BY if present
+					if ( preg_match( '/ORDER\s+BY\s+(\w+)\s+(ASC|DESC)?/i', $query, $order_matches ) ) {
+						$order_column = $order_matches[1];
+						$order_direction = isset( $order_matches[2] ) ? strtoupper( $order_matches[2] ) : 'ASC';
+						usort( $results, function( $a, $b ) use ( $order_column, $order_direction ) {
+							$val_a = isset( $a[ $order_column ] ) ? $a[ $order_column ] : null;
+							$val_b = isset( $b[ $order_column ] ) ? $b[ $order_column ] : null;
+							$cmp = $val_a <=> $val_b;
+							return $order_direction === 'DESC' ? -$cmp : $cmp;
+						} );
+					}
+					
+					// Apply LIMIT and OFFSET if present
+					if ( preg_match( '/LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?/i', $query, $limit_matches ) ) {
+						$limit = (int) $limit_matches[1];
+						$offset = isset( $limit_matches[2] ) ? (int) $limit_matches[2] : 0;
+						$results = array_slice( $results, $offset, $limit );
+					}
+					
+					// Extract the specified column from each row
+					$column_values = array();
+					foreach ( $results as $row ) {
+						$row_values = array_values( $row );
+						if ( isset( $row_values[ $column_offset ] ) ) {
+							$column_values[] = $row_values[ $column_offset ];
+						}
+					}
+					
+					return $column_values;
+				}
+			}
+			
+			return array();
+		}
+
 		public function get_row( $query, $output = OBJECT ) {
 			global $wpdb_storage;
 			
@@ -851,6 +906,31 @@ if ( ! function_exists( 'update_post_meta' ) ) {
 	}
 }
 
+if ( ! function_exists( 'add_post_meta' ) ) {
+	function add_post_meta( $post_id, $meta_key, $meta_value, $unique = false ) {
+		global $wp_postmeta_storage;
+		$post_id = (int) $post_id;
+
+		if ( ! isset( $wp_postmeta_storage[ $post_id ] ) ) {
+			$wp_postmeta_storage[ $post_id ] = array();
+		}
+
+		// If unique is true and key already exists, return false
+		if ( $unique && isset( $wp_postmeta_storage[ $post_id ][ $meta_key ] ) ) {
+			return false;
+		}
+
+		// If key doesn't exist, create it
+		if ( ! isset( $wp_postmeta_storage[ $post_id ][ $meta_key ] ) ) {
+			$wp_postmeta_storage[ $post_id ][ $meta_key ] = array();
+		}
+
+		// Add the value
+		$wp_postmeta_storage[ $post_id ][ $meta_key ][] = $meta_value;
+		return true;
+	}
+}
+
 if ( ! function_exists( 'delete_post_meta' ) ) {
 	function delete_post_meta( $post_id, $meta_key = '', $meta_value = '' ) {
 		global $wp_postmeta_storage;
@@ -894,7 +974,8 @@ if ( ! function_exists( 'get_term_link' ) ) {
 
 if ( ! function_exists( 'get_queried_object' ) ) {
 	function get_queried_object() {
-		return null;
+		global $wp_query;
+		return isset( $wp_query->queried_object ) ? $wp_query->queried_object : null;
 	}
 }
 
@@ -912,61 +993,71 @@ if ( ! function_exists( 'get_search_query' ) ) {
 
 if ( ! function_exists( 'is_category' ) ) {
 	function is_category( $category = '' ) {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_category ) && $wp_query->is_category;
 	}
 }
 
 if ( ! function_exists( 'is_tag' ) ) {
 	function is_tag( $tag = '' ) {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_tag ) && $wp_query->is_tag;
 	}
 }
 
 if ( ! function_exists( 'is_tax' ) ) {
 	function is_tax( $taxonomy = '', $term = '' ) {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_tax ) && $wp_query->is_tax;
 	}
 }
 
 if ( ! function_exists( 'is_front_page' ) ) {
 	function is_front_page() {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_front_page ) && $wp_query->is_front_page;
 	}
 }
 
 if ( ! function_exists( 'is_home' ) ) {
 	function is_home() {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_home ) && $wp_query->is_home;
 	}
 }
 
 if ( ! function_exists( 'is_author' ) ) {
 	function is_author( $author = '' ) {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_author ) && $wp_query->is_author;
 	}
 }
 
 if ( ! function_exists( 'is_post_type_archive' ) ) {
 	function is_post_type_archive( $post_types = '' ) {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_post_type_archive ) && $wp_query->is_post_type_archive;
 	}
 }
 
 if ( ! function_exists( 'is_search' ) ) {
 	function is_search() {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_search ) && $wp_query->is_search;
 	}
 }
 
 if ( ! function_exists( 'is_attachment' ) ) {
 	function is_attachment() {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_attachment ) && $wp_query->is_attachment;
 	}
 }
 
 if ( ! function_exists( 'is_date' ) ) {
 	function is_date() {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_date ) && $wp_query->is_date;
 	}
 }
 
@@ -1506,7 +1597,8 @@ if ( ! function_exists( 'is_search' ) ) {
 
 if ( ! function_exists( 'is_archive' ) ) {
 	function is_archive() {
-		return false;
+		global $wp_query;
+		return isset( $wp_query->is_archive ) && $wp_query->is_archive;
 	}
 }
 
@@ -1752,8 +1844,19 @@ if ( ! function_exists( 'sanitize_html_class' ) ) {
 	}
 }
 
+// Global test override for is_admin
+global $test_is_admin;
+$test_is_admin = false;
+
 if ( ! function_exists( 'is_admin' ) ) {
 	function is_admin() {
+		global $test_is_admin;
+		
+		// Allow tests to override the is_admin check
+		if ( $test_is_admin !== null ) {
+			return $test_is_admin;
+		}
+		
 		return false;
 	}
 }
@@ -1778,6 +1881,12 @@ if ( ! function_exists( 'wp_die' ) ) {
 
 if ( ! function_exists( 'esc_html__' ) ) {
 	function esc_html__( $text, $domain = 'default' ) {
+		return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'esc_attr__' ) ) {
+	function esc_attr__( $text, $domain = 'default' ) {
 		return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
 	}
 }
@@ -2181,6 +2290,175 @@ if ( ! function_exists( 'has_action' ) ) {
 				return $filter['priority'];
 			}
 		}
+		return false;
+	}
+}
+
+/**
+ * Mock WP_Query class for testing.
+ */
+if ( ! class_exists( 'WP_Query' ) ) {
+	class WP_Query {
+		private array $query_vars = array();
+		private bool $is_admin;
+		private bool $is_main;
+		public array $posts = array();
+		public int $found_posts = 0;
+		public int $post_count = 0;
+		public int $current_post = -1;
+		public bool $in_the_loop = false;
+
+		/**
+		 * Constructor - accepts either array of query args (WordPress standard) or individual params (for backward compatibility)
+		 */
+		public function __construct( $args = array(), string $order = '', bool $is_admin = true, bool $is_main = true ) {
+			// Handle array of query args (WordPress standard)
+			if ( is_array( $args ) ) {
+				$this->query_vars = $args;
+				$this->is_admin = $is_admin;
+				$this->is_main = $is_main;
+				
+				// Simulate query execution for testing
+				$this->execute_query();
+			}
+			// Handle individual params (backward compatibility for existing tests)
+			elseif ( is_string( $args ) ) {
+				$this->query_vars['orderby'] = $args;
+				$this->query_vars['order'] = $order;
+				$this->is_admin = $is_admin;
+				$this->is_main = $is_main;
+			}
+		}
+
+		/**
+		 * Simulate query execution for testing
+		 */
+		private function execute_query(): void {
+			global $wp_posts_storage;
+			
+			// If fields=ids, return post IDs
+			if ( isset( $this->query_vars['fields'] ) && $this->query_vars['fields'] === 'ids' ) {
+				// Get posts from storage
+				if ( isset( $wp_posts_storage ) && ! empty( $wp_posts_storage ) ) {
+					$this->posts = array_keys( $wp_posts_storage );
+					$this->found_posts = count( $this->posts );
+					$this->post_count = min( $this->found_posts, $this->query_vars['posts_per_page'] ?? 10 );
+					
+					// Apply pagination
+					if ( isset( $this->query_vars['paged'] ) && $this->query_vars['paged'] > 1 ) {
+						$offset = ( $this->query_vars['paged'] - 1 ) * ( $this->query_vars['posts_per_page'] ?? 10 );
+						$this->posts = array_slice( $this->posts, $offset, $this->query_vars['posts_per_page'] ?? 10 );
+						$this->post_count = count( $this->posts );
+					} else {
+						$this->posts = array_slice( $this->posts, 0, $this->query_vars['posts_per_page'] ?? 10 );
+						$this->post_count = count( $this->posts );
+					}
+				}
+			}
+		}
+
+		public function get( string $key, $default = '' ) {
+			return $this->query_vars[ $key ] ?? $default;
+		}
+
+		public function set( string $key, $value ): void {
+			$this->query_vars[ $key ] = $value;
+		}
+
+		public function is_main_query(): bool {
+			return $this->is_main;
+		}
+
+		public function have_posts(): bool {
+			return $this->current_post + 1 < $this->post_count;
+		}
+
+		public function the_post(): void {
+			$this->current_post++;
+			$this->in_the_loop = true;
+		}
+
+		public function rewind_posts(): void {
+			$this->current_post = -1;
+			$this->in_the_loop = false;
+		}
+	}
+}
+
+
+// In-memory termmeta storage for testing
+global $wp_termmeta_storage;
+if ( ! isset( $wp_termmeta_storage ) ) {
+	$wp_termmeta_storage = array();
+}
+
+if ( ! function_exists( 'get_term_meta' ) ) {
+	function get_term_meta( $term_id, $key = '', $single = false ) {
+		global $wp_termmeta_storage;
+		$term_id = (int) $term_id;
+
+		if ( ! isset( $wp_termmeta_storage[ $term_id ] ) ) {
+			return $single ? '' : array();
+		}
+
+		if ( empty( $key ) ) {
+			return $wp_termmeta_storage[ $term_id ];
+		}
+
+		if ( $single ) {
+			return isset( $wp_termmeta_storage[ $term_id ][ $key ] ) ? $wp_termmeta_storage[ $term_id ][ $key ][0] : '';
+		}
+
+		return isset( $wp_termmeta_storage[ $term_id ][ $key ] ) ? $wp_termmeta_storage[ $term_id ][ $key ] : array();
+	}
+}
+
+if ( ! function_exists( 'update_term_meta' ) ) {
+	function update_term_meta( $term_id, $meta_key, $meta_value, $prev_value = '' ) {
+		global $wp_termmeta_storage;
+		$term_id = (int) $term_id;
+
+		if ( ! isset( $wp_termmeta_storage[ $term_id ] ) ) {
+			$wp_termmeta_storage[ $term_id ] = array();
+		}
+
+		$wp_termmeta_storage[ $term_id ][ $meta_key ] = array( $meta_value );
+		return true;
+	}
+}
+
+if ( ! function_exists( 'delete_term_meta' ) ) {
+	function delete_term_meta( $term_id, $meta_key = '', $meta_value = '' ) {
+		global $wp_termmeta_storage;
+		$term_id = (int) $term_id;
+
+		if ( ! isset( $wp_termmeta_storage[ $term_id ] ) ) {
+			return false;
+		}
+
+		if ( empty( $meta_key ) ) {
+			unset( $wp_termmeta_storage[ $term_id ] );
+			return true;
+		}
+
+		if ( isset( $wp_termmeta_storage[ $term_id ][ $meta_key ] ) ) {
+			unset( $wp_termmeta_storage[ $term_id ][ $meta_key ] );
+			return true;
+		}
+
+		return false;
+	}
+}
+
+if ( ! function_exists( 'is_archive' ) ) {
+	function is_archive() {
+		global $wp_query;
+		return isset( $wp_query->is_archive ) && $wp_query->is_archive;
+	}
+}
+
+if ( ! function_exists( 'is_404' ) ) {
+	function is_404() {
 		return false;
 	}
 }

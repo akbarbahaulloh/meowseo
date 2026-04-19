@@ -33,6 +33,13 @@ class Title_Patterns {
 		'author_name',
 		'current_year',
 		'current_month',
+		'category',
+		'tag',
+		'term',
+		'date',
+		'name',
+		'searchphrase',
+		'posttype',
 	);
 
 	/**
@@ -205,22 +212,150 @@ class Title_Patterns {
 	}
 
 	/**
+	 * Get pattern for archive type
+	 *
+	 * @param string $archive_type Archive type.
+	 * @return string Pattern string.
+	 */
+	public function get_pattern_for_archive_type( string $archive_type ): string {
+		$patterns = $this->options->get( 'title_patterns', $this->get_default_patterns() );
+		
+		// Check for specific archive type pattern.
+		if ( isset( $patterns[ $archive_type ] ) ) {
+			return $patterns[ $archive_type ];
+		}
+		
+		// Final fallback.
+		return '{title} {sep} {site_name}';
+	}
+
+	/**
+	 * Resolve archive variables
+	 *
+	 * Builds context array with archive-specific variables based on current page.
+	 *
+	 * @return array Context array with resolved archive variables.
+	 */
+	public function resolve_archive_variables(): array {
+		$context = array();
+		
+		// Get page number for pagination.
+		$paged = get_query_var( 'paged' );
+		if ( $paged > 1 ) {
+			$context['page_number'] = $paged;
+		}
+		
+		// Category archive.
+		if ( is_category() ) {
+			$term = get_queried_object();
+			if ( $term && isset( $term->name ) ) {
+				$context['category'] = $term->name;
+				$context['term'] = $term->name;
+			}
+		}
+		
+		// Tag archive.
+		if ( is_tag() ) {
+			$term = get_queried_object();
+			if ( $term && isset( $term->name ) ) {
+				$context['tag'] = $term->name;
+				$context['term'] = $term->name;
+			}
+		}
+		
+		// Custom taxonomy archive.
+		if ( is_tax() ) {
+			$term = get_queried_object();
+			if ( $term && isset( $term->name ) ) {
+				$context['term'] = $term->name;
+			}
+		}
+		
+		// Author archive.
+		if ( is_author() ) {
+			$author = get_queried_object();
+			if ( $author && isset( $author->display_name ) ) {
+				$context['name'] = $author->display_name;
+			}
+		}
+		
+		// Search results.
+		if ( is_search() ) {
+			$context['searchphrase'] = get_search_query();
+		}
+		
+		// Date archive.
+		if ( is_date() ) {
+			$context['date'] = $this->format_archive_date();
+		}
+		
+		// Post type archive.
+		if ( is_post_type_archive() ) {
+			$post_type = get_query_var( 'post_type' );
+			if ( $post_type ) {
+				$post_type_obj = get_post_type_object( $post_type );
+				if ( $post_type_obj && isset( $post_type_obj->labels->name ) ) {
+					$context['posttype'] = $post_type_obj->labels->name;
+				}
+			}
+		}
+		
+		return $context;
+	}
+
+	/**
+	 * Format archive date
+	 *
+	 * Formats the current archive date based on year/month/day query vars.
+	 *
+	 * @return string Formatted date string.
+	 */
+	private function format_archive_date(): string {
+		$year  = get_query_var( 'year' );
+		$month = get_query_var( 'monthnum' );
+		$day   = get_query_var( 'day' );
+		
+		if ( $day ) {
+			// Day archive: "January 15, 2024".
+			$date = gmdate( 'F j, Y', mktime( 0, 0, 0, $month, $day, $year ) );
+		} elseif ( $month ) {
+			// Month archive: "January 2024".
+			$date = gmdate( 'F Y', mktime( 0, 0, 0, $month, 1, $year ) );
+		} elseif ( $year ) {
+			// Year archive: "2024".
+			$date = $year;
+		} else {
+			// Fallback.
+			$date = gmdate( 'F Y' );
+		}
+		
+		return $date;
+	}
+
+	/**
 	 * Get default patterns
 	 *
 	 * @return array Default patterns by page type.
 	 */
 	public function get_default_patterns(): array {
 		return array(
-			'post'       => '{title} {sep} {site_name}',
-			'page'       => '{title} {sep} {site_name}',
-			'homepage'   => '{site_name} {sep} {tagline}',
-			'category'   => '{term_name} Archives {sep} {site_name}',
-			'tag'        => '{term_name} Tag {sep} {site_name}',
-			'author'     => '{author_name} {sep} {site_name}',
-			'date'       => '{current_month} {current_year} Archives {sep} {site_name}',
-			'search'     => 'Search Results {sep} {site_name}',
-			'404'        => 'Page Not Found {sep} {site_name}',
-			'attachment' => '{title} {sep} {site_name}',
+			'post'                   => '{title} {sep} {site_name}',
+			'page'                   => '{title} {sep} {site_name}',
+			'homepage'               => '{site_name} {sep} {tagline}',
+			'category'               => '{term_name} Archives {sep} {site_name}',
+			'tag'                    => '{term_name} Tag {sep} {site_name}',
+			'author'                 => '{author_name} {sep} {site_name}',
+			'date'                   => '{current_month} {current_year} Archives {sep} {site_name}',
+			'search'                 => 'Search Results {sep} {site_name}',
+			'404'                    => 'Page Not Found {sep} {site_name}',
+			'attachment'             => '{title} {sep} {site_name}',
+			'category_archive'       => '{category} Archives {sep} {site_name}',
+			'tag_archive'            => '{tag} Tag {sep} {site_name}',
+			'custom_taxonomy_archive' => '{term} {sep} {site_name}',
+			'author_page'            => '{name} {sep} {site_name}',
+			'search_results'         => 'Search Results for {searchphrase} {sep} {site_name}',
+			'date_archive'           => '{date} Archives {sep} {site_name}',
+			'404_page'               => 'Page Not Found {sep} {site_name}',
 		);
 	}
 
@@ -290,6 +425,55 @@ class Title_Patterns {
 				// Conditional: "Page N" when paginated, empty otherwise.
 				if ( isset( $context['page_number'] ) && $context['page_number'] > 1 ) {
 					return 'Page ' . $context['page_number'];
+				}
+				return '';
+			
+			case 'category':
+				// Category name for category archives.
+				if ( isset( $context['category'] ) ) {
+					return $context['category'];
+				}
+				return '';
+			
+			case 'tag':
+				// Tag name for tag archives.
+				if ( isset( $context['tag'] ) ) {
+					return $context['tag'];
+				}
+				return '';
+			
+			case 'term':
+				// Generic term name for any taxonomy.
+				if ( isset( $context['term'] ) ) {
+					return $context['term'];
+				}
+				return '';
+			
+			case 'date':
+				// Formatted archive date.
+				if ( isset( $context['date'] ) ) {
+					return $context['date'];
+				}
+				return '';
+			
+			case 'name':
+				// Author display name.
+				if ( isset( $context['name'] ) ) {
+					return $context['name'];
+				}
+				return '';
+			
+			case 'searchphrase':
+				// Search query.
+				if ( isset( $context['searchphrase'] ) ) {
+					return $context['searchphrase'];
+				}
+				return '';
+			
+			case 'posttype':
+				// Post type label.
+				if ( isset( $context['posttype'] ) ) {
+					return $context['posttype'];
 				}
 				return '';
 			

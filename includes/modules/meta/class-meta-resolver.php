@@ -17,6 +17,17 @@ use MeowSEO\Options;
  */
 class Meta_Resolver {
 	/**
+	 * Archive type constants
+	 */
+	const ARCHIVE_TYPE_AUTHOR = 'author_archive';
+	const ARCHIVE_TYPE_DATE = 'date_archive';
+	const ARCHIVE_TYPE_CATEGORY = 'category_archive';
+	const ARCHIVE_TYPE_TAG = 'tag_archive';
+	const ARCHIVE_TYPE_SEARCH = 'search_results';
+	const ARCHIVE_TYPE_ATTACHMENT = 'attachment';
+	const ARCHIVE_TYPE_POST_TYPE = 'post_type_archive';
+
+	/**
 	 * Options instance
 	 *
 	 * @var Options
@@ -50,6 +61,16 @@ class Meta_Resolver {
 	 * @return string Resolved title.
 	 */
 	public function resolve_title( ?int $post_id = null ): string {
+		// Check if this is an archive page.
+		if ( is_archive() || is_search() || is_404() || ( is_home() && ! is_front_page() ) ) {
+			return $this->resolve_archive_title();
+		}
+		
+		// Check if this is the homepage.
+		if ( is_front_page() ) {
+			return $this->resolve_homepage_title();
+		}
+		
 		// If no post ID, use current post.
 		if ( null === $post_id ) {
 			$post_id = get_the_ID();
@@ -92,6 +113,111 @@ class Meta_Resolver {
 	}
 
 	/**
+	 * Resolve archive title
+	 *
+	 * Resolves title for archive pages using archive-specific patterns.
+	 *
+	 * @return string Resolved archive title.
+	 */
+	private function resolve_archive_title(): string {
+		// Detect archive type.
+		$archive_type = $this->detect_archive_type();
+		
+		if ( ! $archive_type ) {
+			return get_bloginfo( 'name' );
+		}
+		
+		// Get pattern for this archive type.
+		$pattern = $this->patterns->get_pattern_for_archive_type( $archive_type );
+		
+		// Resolve archive variables.
+		$context = $this->patterns->resolve_archive_variables();
+		
+		// Resolve pattern with context.
+		$resolved = $this->patterns->resolve( $pattern, $context );
+		
+		// If pattern resolution failed or empty, use fallback.
+		if ( empty( $resolved ) ) {
+			$separator = $this->options->get_separator();
+			$site_name = get_bloginfo( 'name' );
+			return $site_name;
+		}
+		
+		return $resolved;
+	}
+
+	/**
+	 * Resolve homepage title
+	 *
+	 * Resolves title for the homepage using homepage pattern.
+	 *
+	 * @return string Resolved homepage title.
+	 */
+	private function resolve_homepage_title(): string {
+		// Get homepage pattern.
+		$pattern = $this->patterns->get_pattern_for_page_type( 'homepage' );
+		
+		// Build context.
+		$context = array();
+		
+		// Resolve pattern with context.
+		$resolved = $this->patterns->resolve( $pattern, $context );
+		
+		// If pattern resolution failed or empty, use fallback.
+		if ( empty( $resolved ) ) {
+			$separator = $this->options->get_separator();
+			$site_name = get_bloginfo( 'name' );
+			$tagline = get_bloginfo( 'description' );
+			return $site_name . ' ' . $separator . ' ' . $tagline;
+		}
+		
+		return $resolved;
+	}
+
+	/**
+	 * Detect archive type
+	 *
+	 * Detects the current archive type using WordPress conditionals.
+	 *
+	 * @return string|null Archive type or null if not an archive.
+	 */
+	private function detect_archive_type(): ?string {
+		if ( is_category() ) {
+			return 'category_archive';
+		}
+		
+		if ( is_tag() ) {
+			return 'tag_archive';
+		}
+		
+		if ( is_tax() ) {
+			return 'custom_taxonomy_archive';
+		}
+		
+		if ( is_author() ) {
+			return 'author_page';
+		}
+		
+		if ( is_search() ) {
+			return 'search_results';
+		}
+		
+		if ( is_date() ) {
+			return 'date_archive';
+		}
+		
+		if ( is_404() ) {
+			return '404_page';
+		}
+		
+		if ( is_post_type_archive() ) {
+			return 'custom_taxonomy_archive';
+		}
+		
+		return null;
+	}
+
+	/**
 	 * Resolve meta description
 	 *
 	 * Fallback chain: postmeta → excerpt → content → empty
@@ -100,6 +226,11 @@ class Meta_Resolver {
 	 * @return string Resolved description.
 	 */
 	public function resolve_description( ?int $post_id = null ): string {
+		// Check if this is an archive page.
+		if ( is_archive() || is_search() || is_404() ) {
+			return $this->resolve_archive_description();
+		}
+		
 		// If no post ID, use current post.
 		if ( null === $post_id ) {
 			$post_id = get_the_ID();
@@ -133,6 +264,37 @@ class Meta_Resolver {
 		}
 
 		// Return empty string.
+		return '';
+	}
+
+	/**
+	 * Resolve archive description
+	 *
+	 * Resolves description for archive pages.
+	 *
+	 * @return string Resolved archive description.
+	 */
+	private function resolve_archive_description(): string {
+		// For category/tag archives, try to get term description.
+		if ( is_category() || is_tag() || is_tax() ) {
+			$term = get_queried_object();
+			if ( $term && isset( $term->description ) && ! empty( $term->description ) ) {
+				return $this->truncate_text( $term->description, 160 );
+			}
+		}
+		
+		// For author archives, try to get author bio.
+		if ( is_author() ) {
+			$author = get_queried_object();
+			if ( $author && isset( $author->ID ) ) {
+				$bio = get_the_author_meta( 'description', $author->ID );
+				if ( ! empty( $bio ) ) {
+					return $this->truncate_text( $bio, 160 );
+				}
+			}
+		}
+		
+		// Return empty for other archive types.
 		return '';
 	}
 
@@ -658,5 +820,125 @@ class Meta_Resolver {
 	 */
 	private function is_polylang_active(): bool {
 		return function_exists( 'pll_the_languages' ) && function_exists( 'pll_current_language' );
+	}
+
+	/**
+	 * Get archive robots meta tags
+	 *
+	 * Resolves robots directives for archive pages based on archive type.
+	 * Checks for term-specific overrides first, then falls back to global settings.
+	 *
+	 * @param string $archive_type Archive type constant.
+	 * @return string Robots directives (e.g., "noindex, follow").
+	 */
+	public function get_archive_robots( string $archive_type ): string {
+		// Get global setting for this archive type.
+		$global_setting = $this->get_global_robots_setting( $archive_type );
+
+		// Check for term-specific override if this is a taxonomy archive.
+		if ( in_array( $archive_type, array( self::ARCHIVE_TYPE_CATEGORY, self::ARCHIVE_TYPE_TAG ), true ) ) {
+			$term = get_queried_object();
+			if ( $term && isset( $term->term_id ) ) {
+				// Check for term-specific robots meta.
+				$term_noindex = get_term_meta( $term->term_id, '_meowseo_robots_noindex', true );
+				$term_nofollow = get_term_meta( $term->term_id, '_meowseo_robots_nofollow', true );
+
+				// If term has specific settings, use those instead of global.
+				if ( $term_noindex !== '' || $term_nofollow !== '' ) {
+					$directives = array();
+					if ( $term_noindex ) {
+						$directives[] = 'noindex';
+					} else {
+						$directives[] = 'index';
+					}
+					if ( $term_nofollow ) {
+						$directives[] = 'nofollow';
+					} else {
+						$directives[] = 'follow';
+					}
+					return implode( ', ', $directives );
+				}
+			}
+		}
+
+		// Use global setting.
+		$directives = array();
+		if ( isset( $global_setting['noindex'] ) && $global_setting['noindex'] ) {
+			$directives[] = 'noindex';
+		} else {
+			$directives[] = 'index';
+		}
+		if ( isset( $global_setting['nofollow'] ) && $global_setting['nofollow'] ) {
+			$directives[] = 'nofollow';
+		} else {
+			$directives[] = 'follow';
+		}
+
+		return implode( ', ', $directives );
+	}
+
+	/**
+	 * Resolve robots directives for current archive page
+	 *
+	 * Detects the current archive type and returns appropriate robots directives.
+	 *
+	 * @return string Robots directives or empty string if not an archive.
+	 */
+	public function resolve_robots_for_archive(): string {
+		// Detect archive type using WordPress conditionals.
+		$archive_type = null;
+
+		if ( is_author() ) {
+			$archive_type = self::ARCHIVE_TYPE_AUTHOR;
+		} elseif ( is_date() ) {
+			$archive_type = self::ARCHIVE_TYPE_DATE;
+		} elseif ( is_category() ) {
+			$archive_type = self::ARCHIVE_TYPE_CATEGORY;
+		} elseif ( is_tag() ) {
+			$archive_type = self::ARCHIVE_TYPE_TAG;
+		} elseif ( is_search() ) {
+			$archive_type = self::ARCHIVE_TYPE_SEARCH;
+		} elseif ( is_attachment() ) {
+			$archive_type = self::ARCHIVE_TYPE_ATTACHMENT;
+		} elseif ( is_post_type_archive() ) {
+			$archive_type = self::ARCHIVE_TYPE_POST_TYPE;
+		}
+
+		// If not an archive, return empty string.
+		if ( null === $archive_type ) {
+			return '';
+		}
+
+		// Get robots directives for this archive type.
+		return $this->get_archive_robots( $archive_type );
+	}
+
+	/**
+	 * Get global robots setting for archive type
+	 *
+	 * Retrieves the global robots configuration from plugin options.
+	 *
+	 * @param string $archive_type Archive type constant.
+	 * @return array Robots setting with 'noindex' and 'nofollow' keys.
+	 */
+	private function get_global_robots_setting( string $archive_type ): array {
+		// Build option key from archive type.
+		$option_key = 'robots_' . $archive_type;
+
+		// Get setting from options.
+		$setting = $this->options->get( $option_key, array() );
+
+		// Ensure array structure.
+		if ( ! is_array( $setting ) ) {
+			$setting = array();
+		}
+
+		// Provide defaults.
+		$defaults = array(
+			'noindex'  => false,
+			'nofollow' => false,
+		);
+
+		return array_merge( $defaults, $setting );
 	}
 }
