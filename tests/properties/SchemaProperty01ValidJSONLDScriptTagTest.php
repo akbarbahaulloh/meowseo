@@ -43,6 +43,9 @@ class SchemaProperty01ValidJSONLDScriptTagTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
+		// Setup Brain\Monkey mocking for WordPress functions
+		setup_brain_monkey_mocks();
+
 		// Create a mock Options instance.
 		$options = $this->createMock( Options::class );
 		$options->method( 'get' )->willReturn( '' );

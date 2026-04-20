@@ -55,8 +55,14 @@ class Sitemap_Cache {
 	 * Initializes cache directory and ensures it exists.
 	 */
 	public function __construct() {
-		$upload_dir = wp_upload_dir();
-		$this->cache_dir = trailingslashit( $upload_dir['basedir'] ) . 'meowseo-sitemaps';
+		// Handle case where wp_upload_dir() might not be available (e.g., in tests)
+		if ( function_exists( 'wp_upload_dir' ) ) {
+			$upload_dir = wp_upload_dir();
+			$this->cache_dir = trailingslashit( $upload_dir['basedir'] ) . 'meowseo-sitemaps';
+		} else {
+			// Fallback for test environments
+			$this->cache_dir = sys_get_temp_dir() . '/meowseo-sitemaps';
+		}
 		
 		// Ensure directory exists on instantiation
 		$this->ensure_directory_exists();
@@ -81,13 +87,15 @@ class Sitemap_Cache {
 		// Check if parent directory is writable before attempting mkdir
 		if ( is_writable( dirname( $this->cache_dir ) ) ) {
 			// Parent is writable, proceed with mkdir
-			if ( ! wp_mkdir_p( $this->cache_dir ) ) {
+			// Use wp_mkdir_p if available, otherwise use mkdir
+			$mkdir_func = function_exists( 'wp_mkdir_p' ) ? 'wp_mkdir_p' : 'mkdir';
+			if ( ! $mkdir_func( $this->cache_dir, 0755, true ) ) {
 				$parent_dir = dirname( $this->cache_dir );
 				Logger::error(
 					'Sitemap cache directory creation failed',
 					array(
 						'directory'   => $this->cache_dir,
-						'error'       => 'wp_mkdir_p() failed',
+						'error'       => $mkdir_func . '() failed',
 						'permissions' => is_writable( $parent_dir ) ? 'writable' : 'not writable',
 						'parent_dir'  => $parent_dir,
 						'disk_space'  => disk_free_space( $parent_dir ) !== false 

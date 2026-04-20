@@ -30,6 +30,18 @@ class MetaProperty01TagOutputOrderTest extends WP_UnitTestCase {
 	use TestTrait;
 
 	/**
+	 * Set up test environment
+	 *
+	 * @return void
+	 */
+	protected function setUp(): void {
+		parent::setUp();
+		
+		// Setup Brain\Monkey mocking for WordPress functions
+		setup_brain_monkey_mocks();
+	}
+
+	/**
 	 * Test tag output order property for singular posts
 	 *
 	 * For any singular post, the Meta_Output should output tag groups

@@ -30,6 +30,17 @@ class ModuleLoadingPropertyTest extends TestCase {
 	use TestTrait;
 
 	/**
+	 * Setup test environment
+	 *
+	 * @return void
+	 */
+	protected function setUp(): void {
+		parent::setUp();
+		// Reset global wpdb storage to ensure clean state between tests
+		reset_wpdb_storage();
+	}
+
+	/**
 	 * Property 1: Module_Manager loads exactly the enabled set
 	 *
 	 * For any set of enabled modules in Options:

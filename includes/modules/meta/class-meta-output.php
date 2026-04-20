@@ -173,7 +173,7 @@ class Meta_Output {
 		}
 
 		// og:site_name.
-		$site_name = get_bloginfo( 'name' );
+		$site_name = \get_bloginfo( 'name' );
 		if ( ! empty( $site_name ) ) {
 			echo '<meta property="og:site_name" content="' . esc_attr( $site_name ) . '">' . "\n";
 		}

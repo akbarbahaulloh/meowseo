@@ -26,25 +26,33 @@ require_once __DIR__ . '/../../../includes/class-autoloader.php';
 \MeowSEO\Autoloader::register();
 
 // Mock WordPress functions
-function get_site_url() {
-	return 'https://example.com';
+if ( ! function_exists( 'get_site_url' ) ) {
+	function get_site_url() {
+		return 'https://example.com';
+	}
 }
 
-function get_bloginfo( $key ) {
-	$values = array(
-		'name'        => 'Test Site',
-		'description' => 'Test Description',
-		'language'    => 'en-US',
-	);
-	return $values[ $key ] ?? '';
+if ( ! function_exists( 'get_bloginfo' ) ) {
+	function get_bloginfo( $key ) {
+		$values = array(
+			'name'        => 'Test Site',
+			'description' => 'Test Description',
+			'language'    => 'en-US',
+		);
+		return $values[ $key ] ?? '';
+	}
 }
 
-function get_theme_mod( $key ) {
-	return false;
+if ( ! function_exists( 'get_theme_mod' ) ) {
+	function get_theme_mod( $key ) {
+		return false;
+	}
 }
 
-function wp_json_encode( $data, $flags = 0 ) {
-	return json_encode( $data, $flags );
+if ( ! function_exists( 'wp_json_encode' ) ) {
+	function wp_json_encode( $data, $flags = 0 ) {
+		return json_encode( $data, $flags );
+	}
 }
 
 // Create Options mock

@@ -71,6 +71,24 @@ jest.mock( '@wordpress/components', () => ( {
 			/>
 		</div>
 	),
+	ToggleControl: ( { label, help, checked, onChange, disabled }: any ) => (
+		<div>
+			<label htmlFor="toggle-control">{ label }</label>
+			<input
+				id="toggle-control"
+				type="checkbox"
+				checked={ checked }
+				onChange={ ( e ) => onChange( e.target.checked ) }
+				disabled={ disabled }
+			/>
+			{ help && <span>{ help }</span> }
+		</div>
+	),
+	Notice: ( { children, status, isDismissible }: any ) => (
+		<div data-status={ status } data-dismissible={ isDismissible }>
+			{ children }
+		</div>
+	),
 	Button: ( { children, onClick, variant, isDestructive }: any ) => (
 		<button
 			onClick={ onClick }
@@ -99,6 +117,12 @@ jest.mock( '@wordpress/data', () => ( {
 	useDispatch: jest.fn( () => ( {
 		updateBlockAttributes: jest.fn(),
 	} ) ),
+} ) );
+
+// Mock SpeakableToggle component
+jest.mock( '../schema/SpeakableToggle', () => ( {
+	__esModule: true,
+	default: () => <div data-testid="speakable-toggle">Speakable Toggle</div>,
 } ) );
 
 describe( 'SchemaTypeSelector', () => {

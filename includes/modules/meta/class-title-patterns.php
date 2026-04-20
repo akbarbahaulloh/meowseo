@@ -410,10 +410,10 @@ class Title_Patterns {
 				return $this->options->get_separator();
 			
 			case 'site_name':
-				return get_bloginfo( 'name' );
+				return \get_bloginfo( 'name' );
 			
 			case 'tagline':
-				return get_bloginfo( 'description' );
+				return \get_bloginfo( 'description' );
 			
 			case 'current_year':
 				return gmdate( 'Y' );

@@ -12,6 +12,32 @@ require_once __DIR__ . '/../vendor/autoload.php';
 // Initialize Brain\Monkey for WordPress function mocking
 require_once __DIR__ . '/../vendor/brain/monkey/inc/patchwork-loader.php';
 
+/**
+ * IMPORTANT: Brain\Monkey Mocking Strategy
+ * 
+ * The following WordPress functions are NOT defined in this bootstrap file
+ * to allow Brain\Monkey to mock them in individual tests:
+ * 
+ * - wp_upload_dir()
+ * - trailingslashit()
+ * - wp_mkdir_p()
+ * - get_bloginfo()
+ * - get_site_url()
+ * 
+ * These functions should ONLY be mocked via Brain\Monkey in tests using:
+ * 
+ *   Monkey\Functions\when('wp_upload_dir')->justReturn([...]);
+ *   Monkey\Functions\when('get_bloginfo')->justReturn('Test Site');
+ *   etc.
+ * 
+ * If these functions are defined in bootstrap.php, Brain\Monkey cannot
+ * override them, causing "Cannot redeclare function" errors in tests.
+ * 
+ * For property-based tests that need to mock these functions with different
+ * values across iterations, use reset_wpdb_storage() in setUp() to ensure
+ * clean state between test iterations.
+ */
+
 // Define WordPress constants for testing
 if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', __DIR__ . '/../' );
@@ -407,9 +433,6 @@ if ( ! function_exists( 'plugins_url' ) ) {
 	}
 }
 
-// Note: get_bloginfo() is intentionally not defined here to allow Brain\Monkey to mock it in tests
-// Note: get_site_url() is intentionally not defined here to allow Brain\Monkey to mock it in tests
-
 if ( ! function_exists( 'get_post_types' ) ) {
 	function get_post_types( $args = array(), $output = 'names' ) {
 		if ( $output === 'objects' ) {
@@ -462,6 +485,86 @@ if ( ! function_exists( 'gmdate' ) ) {
 global $wpdb_storage;
 if ( ! isset( $wpdb_storage ) ) {
 	$wpdb_storage = array();
+}
+
+/**
+ * Reset wpdb storage for test isolation in property-based tests
+ * 
+ * This function should be called in setUp() methods of property-based tests
+ * to ensure clean database state between test iterations.
+ * 
+ * @since 1.0.0
+ */
+function reset_wpdb_storage() {
+	global $wpdb_storage, $wpdb;
+	$wpdb_storage = array();
+	
+	if ( isset( $wpdb ) ) {
+		$wpdb->insert_id = 1;
+		$wpdb->last_error = '';
+	}
+}
+
+/**
+ * Reset Logger singleton for test isolation in property-based tests
+ * 
+ * This function should be called in setUp() methods of property-based tests
+ * to ensure clean Logger state between test iterations.
+ * 
+ * @since 1.0.0
+ */
+function reset_logger_singleton() {
+	$reflection = new \ReflectionClass( \MeowSEO\Helpers\Logger::class );
+	$instance_property = $reflection->getProperty( 'instance' );
+	$instance_property->setAccessible( true );
+	$instance_property->setValue( null, null );
+}
+
+/**
+ * Setup Brain\Monkey mocking for WordPress functions not defined in bootstrap
+ * 
+ * This function should be called in setUp() methods of tests that need to mock
+ * WordPress functions that are intentionally not defined in bootstrap.php to
+ * allow Brain\Monkey to override them.
+ * 
+ * Functions mocked:
+ * - wp_upload_dir()
+ * - trailingslashit()
+ * - wp_mkdir_p()
+ * - get_bloginfo()
+ * - get_site_url()
+ * 
+ * @since 1.0.0
+ */
+function setup_brain_monkey_mocks() {
+	// Mock WordPress functions that are not defined in bootstrap.php
+	// to allow Brain\Monkey to override them
+	\Brain\Monkey\Functions\when( 'get_bloginfo' )->alias( function ( $show = '' ) {
+		$values = array(
+			'name'        => 'Test Site',
+			'description' => 'Test Description',
+			'language'    => 'en-US',
+			'version'     => '6.4.2',
+		);
+		return $values[ $show ] ?? '';
+	} );
+	
+	\Brain\Monkey\Functions\when( 'trailingslashit' )->alias( function ( $string ) {
+		return rtrim( $string, '/\\' ) . '/';
+	} );
+	
+	\Brain\Monkey\Functions\when( 'get_site_url' )->justReturn( 'https://example.com' );
+	
+	\Brain\Monkey\Functions\when( 'wp_upload_dir' )->justReturn( [
+		'path'    => sys_get_temp_dir() . '/wp-content/uploads',
+		'url'     => 'http://example.com/wp-content/uploads',
+		'subdir'  => '',
+		'basedir' => sys_get_temp_dir() . '/wp-content/uploads',
+		'baseurl' => 'http://example.com/wp-content/uploads',
+		'error'   => false,
+	] );
+	
+	\Brain\Monkey\Functions\when( 'wp_mkdir_p' )->justReturn( true );
 }
 
 // Mock global $wpdb
@@ -577,20 +680,26 @@ if ( ! isset( $wpdb ) ) {
 			// Handle COUNT queries
 			if ( preg_match( '/SELECT\s+COUNT\(\*\)\s+FROM\s+(\w+)/i', $query, $matches ) ) {
 				$table = $matches[1];
-				if ( isset( $wpdb_storage[ $table ] ) ) {
-					// Apply WHERE conditions if present
-					if ( preg_match( '/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/is', $query, $where_matches ) ) {
-						$count = 0;
-						foreach ( $wpdb_storage[ $table ] as $row ) {
-							if ( $this->matches_where( $row, $where_matches[1] ) ) {
-								$count++;
-							}
-						}
-						return $count;
-					}
-					return count( $wpdb_storage[ $table ] );
+				// If table doesn't exist, return 0
+				if ( ! isset( $wpdb_storage[ $table ] ) ) {
+					return 0;
 				}
-				return 0;
+				// If table exists but is empty, return 0
+				if ( empty( $wpdb_storage[ $table ] ) ) {
+					return 0;
+				}
+				// Apply WHERE conditions if present
+				if ( preg_match( '/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/is', $query, $where_matches ) ) {
+					$count = 0;
+					foreach ( $wpdb_storage[ $table ] as $row ) {
+						if ( $this->matches_where( $row, $where_matches[1] ) ) {
+							$count++;
+						}
+					}
+					return $count;
+				}
+				// No WHERE clause - return total count
+				return count( $wpdb_storage[ $table ] );
 			}
 			
 			// Handle SELECT specific column queries
@@ -598,21 +707,24 @@ if ( ! isset( $wpdb ) ) {
 				$column = $matches[1];
 				$table = $matches[2];
 				
-				if ( isset( $wpdb_storage[ $table ] ) && ! empty( $wpdb_storage[ $table ] ) ) {
-					// Apply WHERE conditions if present
-					if ( preg_match( '/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/is', $query, $where_matches ) ) {
-						foreach ( $wpdb_storage[ $table ] as $row ) {
-							if ( $this->matches_where( $row, $where_matches[1] ) ) {
-								return isset( $row[ $column ] ) ? $row[ $column ] : null;
-							}
-						}
-						return null;
-					}
-					
-					$row = reset( $wpdb_storage[ $table ] );
-					return isset( $row[ $column ] ) ? $row[ $column ] : null;
+				// If table doesn't exist or is empty, return null
+				if ( ! isset( $wpdb_storage[ $table ] ) || empty( $wpdb_storage[ $table ] ) ) {
+					return null;
 				}
-				return null;
+				
+				// Apply WHERE conditions if present
+				if ( preg_match( '/WHERE\s+(.+?)(?:ORDER|LIMIT|$)/is', $query, $where_matches ) ) {
+					foreach ( $wpdb_storage[ $table ] as $row ) {
+						if ( $this->matches_where( $row, $where_matches[1] ) ) {
+							return isset( $row[ $column ] ) ? $row[ $column ] : null;
+						}
+					}
+					return null;
+				}
+				
+				// No WHERE clause - return first row's column value
+				$row = reset( $wpdb_storage[ $table ] );
+				return isset( $row[ $column ] ) ? $row[ $column ] : null;
 			}
 			
 			// Handle SELECT * queries
@@ -622,7 +734,7 @@ if ( ! isset( $wpdb ) ) {
 				return reset( $first_row );
 			}
 			
-			return 0;
+			return null;
 		}
 
 		public function get_col( $query, $column_offset = 0 ) {
@@ -820,17 +932,32 @@ if ( ! isset( $wpdb ) ) {
 				if ( isset( $wpdb_storage[ $table ] ) ) {
 					$updated = 0;
 					
-					// Parse SET clause
-					$set_pairs = array();
+					// Parse SET clause - handle both simple assignments and increment operations
+					$set_operations = array();
+					
+					// Match increment operations like: hit_count = hit_count + 1
+					if ( preg_match_all( "/(\w+)\s*=\s*(\w+)\s*\+\s*(\d+)/i", $set_clause, $increment_matches, PREG_SET_ORDER ) ) {
+						foreach ( $increment_matches as $match ) {
+							$field = $match[1];
+							$increment_value = (int) $match[3];
+							$set_operations[ $field ] = array( 'type' => 'increment', 'value' => $increment_value );
+						}
+					}
+					
+					// Match simple assignments like: field = 'value' or field = 123 or field = NOW()
 					if ( preg_match_all( "/(\w+)\s*=\s*(?:'([^']*)'|(\d+)|NOW\(\))/i", $set_clause, $set_matches, PREG_SET_ORDER ) ) {
 						foreach ( $set_matches as $match ) {
 							$field = $match[1];
+							// Skip if already handled as increment
+							if ( isset( $set_operations[ $field ] ) ) {
+								continue;
+							}
 							if ( isset( $match[2] ) && $match[2] !== '' ) {
-								$set_pairs[ $field ] = $match[2];
+								$set_operations[ $field ] = array( 'type' => 'assign', 'value' => $match[2] );
 							} elseif ( isset( $match[3] ) ) {
-								$set_pairs[ $field ] = $match[3];
+								$set_operations[ $field ] = array( 'type' => 'assign', 'value' => $match[3] );
 							} elseif ( stripos( $match[0], 'NOW()' ) !== false ) {
-								$set_pairs[ $field ] = gmdate( 'Y-m-d H:i:s' );
+								$set_operations[ $field ] = array( 'type' => 'assign', 'value' => gmdate( 'Y-m-d H:i:s' ) );
 							}
 						}
 					}
@@ -838,8 +965,12 @@ if ( ! isset( $wpdb ) ) {
 					// Apply updates
 					foreach ( $wpdb_storage[ $table ] as $id => &$row ) {
 						if ( empty( $where_clause ) || $this->matches_where( $row, $where_clause ) ) {
-							foreach ( $set_pairs as $field => $value ) {
-								$row[ $field ] = $value;
+							foreach ( $set_operations as $field => $operation ) {
+								if ( $operation['type'] === 'increment' ) {
+									$row[ $field ] = ( $row[ $field ] ?? 0 ) + $operation['value'];
+								} else {
+									$row[ $field ] = $operation['value'];
+								}
 							}
 							$updated++;
 						}
@@ -877,6 +1008,16 @@ if ( ! isset( $wpdb ) ) {
 			
 			if ( ! isset( $wpdb_storage[ $table ] ) ) {
 				$wpdb_storage[ $table ] = array();
+			}
+			
+			// Apply default values for meowseo_logs table
+			if ( strpos( $table, 'meowseo_logs' ) !== false ) {
+				if ( ! isset( $data['hit_count'] ) ) {
+					$data['hit_count'] = 1;
+				}
+				if ( ! isset( $data['created_at'] ) ) {
+					$data['created_at'] = gmdate( 'Y-m-d H:i:s' );
+				}
 			}
 			
 			// Auto-increment ID if not provided
@@ -966,6 +1107,20 @@ if ( ! isset( $wpdb ) ) {
 				if ( preg_match( '/(\w+)\s+IS\s+NULL/i', $condition, $matches ) ) {
 					$field = $matches[1];
 					if ( isset( $row[ $field ] ) && $row[ $field ] !== null ) {
+						return false;
+					}
+					continue;
+				}
+				
+				// Handle >= comparisons (created_at >= '2024-01-01 00:00:00')
+				if ( preg_match( "/(\w+)\s*>=\s*'([^']+)'/i", $condition, $matches ) ) {
+					$field = $matches[1];
+					$value = $matches[2];
+					if ( ! isset( $row[ $field ] ) ) {
+						return false;
+					}
+					// Compare as strings (works for timestamps in Y-m-d H:i:s format)
+					if ( $row[ $field ] < $value ) {
 						return false;
 					}
 					continue;
@@ -1318,15 +1473,15 @@ if ( ! function_exists( 'attachment_url_to_postid' ) ) {
 	}
 }
 
-if ( ! function_exists( 'get_bloginfo' ) ) {
-	function get_bloginfo( $show = '' ) {
-		if ( $show === 'name' ) {
-			return 'Test Site';
+if ( ! function_exists( 'get_post_types' ) ) {
+	function get_post_types( $args = array(), $output = 'names' ) {
+		if ( $output === 'objects' ) {
+			return array(
+				'post' => (object) array( 'name' => 'post', 'label' => 'Posts' ),
+				'page' => (object) array( 'name' => 'page', 'label' => 'Pages' ),
+			);
 		}
-		if ( $show === 'version' ) {
-			return '6.4.2';
-		}
-		return '';
+		return array( 'post', 'page' );
 	}
 }
 
@@ -1533,12 +1688,6 @@ if ( ! class_exists( 'WP_Post' ) ) {
 	}
 }
 
-if ( ! function_exists( 'get_site_url' ) ) {
-	function get_site_url( $blog_id = null, $path = '', $scheme = null ) {
-		return 'http://example.com';
-	}
-}
-
 if ( ! function_exists( 'get_the_date' ) ) {
 	function get_the_date( $format = '', $post = null ) {
 		return gmdate( 'c' );
@@ -1654,30 +1803,10 @@ if ( ! function_exists( 'wp_redirect' ) ) {
 	}
 }
 
-if ( ! function_exists( 'wp_upload_dir' ) ) {
-	function wp_upload_dir( $time = null ) {
-		return array(
-			'path'    => '/tmp/wp-content/uploads',
-			'url'     => 'http://example.com/wp-content/uploads',
-			'subdir'  => '',
-			'basedir' => '/tmp/wp-content/uploads',
-			'baseurl' => 'http://example.com/wp-content/uploads',
-			'error'   => false,
-		);
-	}
-}
-
-if ( ! function_exists( 'trailingslashit' ) ) {
-	function trailingslashit( $string ) {
-		return rtrim( $string, '/\\' ) . '/';
-	}
-}
-
-if ( ! function_exists( 'wp_mkdir_p' ) ) {
-	function wp_mkdir_p( $target ) {
-		return true;
-	}
-}
+// Note: wp_upload_dir() is intentionally not defined here to allow Brain\Monkey to mock it in tests
+// Note: trailingslashit() is intentionally not defined here to allow Brain\Monkey to mock it in tests
+// Note: wp_mkdir_p() is intentionally not defined here to allow Brain\Monkey to mock it in tests
+// These functions should ONLY be mocked via Brain\Monkey in individual tests to avoid conflicts
 
 if ( ! function_exists( 'current_time' ) ) {
 	function current_time( $type = 'mysql', $gmt = 0 ) {
@@ -2015,27 +2144,6 @@ if ( ! function_exists( 'get_search_link' ) ) {
 if ( ! function_exists( 'home_url' ) ) {
 	function home_url( $path = '', $scheme = null ) {
 		return 'https://example.com/';
-	}
-}
-
-if ( ! function_exists( 'get_site_url' ) ) {
-	function get_site_url( $blog_id = null, $path = '', $scheme = null ) {
-		return 'https://example.com/';
-	}
-}
-
-if ( ! function_exists( 'get_bloginfo' ) ) {
-	function get_bloginfo( $show = '' ) {
-		switch ( $show ) {
-			case 'name':
-				return 'Test Site';
-			case 'description':
-				return 'Test Description';
-			case 'language':
-				return 'en-US';
-			default:
-				return '';
-		}
 	}
 }
 

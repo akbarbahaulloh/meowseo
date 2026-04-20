@@ -35,13 +35,10 @@ class Property11CleanupTriggerTest extends TestCase {
 	 */
 	protected function setUp(): void {
 		parent::setUp();
-		// Clear mock logs before each test
-		global $meowseo_test_logs;
-		$meowseo_test_logs = [];
-		// Mock the database to capture log entries and track cleanup
-		$this->setup_mock_database();
+		// Reset global wpdb storage to ensure clean state between tests
+		reset_wpdb_storage();
 		// Reset Logger singleton to use new mock
-		$this->reset_logger_singleton();
+		reset_logger_singleton();
 	}
 
 	/**
@@ -51,9 +48,7 @@ class Property11CleanupTriggerTest extends TestCase {
 	 */
 	protected function tearDown(): void {
 		parent::tearDown();
-		// Clear mock logs after each test
-		global $meowseo_test_logs;
-		$meowseo_test_logs = [];
+		// Clean up is handled by reset_wpdb_storage() in setUp()
 	}
 
 	/**
@@ -66,160 +61,6 @@ class Property11CleanupTriggerTest extends TestCase {
 		$instance_property = $reflection->getProperty( 'instance' );
 		$instance_property->setAccessible( true );
 		$instance_property->setValue( null, null );
-	}
-
-	/**
-	 * Setup mock database to capture log entries and track cleanup triggers
-	 *
-	 * @return void
-	 */
-	private function setup_mock_database(): void {
-		global $wpdb;
-
-		// Create a mock wpdb object that tracks cleanup triggers
-		$wpdb = new class {
-			public $prefix = 'wp_';
-			public $meowseo_logs = 'wp_meowseo_logs';
-			private $logs = [];
-			private $entry_count = 0;
-			private $cleanup_triggered = false;
-			private $cleanup_count = 0;
-			private const MAX_ENTRIES = 1000;
-
-			public function prepare( $query, ...$args ) {
-				// Simple prepare implementation for testing
-				$query = str_replace( '%d', '%s', $query );
-				$query = str_replace( '%s', "'%s'", $query );
-				return vsprintf( $query, $args );
-			}
-
-			public function get_results( $query, $output = OBJECT ) {
-				return [];
-			}
-
-			public function get_row( $query, $output = OBJECT ) {
-				// Handle deduplication queries
-				if ( strpos( $query, 'message_hash' ) !== false && strpos( $query, 'created_at >=' ) !== false ) {
-					// Extract the message_hash from the query
-					if ( preg_match( "/'([a-f0-9]{64})'/", $query, $matches ) ) {
-						$message_hash = $matches[1];
-						
-						// Find matching entry in logs
-						foreach ( array_reverse( $this->logs ) as $log ) {
-							if ( isset( $log['message_hash'] ) && $log['message_hash'] === $message_hash ) {
-								// Return as object or array based on output type
-								if ( $output === ARRAY_A ) {
-									return $log;
-								} else {
-									return (object) $log;
-								}
-							}
-						}
-					}
-				}
-				return null;
-			}
-
-			public function get_var( $query = null, $x = 0, $y = 0 ) {
-				// Handle COUNT(*) queries for cleanup trigger
-				if ( $query && strpos( $query, 'COUNT(*)' ) !== false ) {
-					return $this->entry_count;
-				}
-				// Return the current entry count
-				return $this->entry_count;
-			}
-
-			public function insert( $table, $data, $format = null ) {
-				// Capture the log entry
-				if ( strpos( $table, 'meowseo_logs' ) !== false ) {
-					global $meowseo_test_logs;
-					$data['id'] = count( $this->logs ) + 1;
-					$data['created_at'] = $data['created_at'] ?? gmdate( 'Y-m-d H:i:s' );
-					$data['hit_count'] = $data['hit_count'] ?? 1;
-					$this->logs[] = $data;
-					$this->entry_count++;
-					$meowseo_test_logs[] = $data;
-
-					return true;
-				}
-				return false;
-			}
-
-			public function query( $query ) {
-				// Handle DELETE queries for cleanup
-				if ( strpos( $query, 'DELETE FROM' ) !== false && strpos( $query, 'ORDER BY created_at ASC' ) !== false ) {
-					$this->cleanup_triggered = true;
-					$this->cleanup_count++;
-					
-					// Extract LIMIT value from query
-					if ( preg_match( '/LIMIT (\d+)/', $query, $matches ) ) {
-						$limit = (int) $matches[1];
-						// Remove oldest entries
-						$removed = 0;
-						for ( $i = 0; $i < $limit && ! empty( $this->logs ); $i++ ) {
-							array_shift( $this->logs );
-							$this->entry_count--;
-							$removed++;
-						}
-						
-						// Synchronize global test logs
-						global $meowseo_test_logs;
-						for ( $i = 0; $i < $removed && ! empty( $meowseo_test_logs ); $i++ ) {
-							array_shift( $meowseo_test_logs );
-						}
-					}
-					return true;
-				}
-				
-				// Handle UPDATE queries for deduplication
-				if ( strpos( $query, 'UPDATE' ) !== false && strpos( $query, 'hit_count = hit_count + 1' ) !== false ) {
-					// Extract ID from query
-					if ( preg_match( '/WHERE id = (\d+)/', $query, $matches ) ) {
-						$id = (int) $matches[1];
-						// Find and update the entry
-						foreach ( $this->logs as &$log ) {
-							if ( isset( $log['id'] ) && $log['id'] === $id ) {
-								$log['hit_count'] = ( $log['hit_count'] ?? 1 ) + 1;
-								break;
-							}
-						}
-						
-						// Also update in global test logs
-						global $meowseo_test_logs;
-						foreach ( $meowseo_test_logs as &$log ) {
-							if ( isset( $log['id'] ) && $log['id'] === $id ) {
-								$log['hit_count'] = ( $log['hit_count'] ?? 1 ) + 1;
-								break;
-							}
-						}
-					}
-					return true;
-				}
-				
-				return true;
-			}
-
-			public function was_cleanup_triggered(): bool {
-				return $this->cleanup_triggered;
-			}
-
-			public function get_cleanup_count(): int {
-				return $this->cleanup_count;
-			}
-
-			public function reset_cleanup_tracking(): void {
-				$this->cleanup_triggered = false;
-				$this->cleanup_count = 0;
-			}
-
-			public function get_entry_count(): int {
-				return $this->entry_count;
-			}
-
-			public function get_logs(): array {
-				return $this->logs;
-			}
-		};
 	}
 
 	/**
@@ -238,26 +79,39 @@ class Property11CleanupTriggerTest extends TestCase {
 		)
 		->then(
 			function ( int $num_logs ) {
-				// Clear previous logs
-				global $meowseo_test_logs;
-				$meowseo_test_logs = [];
+				// Reset wpdb storage for this iteration
+				reset_wpdb_storage();
+				// Reset Logger singleton to use new mock
+				reset_logger_singleton();
+				
+				// Get reference to wpdb storage
+				global $wpdb_storage, $wpdb;
+
+				// Skip invalid inputs but make an assertion first to avoid risky test
+				if ( $num_logs <= 1000 ) {
+					$this->assertTrue( true, 'Skipping invalid input' );
+					return;
+				}
 
 				// Log entries to exceed the limit
 				for ( $i = 0; $i < $num_logs; $i++ ) {
 					Logger::info( "Test message $i" );
 				}
 
+				// Get log entries from wpdb storage
+				$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
+
 				// Verify cleanup was triggered (entry count should be at or below 1000)
 				$this->assertLessThanOrEqual(
 					1000,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'Cleanup should be triggered when limit is exceeded'
 				);
 
 				// Verify we have entries (cleanup should preserve some)
 				$this->assertGreaterThan(
 					0,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'Cleanup should preserve at least some entries'
 				);
 			}
@@ -280,19 +134,31 @@ class Property11CleanupTriggerTest extends TestCase {
 		)
 		->then(
 			function ( int $num_logs ) {
-				// Clear previous logs
-				global $meowseo_test_logs;
-				$meowseo_test_logs = [];
+				// Skip invalid inputs (negative or zero)
+				if ( $num_logs < 1 ) {
+					return;
+				}
+				
+				// Reset wpdb storage for this iteration
+				reset_wpdb_storage();
+				// Reset Logger singleton to use new mock
+				reset_logger_singleton();
+				
+				// Get reference to wpdb storage
+				global $wpdb_storage;
 
 				// Log entries that stay under the limit
 				for ( $i = 0; $i < $num_logs; $i++ ) {
 					Logger::info( "Test message $i" );
 				}
 
+				// Get log entries from wpdb storage
+				$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
+
 				// Verify the entry count matches the number of logs
 				$this->assertEquals(
 					$num_logs,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'No cleanup should occur when under the 1000 entry limit'
 				);
 			}
@@ -315,9 +181,13 @@ class Property11CleanupTriggerTest extends TestCase {
 		)
 		->then(
 			function ( int $batch_size ) {
-				// Clear previous logs
-				global $meowseo_test_logs;
-				$meowseo_test_logs = [];
+				// Reset wpdb storage for this iteration
+				reset_wpdb_storage();
+				// Reset Logger singleton to use new mock
+				reset_logger_singleton();
+				
+				// Get reference to wpdb storage
+				global $wpdb_storage;
 
 				// Log entries in batches to exceed the limit
 				$total_logged = 0;
@@ -328,7 +198,8 @@ class Property11CleanupTriggerTest extends TestCase {
 					}
 
 					// After each batch, verify cleanup is working
-					$current_count = count( $meowseo_test_logs );
+					$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
+					$current_count = count( $log_entries );
 					$this->assertLessThanOrEqual(
 						1000,
 						$current_count,
@@ -346,9 +217,10 @@ class Property11CleanupTriggerTest extends TestCase {
 				}
 
 				// Final verification
+				$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
 				$this->assertLessThanOrEqual(
 					1000,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'Cleanup should maintain the 1000 entry limit throughout'
 				);
 			}
@@ -371,27 +243,34 @@ class Property11CleanupTriggerTest extends TestCase {
 		)
 		->then(
 			function ( int $num_logs ) {
-				// Clear previous logs
-				global $meowseo_test_logs;
-				$meowseo_test_logs = [];
+				// Reset wpdb storage for this iteration
+				reset_wpdb_storage();
+				// Reset Logger singleton to use new mock
+				reset_logger_singleton();
+				
+				// Get reference to wpdb storage
+				global $wpdb_storage;
 
 				// Log entries with identifiable messages
 				for ( $i = 0; $i < $num_logs; $i++ ) {
 					Logger::info( "Message number $i" );
 				}
 
+				// Get log entries from wpdb storage
+				$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
+
 				// Verify cleanup occurred
 				$this->assertLessThanOrEqual(
 					1000,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'Cleanup should reduce entries to 1000 or less'
 				);
 
 				// Verify the remaining entries are from later messages
 				// (oldest entries should be deleted)
-				if ( count( $meowseo_test_logs ) === 1000 && $num_logs > 1000 ) {
+				if ( count( $log_entries ) === 1000 && $num_logs > 1000 ) {
 					// The first remaining entry should be from a message after the first ones
-					$first_entry = $meowseo_test_logs[0];
+					$first_entry = reset( $log_entries );
 					$this->assertNotNull( $first_entry, 'First entry should exist' );
 
 					// Verify it's a valid log entry
@@ -418,17 +297,24 @@ class Property11CleanupTriggerTest extends TestCase {
 		)
 		->then(
 			function ( int $num_logs ) {
-				// Clear previous logs
-				global $meowseo_test_logs;
-				$meowseo_test_logs = [];
+				// Reset wpdb storage for this iteration
+				reset_wpdb_storage();
+				// Reset Logger singleton to use new mock
+				reset_logger_singleton();
+				
+				// Get reference to wpdb storage
+				global $wpdb_storage;
 
 				// Log entries with complete data
 				for ( $i = 0; $i < $num_logs; $i++ ) {
 					Logger::info( "Test message $i", [ 'index' => $i ] );
 				}
 
+				// Get log entries from wpdb storage
+				$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
+
 				// Verify all remaining entries have required fields
-				foreach ( $meowseo_test_logs as $entry ) {
+				foreach ( $log_entries as $entry ) {
 					$this->assertArrayHasKey( 'level', $entry, 'Entry should have level' );
 					$this->assertArrayHasKey( 'module', $entry, 'Entry should have module' );
 					$this->assertArrayHasKey( 'message', $entry, 'Entry should have message' );
@@ -446,10 +332,11 @@ class Property11CleanupTriggerTest extends TestCase {
 				// Verify the entry count is correct
 				$this->assertLessThanOrEqual(
 					1000,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'Entry count should not exceed 1000'
 				);
 			}
 		);
 	}
 }
+

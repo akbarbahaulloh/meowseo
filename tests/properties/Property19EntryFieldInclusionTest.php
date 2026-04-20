@@ -40,6 +40,9 @@ class Property19EntryFieldInclusionTest extends TestCase {
 		if ( ! defined( 'MEOWSEO_VERSION' ) ) {
 			define( 'MEOWSEO_VERSION', '1.0.0' );
 		}
+		
+		// Setup Brain\Monkey mocking for WordPress functions
+		setup_brain_monkey_mocks();
 	}
 
 	/**

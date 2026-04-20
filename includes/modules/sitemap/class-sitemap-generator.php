@@ -57,8 +57,14 @@ class Sitemap_Generator {
 	 * @return string Sitemap directory path.
 	 */
 	private function get_sitemap_directory(): string {
-		$upload_dir = wp_upload_dir();
-		return trailingslashit( $upload_dir['basedir'] ) . 'meowseo-sitemaps';
+		// Handle case where wp_upload_dir() might not be available (e.g., in tests)
+		if ( function_exists( 'wp_upload_dir' ) ) {
+			$upload_dir = wp_upload_dir();
+			return trailingslashit( $upload_dir['basedir'] ) . 'meowseo-sitemaps';
+		} else {
+			// Fallback for test environments
+			return sys_get_temp_dir() . '/meowseo-sitemaps';
+		}
 	}
 
 	/**

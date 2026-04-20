@@ -78,7 +78,7 @@ class Meta_Resolver {
 
 		// If still no post ID, return site name.
 		if ( ! $post_id ) {
-			return get_bloginfo( 'name' );
+			return \get_bloginfo( 'name' );
 		}
 
 		// Check postmeta first.
@@ -90,7 +90,7 @@ class Meta_Resolver {
 		// Get post object.
 		$post = get_post( $post_id );
 		if ( ! $post ) {
-			return get_bloginfo( 'name' );
+			return \get_bloginfo( 'name' );
 		}
 
 		// Apply title pattern for post type.
@@ -105,7 +105,7 @@ class Meta_Resolver {
 		// If pattern resolution failed or empty, use fallback.
 		if ( empty( $resolved ) ) {
 			$separator = $this->options->get_separator();
-			$site_name = get_bloginfo( 'name' );
+			$site_name = \get_bloginfo( 'name' );
 			return $post->post_title . ' ' . $separator . ' ' . $site_name;
 		}
 
@@ -124,7 +124,7 @@ class Meta_Resolver {
 		$archive_type = $this->detect_archive_type();
 		
 		if ( ! $archive_type ) {
-			return get_bloginfo( 'name' );
+			return \get_bloginfo( 'name' );
 		}
 		
 		// Get pattern for this archive type.
@@ -139,7 +139,7 @@ class Meta_Resolver {
 		// If pattern resolution failed or empty, use fallback.
 		if ( empty( $resolved ) ) {
 			$separator = $this->options->get_separator();
-			$site_name = get_bloginfo( 'name' );
+			$site_name = \get_bloginfo( 'name' );
 			return $site_name;
 		}
 		
@@ -166,8 +166,8 @@ class Meta_Resolver {
 		// If pattern resolution failed or empty, use fallback.
 		if ( empty( $resolved ) ) {
 			$separator = $this->options->get_separator();
-			$site_name = get_bloginfo( 'name' );
-			$tagline = get_bloginfo( 'description' );
+			$site_name = \get_bloginfo( 'name' );
+			$tagline = \get_bloginfo( 'description' );
 			return $site_name . ' ' . $separator . ' ' . $tagline;
 		}
 		

@@ -41,6 +41,17 @@ class TitlePatternsTest extends TestCase {
 		parent::setUp();
 		Monkey\setUp();
 		
+		// Mock WordPress functions
+		Functions\when( 'get_bloginfo' )->alias( function ( $show = '' ) {
+			$values = array(
+				'name'        => 'Test Site',
+				'description' => 'Test Description',
+				'language'    => 'en-US',
+				'version'     => '6.4.2',
+			);
+			return $values[ $show ] ?? '';
+		} );
+		
 		$this->options  = new Options();
 		$this->patterns = new Title_Patterns( $this->options );
 	}

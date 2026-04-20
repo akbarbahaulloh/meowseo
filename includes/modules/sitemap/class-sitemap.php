@@ -205,29 +205,41 @@ class Sitemap implements Module {
 	 * @return string XML content.
 	 */
 	private function generate_sitemap( string $type, int $page = 1 ): string {
-		if ( 'index' === $type ) {
-			return $this->builder->build_index();
-		}
+		try {
+			if ( 'index' === $type ) {
+				return $this->builder->build_index();
+			}
 
-		if ( 'news' === $type ) {
-			return $this->builder->build_news();
-		}
+			if ( 'news' === $type ) {
+				return $this->builder->build_news();
+			}
 
-		if ( 'video' === $type ) {
-			return $this->builder->build_video();
-		}
+			if ( 'video' === $type ) {
+				return $this->builder->build_video();
+			}
 
-		// Handle 'posts' as 'post' post type
-		if ( 'posts' === $type ) {
-			$type = 'post';
-		}
+			// Handle 'posts' as 'post' post type
+			if ( 'posts' === $type ) {
+				$type = 'post';
+			}
 
-		// Handle 'pages' as 'page' post type
-		if ( 'pages' === $type ) {
-			$type = 'page';
-		}
+			// Handle 'pages' as 'page' post type
+			if ( 'pages' === $type ) {
+				$type = 'page';
+			}
 
-		return $this->builder->build_posts( $type, $page );
+			return $this->builder->build_posts( $type, $page );
+		} catch ( \Exception $e ) {
+			Logger::error(
+				'Sitemap generation failed',
+				array(
+					'type' => $type,
+					'page' => $page,
+					'error' => $e->getMessage(),
+				)
+			);
+			return '';
+		}
 	}
 
 	/**
@@ -429,6 +441,7 @@ class Sitemap implements Module {
 					'post_type' => $post_type,
 					'pages' => $pages,
 					'total_posts' => $count,
+					'entry_count' => $count,
 				)
 			);
 		}
@@ -441,7 +454,7 @@ class Sitemap implements Module {
 		$this->builder->build_video();
 		Logger::info( 'Regenerated video sitemap' );
 
-		Logger::info( 'Completed scheduled sitemap regeneration' );
+		Logger::info( 'Sitemap cache regenerated' );
 
 		// Ping search engines after regeneration (Requirement 7.2)
 		$this->ping_search_engines();

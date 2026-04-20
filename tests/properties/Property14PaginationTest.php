@@ -46,10 +46,8 @@ class Property14PaginationTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		// Reset global wpdb storage (use the bootstrap's mock)
-		global $wpdb_storage;
-		$table = 'wp_meowseo_logs';
-		$wpdb_storage[ $table ] = array();
+		// Reset global wpdb storage to ensure clean state between tests
+		reset_wpdb_storage();
 
 		// Create mock Options instance
 		$options_mock = $this->createMock( Options::class );

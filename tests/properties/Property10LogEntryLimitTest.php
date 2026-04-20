@@ -35,11 +35,8 @@ class Property10LogEntryLimitTest extends TestCase {
 	 */
 	protected function setUp(): void {
 		parent::setUp();
-		// Clear mock logs before each test
-		global $meowseo_test_logs;
-		$meowseo_test_logs = [];
-		// Mock the database to capture log entries
-		$this->setup_mock_database();
+		// Reset global wpdb storage to ensure clean state between tests
+		reset_wpdb_storage();
 	}
 
 	/**
@@ -49,101 +46,7 @@ class Property10LogEntryLimitTest extends TestCase {
 	 */
 	protected function tearDown(): void {
 		parent::tearDown();
-		// Clear mock logs after each test
-		global $meowseo_test_logs;
-		$meowseo_test_logs = [];
-	}
-
-	/**
-	 * Setup mock database to capture log entries and enforce limit
-	 *
-	 * @return void
-	 */
-	private function setup_mock_database(): void {
-		global $wpdb;
-
-		// Create a mock wpdb object that enforces the 1000 entry limit
-		$wpdb = new class {
-			public $prefix = 'wp_';
-			public $meowseo_logs = 'wp_meowseo_logs';
-			private $logs = [];
-			private $entry_count = 0;
-			private const MAX_ENTRIES = 1000;
-
-			public function prepare( $query, ...$args ) {
-				// Simple prepare implementation for testing
-				$query = str_replace( '%d', '%s', $query );
-				$query = str_replace( '%s', "'%s'", $query );
-				return vsprintf( $query, $args );
-			}
-
-			public function get_results( $query, $output = OBJECT ) {
-				return [];
-			}
-
-			public function get_row( $query, $output = OBJECT ) {
-				return null;
-			}
-
-			public function get_var( $query = null, $x = 0, $y = 0 ) {
-				// Return the current entry count
-				return $this->entry_count;
-			}
-
-			public function insert( $table, $data, $format = null ) {
-				// Capture the log entry
-				if ( strpos( $table, 'meowseo_logs' ) !== false ) {
-					global $meowseo_test_logs;
-					$data['id'] = count( $this->logs ) + 1;
-					$data['created_at'] = $data['created_at'] ?? gmdate( 'Y-m-d H:i:s' );
-					$this->logs[] = $data;
-					$this->entry_count++;
-					$meowseo_test_logs[] = $data;
-
-					// Enforce the limit
-					if ( $this->entry_count > self::MAX_ENTRIES ) {
-						$this->cleanup_old_logs();
-					}
-
-					return true;
-				}
-				return false;
-			}
-
-			public function query( $query ) {
-				// Handle DELETE queries for cleanup
-				if ( strpos( $query, 'DELETE FROM' ) !== false && strpos( $query, 'ORDER BY created_at ASC' ) !== false ) {
-					// Extract LIMIT value from query
-					if ( preg_match( '/LIMIT (\d+)/', $query, $matches ) ) {
-						$limit = (int) $matches[1];
-						// Remove oldest entries
-						for ( $i = 0; $i < $limit && ! empty( $this->logs ); $i++ ) {
-							array_shift( $this->logs );
-							$this->entry_count--;
-						}
-					}
-					return true;
-				}
-				return true;
-			}
-
-			private function cleanup_old_logs(): void {
-				// Delete oldest entries to maintain the 1000 entry limit
-				$excess = $this->entry_count - self::MAX_ENTRIES;
-				for ( $i = 0; $i < $excess; $i++ ) {
-					array_shift( $this->logs );
-					$this->entry_count--;
-				}
-			}
-
-			public function get_entry_count(): int {
-				return $this->entry_count;
-			}
-
-			public function get_logs(): array {
-				return $this->logs;
-			}
-		};
+		// Clean up is handled by reset_wpdb_storage() in setUp()
 	}
 
 	/**
@@ -162,19 +65,21 @@ class Property10LogEntryLimitTest extends TestCase {
 		)
 		->then(
 			function ( int $num_logs ) {
-				// Clear previous logs
-				global $meowseo_test_logs;
-				$meowseo_test_logs = [];
+				// Get reference to wpdb storage
+				global $wpdb_storage;
 
 				// Log multiple entries
 				for ( $i = 0; $i < $num_logs; $i++ ) {
 					Logger::info( "Test message $i" );
 				}
 
+				// Get log entries from wpdb storage
+				$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
+
 				// Verify the entry count never exceeds 1000
 				$this->assertLessThanOrEqual(
 					1000,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'Log entry count should never exceed 1000'
 				);
 			}
@@ -197,19 +102,21 @@ class Property10LogEntryLimitTest extends TestCase {
 		)
 		->then(
 			function ( int $num_logs ) {
-				// Clear previous logs
-				global $meowseo_test_logs;
-				$meowseo_test_logs = [];
+				// Get reference to wpdb storage
+				global $wpdb_storage;
 
 				// Log more than 1000 entries
 				for ( $i = 0; $i < $num_logs; $i++ ) {
 					Logger::info( "Test message $i" );
 				}
 
+				// Get log entries from wpdb storage
+				$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
+
 				// Verify we have exactly 1000 entries
 				$this->assertLessThanOrEqual(
 					1000,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'Log entry count should not exceed 1000'
 				);
 
@@ -217,7 +124,7 @@ class Property10LogEntryLimitTest extends TestCase {
 				if ( $num_logs > 1000 ) {
 					$this->assertGreaterThanOrEqual(
 						1000,
-						count( $meowseo_test_logs ),
+						count( $log_entries ),
 						'Log entry count should be at least 1000 when limit is enforced'
 					);
 				}
@@ -241,26 +148,28 @@ class Property10LogEntryLimitTest extends TestCase {
 		)
 		->then(
 			function ( int $num_logs ) {
-				// Clear previous logs
-				global $meowseo_test_logs;
-				$meowseo_test_logs = [];
+				// Get reference to wpdb storage
+				global $wpdb_storage;
 
 				// Log entries with unique identifiers
 				for ( $i = 0; $i < $num_logs; $i++ ) {
 					Logger::info( "Message $i" );
 				}
 
+				// Get log entries from wpdb storage
+				$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
+
 				// Verify we have at most 1000 entries
 				$this->assertLessThanOrEqual(
 					1000,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'Log entry count should not exceed 1000'
 				);
 
 				// If we logged more than 1000, verify the most recent entries are preserved
-				if ( $num_logs > 1000 && count( $meowseo_test_logs ) === 1000 ) {
+				if ( $num_logs > 1000 && count( $log_entries ) === 1000 ) {
 					// The first entry should be from a later message (not the first one)
-					$first_entry = $meowseo_test_logs[0];
+					$first_entry = reset( $log_entries );
 					$this->assertNotNull( $first_entry, 'First entry should exist' );
 
 					// The message should indicate it's from a later message
@@ -291,9 +200,8 @@ class Property10LogEntryLimitTest extends TestCase {
 		)
 		->then(
 			function ( int $batch_size ) {
-				// Clear previous logs
-				global $meowseo_test_logs;
-				$meowseo_test_logs = [];
+				// Get reference to wpdb storage
+				global $wpdb_storage;
 
 				// Log entries in batches to simulate multiple insertions
 				for ( $batch = 0; $batch < 15; $batch++ ) {
@@ -301,18 +209,22 @@ class Property10LogEntryLimitTest extends TestCase {
 						Logger::info( "Batch $batch Message $i" );
 					}
 
+					// Get log entries from wpdb storage
+					$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
+
 					// After each batch, verify the count doesn't exceed 1000
 					$this->assertLessThanOrEqual(
 						1000,
-						count( $meowseo_test_logs ),
+						count( $log_entries ),
 						"Log entry count should not exceed 1000 after batch $batch"
 					);
 				}
 
 				// Final verification
+				$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
 				$this->assertLessThanOrEqual(
 					1000,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'Log entry count should never exceed 1000'
 				);
 			}
@@ -335,9 +247,8 @@ class Property10LogEntryLimitTest extends TestCase {
 		)
 		->then(
 			function ( int $entries_per_level ) {
-				// Clear previous logs
-				global $meowseo_test_logs;
-				$meowseo_test_logs = [];
+				// Get reference to wpdb storage
+				global $wpdb_storage;
 
 				// Log entries with different levels
 				$levels = [ 'debug', 'info', 'warning', 'error', 'critical' ];
@@ -348,10 +259,13 @@ class Property10LogEntryLimitTest extends TestCase {
 					}
 				}
 
+				// Get log entries from wpdb storage
+				$log_entries = $wpdb_storage['wp_meowseo_logs'] ?? [];
+
 				// Verify the total count doesn't exceed 1000
 				$this->assertLessThanOrEqual(
 					1000,
-					count( $meowseo_test_logs ),
+					count( $log_entries ),
 					'Log entry limit should apply to all log levels combined'
 				);
 			}

@@ -47,6 +47,9 @@ class AdminTest extends TestCase {
 		parent::setUp();
 		$this->options = new Options();
 		
+		// Setup Brain\Monkey mocking for WordPress functions
+		setup_brain_monkey_mocks();
+		
 		// Create a mock Module_Manager for testing.
 		$module_manager = $this->createMock( \MeowSEO\Module_Manager::class );
 		

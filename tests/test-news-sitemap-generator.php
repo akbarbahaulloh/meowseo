@@ -44,6 +44,10 @@ class Test_News_Sitemap_Generator extends WP_UnitTestCase {
 	protected function setUp(): void {
 		parent::setUp();
 		$this->options = new Options();
+		
+		// Setup Brain\Monkey mocking for WordPress functions
+		setup_brain_monkey_mocks();
+		
 		$this->generator = new News_Sitemap_Generator( $this->options );
 		
 		// Clear transient cache

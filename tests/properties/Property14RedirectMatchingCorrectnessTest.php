@@ -42,6 +42,8 @@ class Property14RedirectMatchingCorrectnessTest extends TestCase {
 	 */
 	protected function setUp(): void {
 		parent::setUp();
+		// Reset global wpdb storage to ensure clean state between tests
+		reset_wpdb_storage();
 		// Clear any existing redirects before each test
 		$this->clear_test_redirects();
 	}

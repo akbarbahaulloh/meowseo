@@ -64,6 +64,13 @@ class AIGenerationEndToEndTest extends TestCase {
 	private $rest;
 
 	/**
+	 * Optimizer instance
+	 *
+	 * @var AI_Optimizer
+	 */
+	private $optimizer;
+
+	/**
 	 * Test post ID
 	 *
 	 * @var int

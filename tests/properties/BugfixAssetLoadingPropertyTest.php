@@ -166,8 +166,9 @@ class BugfixAssetLoadingPropertyTest extends WP_UnitTestCase {
 
 		// Check if there are file existence checks in the enqueue_editor_assets method
 		// Expected pattern: file_exists() check before wp_enqueue_script()
+		// Allow for both literal strings and variables
 		$has_file_exists_check = preg_match(
-			'/file_exists\s*\([^)]*gutenberg\.js[^)]*\)/i',
+			'/file_exists\s*\([^)]*(?:gutenberg\.js|js_file_path)[^)]*\)/i',
 			$source_content
 		);
 

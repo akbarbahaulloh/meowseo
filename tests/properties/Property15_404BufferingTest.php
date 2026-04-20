@@ -36,6 +36,8 @@ class Property15_404BufferingTest extends TestCase {
 	 */
 	protected function setUp(): void {
 		parent::setUp();
+		// Reset global wpdb storage to ensure clean state between tests
+		reset_wpdb_storage();
 		// Clear any existing 404 buffers before each test
 		$this->clear_404_buffers();
 	}
