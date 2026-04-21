@@ -7,3 +7,35 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .DS_Store
+
+# Development tools
+.claude/
+.kiro/
+
+# Test coverage reports
+coverage/
+
+# Test artifacts
+*.test.js
+*.test.ts
+*.test.tsx
+**/__tests__/
+tests/
+
+# Development documentation (checkpoint/task/sprint reports)
+CHECKPOINT_*.md
+TASK_*.md
+SPRINT_*.md
+BROWSER_COMPATIBILITY_*.md
+IMPLEMENTATION_COMPLETE.md
+DEBOUNCE_VERIFICATION.md
+GITHUB_AUTO_UPDATE_*.md
+PERFORMANCE_BENCHMARKING_*.md
+ACCESSIBILITY_TESTING_*.md
+INDONESIAN_LANGUAGE_*.md
+
+# PHP cache
+.phpunit.result.cache
+
+# Composer
+composer.phar
