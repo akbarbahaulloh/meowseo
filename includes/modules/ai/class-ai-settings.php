@@ -631,7 +631,7 @@ class AI_Settings {
 										<?php esc_html_e( 'API Key', 'meowseo' ); ?>
 									</label>
 									<input
-										type="password"
+										type="text"
 										id="ai_api_key_<?php echo esc_attr( $provider_slug ); ?>"
 										name="ai_api_key_<?php echo esc_attr( $provider_slug ); ?>"
 										class="meowseo-api-key-input"

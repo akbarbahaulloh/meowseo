@@ -190,12 +190,12 @@ class Provider_Gemini implements AI_Provider {
 			],
 		];
 
+		$url = add_query_arg( 'key', $this->api_key, self::API_URL );
 		$response = wp_remote_post(
-			self::API_URL,
+			$url,
 			[
 				'headers' => [
 					'Content-Type'    => 'application/json',
-					'x-goog-api-key'  => $this->api_key,
 				],
 				'body'    => wp_json_encode( $request_body ),
 				'timeout' => self::TIMEOUT,
@@ -252,13 +252,13 @@ class Provider_Gemini implements AI_Provider {
 			}
 		}
 
+		$url = add_query_arg( 'key', $this->api_key, self::IMAGE_API_URL );
 		// Make request to Gemini Image API with 90-second timeout.
 		$response = wp_remote_post(
-			self::IMAGE_API_URL,
+			$url,
 			[
 				'headers' => [
 					'Content-Type'   => 'application/json',
-					'x-goog-api-key' => $this->api_key,
 				],
 				'body'    => wp_json_encode( $request_body ),
 				'timeout' => 90,
@@ -281,12 +281,12 @@ class Provider_Gemini implements AI_Provider {
 	public function validate_api_key( string $key ): bool {
 		$this->last_error = null;
 
+		$url = add_query_arg( 'key', $key, self::API_URL );
 		$response = wp_remote_post(
-			self::API_URL,
+			$url,
 			[
 				'headers' => [
 					'Content-Type'   => 'application/json',
-					'x-goog-api-key' => $key,
 				],
 				'body'    => wp_json_encode( [
 					'contents' => [
