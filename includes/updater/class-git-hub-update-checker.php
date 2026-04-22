@@ -110,6 +110,9 @@ class GitHub_Update_Checker {
 		// Hook into package download to modify the download URL.
 		add_filter( 'upgrader_pre_download', array( $this, 'modify_package_url' ), 10, 3 );
 		
+		// Hook to rename the downloaded folder. GitHub appends commit hashes to the zipball root folder.
+		add_filter( 'upgrader_source_selection', array( $this, 'rename_github_folder' ), 10, 4 );
+		
 		// Hook into upgrader completion to save the new commit ID.
 		add_action( 'upgrader_process_complete', array( $this, 'update_installed_commit' ), 10, 2 );
 	}
@@ -389,6 +392,26 @@ class GitHub_Update_Checker {
 		// Return the modified package URL.
 		// WordPress will handle the nested directory structure automatically.
 		return $archive_url;
+	}
+
+	/**
+	 * Rename the extracted folder.
+	 * GitHub appends arbitrary commit hashes to the root folder of the downloaded zip.
+	 */
+	public function rename_github_folder( $source, $remote_source, $upgrader, $hook_extra = array() ) {
+		global $wp_filesystem;
+
+		$plugin_basename = plugin_basename( $this->plugin_file );
+
+		// Make sure it's updating this specific plugin.
+		if ( ! isset( $hook_extra['plugin'] ) || $hook_extra['plugin'] !== $plugin_basename ) {
+			return $source;
+		}
+
+		$new_source = trailingslashit( $remote_source ) . $this->plugin_slug;
+		$wp_filesystem->move( $source, $new_source );
+
+		return trailingslashit( $new_source );
 	}
 
 	/**

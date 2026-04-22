@@ -891,23 +891,10 @@ class Admin {
 		if ( $checker ) {
 			// Clear all update caches.
 			$checker->clear_cache();
+			delete_site_transient( 'update_plugins' ); // Force WP to re-check all plugins natively.
 
-			// Trigger immediate update check.
-			$transient = get_site_transient( 'update_plugins' );
-			$transient = $checker->check_for_update( $transient );
-			set_site_transient( 'update_plugins', $transient );
-
-			// Check if update was found.
-			$plugin_basename = plugin_basename( \MEOWSEO_FILE );
-			$update_found    = isset( $transient->response[ $plugin_basename ] );
-
-			if ( $update_found ) {
-				$message = __( 'Pembaruan tersedia! Silakan periksa daftar plugin.', 'meowseo' );
-				$type    = 'success';
-			} else {
-				$message = __( 'MeowSEO sudah menggunakan versi terbaru.', 'meowseo' );
-				$type    = 'info';
-			}
+			$message = __( 'MeowSEO berhasil memeriksa pembaruan di GitHub. Jika ada versi baru, tombol "Update Now" akan muncul di bawah deskripsi plugin.', 'meowseo' );
+			$type    = 'success';
 
 			// Store message in transient for display after redirect.
 			set_transient( 'meowseo_update_notice', array( 'message' => $message, 'type' => $type ), 30 );
