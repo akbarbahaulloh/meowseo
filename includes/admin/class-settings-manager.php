@@ -97,11 +97,6 @@ class Settings_Manager {
 				'icon'   => 'dashicons-networking',
 				'method' => 'render_sitemap_tab',
 			),
-			'modules'         => array(
-				'title'  => __( 'Modules', 'meowseo' ),
-				'icon'   => 'dashicons-admin-plugins',
-				'method' => 'render_modules_tab',
-			),
 			'advanced'        => array(
 				'title'  => __( 'Advanced', 'meowseo' ),
 				'icon'   => 'dashicons-admin-tools',
@@ -951,43 +946,6 @@ class Settings_Manager {
 	}
 
 	/**
-	 * Render Modules settings tab
-	 *
-	 * Requirements: 7.1, 7.2, 7.3, 7.5
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public function render_modules_tab(): void {
-		$enabled_modules = $this->options->get_enabled_modules();
-
-		$modules = array(
-			'meta'          => array( 'name' => __( 'Meta Tags', 'meowseo' ), 'description' => __( 'Manage title tags, meta descriptions, and robots meta for all content types.', 'meowseo' ) ),
-			'schema'        => array( 'name' => __( 'Schema Markup', 'meowseo' ), 'description' => __( 'Generate structured data (JSON-LD) for rich results in search engines.', 'meowseo' ) ),
-			'sitemap'       => array( 'name' => __( 'XML Sitemaps', 'meowseo' ), 'description' => __( 'Generate XML sitemaps for better search engine crawling.', 'meowseo' ) ),
-			'redirects'     => array( 'name' => __( 'Redirects', 'meowseo' ), 'description' => __( 'Manage URL redirects to prevent 404 errors and preserve SEO value.', 'meowseo' ) ),
-			'monitor_404'   => array( 'name' => __( '404 Monitor', 'meowseo' ), 'description' => __( 'Track 404 errors and identify broken links on your site.', 'meowseo' ) ),
-			'internal_links' => array( 'name' => __( 'Internal Links', 'meowseo' ), 'description' => __( 'Suggest internal links while editing content to improve SEO structure.', 'meowseo' ) ),
-			'gsc'           => array( 'name' => __( 'Google Search Console', 'meowseo' ), 'description' => __( 'Connect to Google Search Console for search analytics and indexing.', 'meowseo' ) ),
-			'social'        => array( 'name' => __( 'Social Meta', 'meowseo' ), 'description' => __( 'Add Open Graph and Twitter Card meta tags for social sharing.', 'meowseo' ) ),
-			'ai'            => array( 'name' => __( 'AI Generation', 'meowseo' ), 'description' => __( 'Generate SEO content using AI providers (OpenAI, Anthropic, Gemini).', 'meowseo' ) ),
-			'import'        => array( 'name' => __( 'Import/Export', 'meowseo' ), 'description' => __( 'Import and export SEO data from other plugins.', 'meowseo' ) ),
-			'image_seo'     => array( 'name' => __( 'Image SEO', 'meowseo' ), 'description' => __( 'Automatically optimize image alt text and filenames.', 'meowseo' ) ),
-			'indexnow'      => array( 'name' => __( 'IndexNow', 'meowseo' ), 'description' => __( 'Instantly notify search engines of content changes.', 'meowseo' ) ),
-			'roles'         => array( 'name' => __( 'Role Manager', 'meowseo' ), 'description' => __( 'Control which user roles can access specific MeowSEO features.', 'meowseo' ) ),
-			'multilingual'  => array( 'name' => __( 'Multilingual', 'meowseo' ), 'description' => __( 'Integrate with WPML and Polylang for multilingual SEO.', 'meowseo' ) ),
-			'multisite'     => array( 'name' => __( 'Multisite', 'meowseo' ), 'description' => __( 'Support WordPress multisite networks with per-site configuration.', 'meowseo' ) ),
-			'locations'     => array( 'name' => __( 'Locations', 'meowseo' ), 'description' => __( 'Manage multiple business locations with schema and maps.', 'meowseo' ) ),
-			'bulk'          => array( 'name' => __( 'Bulk Editor', 'meowseo' ), 'description' => __( 'Perform bulk SEO operations on multiple posts simultaneously.', 'meowseo' ) ),
-			'analytics'     => array( 'name' => __( 'Analytics (GA4)', 'meowseo' ), 'description' => __( 'View combined Google Analytics 4 and Search Console data.', 'meowseo' ) ),
-			'admin-bar'     => array( 'name' => __( 'Admin Bar', 'meowseo' ), 'description' => __( 'Display SEO score in the admin bar on frontend pages.', 'meowseo' ) ),
-			'orphaned'      => array( 'name' => __( 'Orphaned Content', 'meowseo' ), 'description' => __( 'Identify posts with no internal links and suggest fixes.', 'meowseo' ) ),
-			'synonyms'      => array( 'name' => __( 'Keyword Synonyms', 'meowseo' ), 'description' => __( 'Analyze content for keyword synonyms and semantic variations.', 'meowseo' ) ),
-		);
-
-		if ( class_exists( 'WooCommerce' ) ) {
-			$modules['woocommerce'] = array( 'name' => __( 'WooCommerce SEO', 'meowseo' ), 'description' => __( 'Enhanced SEO features for WooCommerce products and categories.', 'meowseo' ) );
-		}
 		?>
 		<h2><?php esc_html_e( 'Modules', 'meowseo' ); ?></h2>
 		<p class="description"><?php esc_html_e( 'Enable or disable plugin modules. Disabled modules will not load on next page load.', 'meowseo' ); ?></p>

@@ -111,14 +111,30 @@ class Options {
 	 * @return array Array of enabled module IDs.
 	 */
 	public function get_enabled_modules(): array {
-		$modules = $this->get( 'enabled_modules', array() );
-		
-		// If no modules are explicitly enabled, return default modules.
-		if ( empty( $modules ) || ! is_array( $modules ) ) {
-			return $this->get_default_modules();
-		}
-		
-		return $modules;
+		return array(
+			'meta',
+			'schema',
+			'sitemap',
+			'redirects',
+			'monitor_404',
+			'internal_links',
+			'gsc',
+			'social',
+			'woocommerce',
+			'ai',
+			'import',
+			'image_seo',
+			'indexnow',
+			'roles',
+			'multilingual',
+			'multisite',
+			'locations',
+			'bulk',
+			'analytics',
+			'admin-bar',
+			'orphaned',
+			'synonyms',
+		);
 	}
 
 	/**

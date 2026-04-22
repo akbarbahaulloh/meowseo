@@ -21,6 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+
 // Define plugin constants.
 define( 'MEOWSEO_VERSION', '1.0.0-b1b0d0d' );
 define( 'MEOWSEO_FILE', __FILE__ );
