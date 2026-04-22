@@ -685,30 +685,47 @@ class AI_Settings {
 										<label for="ai_gemini_model">
 											<?php esc_html_e( 'Text Model', 'meowseo' ); ?>
 										</label>
-										<input
-											type="text"
-											id="ai_gemini_model"
-											name="ai_gemini_model"
-											placeholder="gemini-2.0-flash"
-											value="<?php echo esc_attr( $this->options->get( 'ai_gemini_model', 'gemini-2.0-flash' ) ); ?>"
-											style="width:100%"
-										>
-										<p class="description"><?php esc_html_e( 'e.g., gemini-3-flash-preview, gemini-2.5-pro, etc.', 'meowseo' ); ?></p>
+										<select id="ai_gemini_model" name="ai_gemini_model" style="width:100%">
+											<?php
+											$gemini_text_models = [
+												'gemini-3-flash-preview'        => 'Gemini 3 Flash Preview (Latest Speed)',
+												'gemini-3.1-pro-preview'        => 'Gemini 3.1 Pro Preview (Latest Intelligence)',
+												'gemini-3.1-flash-lite-preview' => 'Gemini 3.1 Flash Lite Preview (Efficient)',
+												'gemini-2.5-pro'                => 'Gemini 2.5 Pro (Stable Reasoning)',
+												'gemini-2.5-flash'              => 'Gemini 2.5 Flash (Balanced)',
+												'gemini-2.5-flash-lite'         => 'Gemini 2.5 Flash-Lite (Fastest)',
+												'gemini-2.0-flash'              => 'Gemini 2.0 Flash (Legacy Stable)',
+												'gemini-flash-latest'           => 'Gemini Flash Latest (Auto-update)',
+												'gemini-pro-latest'            => 'Gemini Pro Latest (Auto-update)',
+												'deep-research-preview-04-2026' => 'Deep Research Preview (Agentic)',
+											];
+											$current_text_model = $this->options->get( 'ai_gemini_model', 'gemini-2.0-flash' );
+											foreach ( $gemini_text_models as $val => $label ) {
+												printf( '<option value="%s" %s>%s</option>', esc_attr( $val ), selected( $current_text_model, $val, false ), esc_html( $label ) );
+											}
+											?>
+										</select>
+										<p class="description"><?php esc_html_e( 'Select the model for SEO content generation.', 'meowseo' ); ?></p>
 									</div>
 
 									<div class="meowseo-provider-row">
 										<label for="ai_gemini_image_model">
 											<?php esc_html_e( 'Image Model', 'meowseo' ); ?>
 										</label>
-										<input
-											type="text"
-											id="ai_gemini_image_model"
-											name="ai_gemini_image_model"
-											placeholder="gemini-3.1-flash-image-preview"
-											value="<?php echo esc_attr( $this->options->get( 'ai_gemini_image_model', 'gemini-3.1-flash-image-preview' ) ); ?>"
-											style="width:100%"
-										>
-										<p class="description"><?php esc_html_e( 'e.g., gemini-3.1-flash-image-preview, gemini-2.5-flash-image, etc.', 'meowseo' ); ?></p>
+										<select id="ai_gemini_image_model" name="ai_gemini_image_model" style="width:100%">
+											<?php
+											$gemini_img_models = [
+												'gemini-3.1-flash-image-preview' => 'Gemini 3.1 Flash Image Preview',
+												'gemini-3-pro-image-preview'     => 'Gemini 3 Pro Image Preview',
+												'gemini-2.5-flash-image'         => 'Gemini 2.5 Flash Image',
+											];
+											$current_img_model = $this->options->get( 'ai_gemini_image_model', 'gemini-3.1-flash-image-preview' );
+											foreach ( $gemini_img_models as $val => $label ) {
+												printf( '<option value="%s" %s>%s</option>', esc_attr( $val ), selected( $current_img_model, $val, false ), esc_html( $label ) );
+											}
+											?>
+										</select>
+										<p class="description"><?php esc_html_e( 'Select the model for AI image generation.', 'meowseo' ); ?></p>
 									</div>
 								<?php endif; ?>
 
