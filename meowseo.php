@@ -49,9 +49,12 @@ spl_autoload_register( function ( $class ) {
 	$file_name = strtolower( preg_replace( '/([a-z])([A-Z])/', '$1-$2', $last_part ) );
 	$file_name = str_replace( '_', '-', $file_name );
 	
+	// Convert directory parts to lowercase (WordPress convention).
+	$parts = array_map( 'strtolower', $parts );
+	
 	// Try class file first, then interface file.
-	$class_file = MEOWSEO_PATH . 'includes' . DIRECTORY_SEPARATOR . implode( DIRECTORY_SEPARATOR, $parts ) . DIRECTORY_SEPARATOR . 'class-' . $file_name . '.php';
-	$interface_file = MEOWSEO_PATH . 'includes' . DIRECTORY_SEPARATOR . implode( DIRECTORY_SEPARATOR, $parts ) . DIRECTORY_SEPARATOR . 'interface-' . $file_name . '.php';
+	$class_file = MEOWSEO_PATH . 'includes' . DIRECTORY_SEPARATOR . implode( DIRECTORY_SEPARATOR, $parts ) . ( empty( $parts ) ? '' : DIRECTORY_SEPARATOR ) . 'class-' . $file_name . '.php';
+	$interface_file = MEOWSEO_PATH . 'includes' . DIRECTORY_SEPARATOR . implode( DIRECTORY_SEPARATOR, $parts ) . ( empty( $parts ) ? '' : DIRECTORY_SEPARATOR ) . 'interface-' . $file_name . '.php';
 
 	// Load file if it exists.
 	if ( file_exists( $class_file ) ) {
