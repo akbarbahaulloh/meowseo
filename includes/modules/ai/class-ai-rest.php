@@ -602,8 +602,11 @@ class AI_REST {
 				return new WP_REST_Response(
 					array(
 						'success' => true,
-						'status'  => 'connected',
-						'message' => __( 'Connection successful.', 'meowseo' ),
+						'data'    => array(
+							'valid'   => true,
+							'status'  => 'connected',
+							'message' => __( 'Connection successful.', 'meowseo' ),
+						),
 					),
 					200
 				);
@@ -623,8 +626,11 @@ class AI_REST {
 				return new WP_REST_Response(
 					array(
 						'success' => false,
-						'status'  => 'error',
-						'message' => $error ?: __( 'Connection failed.', 'meowseo' ),
+						'data'    => array(
+							'valid'   => false,
+							'status'  => 'error',
+							'message' => $error ?: __( 'Connection failed.', 'meowseo' ),
+						),
 					),
 					200
 				);

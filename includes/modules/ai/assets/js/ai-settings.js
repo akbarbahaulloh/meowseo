@@ -224,12 +224,12 @@
 			})
 				.then((response) => response.json())
 				.then((data) => {
-					if (data.success && data.data.valid) {
-						this.showTestStatus(provider, 'success', 'Connection successful');
+					if (data.success && data.data && data.data.valid) {
+						this.showTestStatus(provider, 'success', data.data.message || 'Connection successful');
 						// Update status indicator
 						this.updateStatusIndicator(provider, 'active');
 					} else {
-						const errorMsg = data.data?.message || 'Connection failed';
+						const errorMsg = data.data?.message || data.message || 'Connection failed';
 						this.showTestStatus(provider, 'error', errorMsg);
 						this.updateStatusIndicator(provider, 'error');
 					}
