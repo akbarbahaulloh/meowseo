@@ -2173,7 +2173,8 @@ class Settings_Manager {
 			if ( is_array( $errors ) ) {
 				set_transient( 'meowseo_settings_errors', $errors, 30 );
 			}
-			wp_safe_redirect( add_query_arg( 'meowseo_settings_error', urlencode( $validated->get_error_message() ), wp_get_referer() ) );
+			$redirect_url = remove_query_arg( array( 'meowseo_settings_saved', 'meowseo_settings_error' ), wp_get_referer() );
+			wp_safe_redirect( add_query_arg( 'meowseo_settings_error', urlencode( $validated->get_error_message() ), $redirect_url ) );
 			exit;
 		}
 
@@ -2200,7 +2201,12 @@ class Settings_Manager {
 		// Save to database.
 		$saved = $this->options->save();
 
-		if ( $saved ) {
+		// Clean up previous notice parameters from the referer URL.
+		$redirect_url = remove_query_arg( array( 'meowseo_settings_saved', 'meowseo_settings_error' ), wp_get_referer() );
+
+		// update_option returns false if value hasn't changed, which isn't an error.
+		// We treat it as success if we reached this point.
+		if ( $saved || $this->options->get_all() === $old_settings ) {
 			// Log settings save (Requirement 33.1).
 			Logger::info(
 				'Settings saved',
@@ -2211,9 +2217,9 @@ class Settings_Manager {
 				)
 			);
 
-			wp_safe_redirect( add_query_arg( 'meowseo_settings_saved', '1', wp_get_referer() ) );
+			wp_safe_redirect( add_query_arg( 'meowseo_settings_saved', '1', $redirect_url ) );
 		} else {
-			wp_safe_redirect( add_query_arg( 'meowseo_settings_error', urlencode( __( 'Failed to save settings. Please try again.', 'meowseo' ) ), wp_get_referer() ) );
+			wp_safe_redirect( add_query_arg( 'meowseo_settings_error', urlencode( __( 'Failed to save settings. Please try again.', 'meowseo' ) ), $redirect_url ) );
 		}
 
 		exit;
