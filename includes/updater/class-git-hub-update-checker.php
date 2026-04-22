@@ -109,6 +109,9 @@ class GitHub_Update_Checker {
 
 		// Hook into package download to modify the download URL.
 		add_filter( 'upgrader_pre_download', array( $this, 'modify_package_url' ), 10, 3 );
+		
+		// Hook into upgrader completion to save the new commit ID.
+		add_action( 'upgrader_process_complete', array( $this, 'update_installed_commit' ), 10, 2 );
 	}
 
 	/**
@@ -175,13 +178,25 @@ class GitHub_Update_Checker {
 			);
 
 			// Create update object with required fields.
+			// Spoof the version by combining the base version with the short sha.
+			// This forces WordPress to always show the 'Update Now' inline button correctly.
+			$base_version = defined( 'MEOWSEO_VERSION' ) ? MEOWSEO_VERSION : '1.0.0';
+			// Strip any existing commit hash from MEOWSEO_VERSION if present.
+			if ( strpos( $base_version, '-' ) !== false ) {
+				$base_version = explode( '-', $base_version )[0];
+			}
+			$display_version = $base_version . '.' . $latest_commit;
+			
 			$update_object = (object) array(
 				'id'          => $plugin_basename,
 				'slug'        => $this->plugin_slug,
 				'plugin'      => $plugin_basename,
-				'new_version' => '1.0.0-' . $latest_commit,
+				'new_version' => $display_version,
 				'url'         => sprintf( 'https://github.com/%s/%s', $owner, $repo ),
 				'package'     => $package_url,
+				'icons'       => array(
+					'1x' => 'https://avatars.githubusercontent.com/u/1041913?s=200&v=4', // Using a generic placeholder icon or we can omit it.
+				),
 			);
 
 			// Add update information to the transient.
@@ -253,10 +268,22 @@ class GitHub_Update_Checker {
 		$repo  = $this->config->get_repo_name();
 
 		// Build plugin information object.
+		$base_version = defined( 'MEOWSEO_VERSION' ) ? MEOWSEO_VERSION : '1.0.0';
+		if ( strpos( $base_version, '-' ) !== false ) {
+			$base_version = explode( '-', $base_version )[0];
+		}
+		$display_version = $base_version;
+		$latest_commit = $this->get_latest_commit();
+		if ( $latest_commit && ! empty( $latest_commit['short_sha'] ) ) {
+			$display_version .= '.' . $latest_commit['short_sha'];
+		} else {
+			$display_version = $plugin_data['Version'] ?? '1.0.0';
+		}
+
 		$plugin_info = (object) array(
 			'name'          => $plugin_data['Name'] ?? 'MeowSEO',
 			'slug'          => $this->plugin_slug,
-			'version'       => $plugin_data['Version'] ?? '1.0.0',
+			'version'       => $display_version,
 			'author'        => $plugin_data['Author'] ?? '',
 			'homepage'      => sprintf( 'https://github.com/%s/%s', $owner, $repo ),
 			'requires'      => '6.0',
@@ -720,21 +747,60 @@ class GitHub_Update_Checker {
 	 * @return string Commit ID if found, empty string otherwise.
 	 */
 	private function get_current_commit_id(): string {
-		// Get plugin data from the plugin file header.
+		// First try to get it from the database option.
+		$installed_commit = get_option( 'meowseo_installed_commit', '' );
+		if ( ! empty( $installed_commit ) ) {
+			return $installed_commit;
+		}
+
+		// Fallback: Get plugin data from the plugin file header.
 		if ( ! function_exists( 'get_plugin_data' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
 		$plugin_data = get_plugin_data( $this->plugin_file, false, false );
-
+		
 		// Extract version string from plugin header.
 		$version = $plugin_data['Version'] ?? '';
-
+		
 		// Parse the commit ID from the version string.
 		$commit_id = $this->extract_commit_id( $version );
+		
+		if ( ! empty( $commit_id ) ) {
+			update_option( 'meowseo_installed_commit', $commit_id );
+			return $commit_id;
+		}
+		
+		return '';
+	}
 
-		// Return the commit ID or empty string if not found.
-		return $commit_id ?? '';
+	/**
+	 * Logic fired after processing a plugin update.
+	 * Saves the new SHA to the database to stop the update loop and properly reflect the current version.
+	 *
+	 * @param \WP_Upgrader $upgrader_object WP_Upgrader instance.
+	 * @param array        $options         Array of bulk item update data.
+	 */
+	public function update_installed_commit( $upgrader_object, $options ) {
+		$plugin_basename = plugin_basename( $this->plugin_file );
+		if ( 'update' === $options['action'] && 'plugin' === $options['type'] && ! empty( $options['plugins'] ) ) {
+			if ( in_array( $plugin_basename, $options['plugins'], true ) ) {
+				// Clear the cache to force a fresh fetch on next check.
+				$this->clear_cache();
+
+				// Fetch the absolute newest commit (which we just installed via the main branch zip).
+				// We force bypassing the cache.
+				$cache_key   = 'meowseo_github_update_info';
+				delete_transient( $cache_key );
+				
+				$latest = $this->get_latest_commit();
+
+				if ( $latest && ! empty( $latest['short_sha'] ) ) {
+					// Save to database so we know what is currently installed.
+					update_option( 'meowseo_installed_commit', sanitize_text_field( $latest['short_sha'] ) );
+				}
+			}
+		}
 	}
 
 	/**
