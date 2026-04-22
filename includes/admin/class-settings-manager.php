@@ -102,6 +102,11 @@ class Settings_Manager {
 				'icon'     => 'dashicons-editor-spellcheck',
 				'callback' => array( $this, 'render_writing_styles_tab' ),
 			),
+			'image_styles'    => array(
+				'title'    => __( 'Image Styles', 'meowseo' ),
+				'icon'     => 'dashicons-format-image',
+				'callback' => array( $this, 'render_image_styles_tab' ),
+			),
 			'sitemap'         => array(
 				'title'  => __( 'Sitemap', 'meowseo' ),
 				'icon'   => 'dashicons-networking',
@@ -1993,6 +1998,25 @@ class Settings_Manager {
 			}
 		}
 
+		// Validate Image Styles (Requirement 1.3).
+		if ( isset( $settings['image_styles'] ) && is_array( $settings['image_styles'] ) ) {
+			$validated['image_styles'] = array();
+			foreach ( $settings['image_styles'] as $style ) {
+				if ( empty( $style['label'] ) ) {
+					continue;
+				}
+
+				$validated['image_styles'][] = array(
+					'id'              => sanitize_key( $style['id'] ?? 'style_' . uniqid() ),
+					'label'           => sanitize_text_field( $style['label'] ),
+					'description'     => sanitize_textarea_field( $style['description'] ?? '' ),
+					'medium'          => sanitize_text_field( $style['medium'] ?? '' ),
+					'colors'          => sanitize_text_field( $style['colors'] ?? '' ),
+					'negative_prompt' => sanitize_textarea_field( $style['negative_prompt'] ?? '' ),
+				);
+			}
+		}
+
 		// Return errors if any.
 		if ( ! empty( $this->errors ) ) {
 			return new \WP_Error( 'validation_failed', __( 'Settings validation failed.', 'meowseo' ), $this->errors );
@@ -2364,5 +2388,301 @@ class Settings_Manager {
 
 		// Return default content.
 		wp_send_json_success( array( 'content' => $default_content ) );
+	}
+
+	/**
+	 * Render Writing Styles settings tab
+	 */
+	public function render_writing_styles_tab(): void {
+		$styles = $this->options->get( 'writing_styles', array() );
+		?>
+		<h2><?php esc_html_e( 'Writing Styles', 'meowseo' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Define different writing personas and styles to maintain consistency in AI-generated content.', 'meowseo' ); ?></p>
+
+		<div id="writing-styles-container" class="meowseo-styles-list">
+			<?php if ( empty( $styles ) ) : ?>
+				<div class="meowseo-empty-state">
+					<p><?php esc_html_e( 'No writing styles defined. Click "Add New Style" to create one.', 'meowseo' ); ?></p>
+				</div>
+			<?php endif; ?>
+
+			<?php foreach ( $styles as $index => $style ) : ?>
+				<div class="meowseo-style-item postbox" data-index="<?php echo esc_attr( $index ); ?>">
+					<div class="postbox-header">
+						<h2 class="hndle">
+							<span class="style-label-display"><?php echo esc_html( $style['label'] ?: __( 'Unnamed Style', 'meowseo' ) ); ?></span>
+						</h2>
+						<div class="handle-actions">
+							<button type="button" class="button-link delete-style" title="<?php esc_attr_e( 'Delete', 'meowseo' ); ?>"><span class="dashicons dashicons-trash"></span></button>
+							<button type="button" class="handlediv" aria-expanded="true"><span class="screen-reader-text"><?php esc_html_e( 'Toggle panel', 'meowseo' ); ?></span><span class="toggle-indicator" aria-hidden="true"></span></button>
+						</div>
+					</div>
+					<div class="inside">
+						<input type="hidden" name="writing_styles[<?php echo esc_attr( $index ); ?>][id]" value="<?php echo esc_attr( $style['id'] ); ?>">
+						
+						<table class="form-table">
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Style Label', 'meowseo' ); ?></label></th>
+								<td><input type="text" name="writing_styles[<?php echo esc_attr( $index ); ?>][label]" value="<?php echo esc_attr( $style['label'] ); ?>" class="regular-text style-label-input"></td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Persona', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][persona]" rows="3" class="large-text"><?php echo esc_textarea( $style['persona'] ?? '' ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Who is the author? (e.g. Expert SEO, Casual Blogger, Professional Journalist)', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Tone', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][tone]" rows="2" class="large-text"><?php echo esc_textarea( $style['tone'] ?? '' ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'What is the voice? (e.g. Friendly, Informative, Persuasive, Sarcastic)', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Linguistic Rules', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][linguistic_rules]" rows="3" class="large-text"><?php echo esc_textarea( $style['linguistic_rules'] ?? '' ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Rules for language (e.g. Use active voice, Avoid jargon, Use "we" instead of "I")', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Content Anatomy', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][anatomy]" rows="3" class="large-text"><?php echo esc_textarea( $style['anatomy'] ?? '' ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'How to structure the article (e.g. Key takeaways at start, Conclusion with FAQ)', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Greetings/Sign-off', 'meowseo' ); ?></label></th>
+								<td>
+									<div class="meowseo-flex-row">
+										<input type="text" name="writing_styles[<?php echo esc_attr( $index ); ?>][greetings]" value="<?php echo esc_attr( $style['greetings'] ?? '' ); ?>" placeholder="Greetings" class="regular-text">
+										<input type="text" name="writing_styles[<?php echo esc_attr( $index ); ?>][outro]" value="<?php echo esc_attr( $style['outro'] ?? '' ); ?>" placeholder="Sign-off" class="regular-text">
+									</div>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Article Intro Hook', 'meowseo' ); ?></label></th>
+								<td><input type="text" name="writing_styles[<?php echo esc_attr( $index ); ?>][intro]" value="<?php echo esc_attr( $style['intro'] ?? '' ); ?>" class="large-text"></td>
+							</tr>
+						</table>
+					</div>
+				</div>
+			<?php endforeach; ?>
+		</div>
+
+		<button type="button" id="add-writing-style" class="button action"><?php esc_html_e( 'Add New Writing Style', 'meowseo' ); ?></button>
+		
+		<?php
+		$this->render_style_management_script( 'writing_styles', 'writing-styles-container', 'add-writing-style' );
+	}
+
+	/**
+	 * Render Image Styles settings tab
+	 */
+	public function render_image_styles_tab(): void {
+		$styles = $this->options->get( 'image_styles', array() );
+		?>
+		<h2><?php esc_html_e( 'Image Styles', 'meowseo' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Define different visual styles for AI-generated images.', 'meowseo' ); ?></p>
+
+		<div id="image-styles-container" class="meowseo-styles-list">
+			<?php if ( empty( $styles ) ) : ?>
+				<div class="meowseo-empty-state">
+					<p><?php esc_html_e( 'No image styles defined. Click "Add New Style" to create one.', 'meowseo' ); ?></p>
+				</div>
+			<?php endif; ?>
+
+			<?php foreach ( $styles as $index => $style ) : ?>
+				<div class="meowseo-style-item postbox" data-index="<?php echo esc_attr( $index ); ?>">
+					<div class="postbox-header">
+						<h2 class="hndle">
+							<span class="style-label-display"><?php echo esc_html( $style['label'] ?: __( 'Unnamed Style', 'meowseo' ) ); ?></span>
+						</h2>
+						<div class="handle-actions">
+							<button type="button" class="button-link delete-style" title="<?php esc_attr_e( 'Delete', 'meowseo' ); ?>"><span class="dashicons dashicons-trash"></span></button>
+							<button type="button" class="handlediv" aria-expanded="true"><span class="screen-reader-text"><?php esc_html_e( 'Toggle panel', 'meowseo' ); ?></span><span class="toggle-indicator" aria-hidden="true"></span></button>
+						</div>
+					</div>
+					<div class="inside">
+						<input type="hidden" name="image_styles[<?php echo esc_attr( $index ); ?>][id]" value="<?php echo esc_attr( $style['id'] ); ?>">
+						
+						<table class="form-table">
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Style Label', 'meowseo' ); ?></label></th>
+								<td><input type="text" name="image_styles[<?php echo esc_attr( $index ); ?>][label]" value="<?php echo esc_attr( $style['label'] ); ?>" class="regular-text style-label-input"></td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Visual Description', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="image_styles[<?php echo esc_attr( $index ); ?>][description]" rows="3" class="large-text"><?php echo esc_textarea( $style['description'] ?? '' ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Describe the style (e.g. Photorealistic, 8k resolution, cinematic lighting, shallow depth of field)', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Art Medium', 'meowseo' ); ?></label></th>
+								<td><input type="text" name="image_styles[<?php echo esc_attr( $index ); ?>][medium]" value="<?php echo esc_attr( $style['medium'] ?? '' ); ?>" class="regular-text" placeholder="e.g. Digital Art, Oil Painting, Vector Illustration"></td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Color Palette', 'meowseo' ); ?></label></th>
+								<td><input type="text" name="image_styles[<?php echo esc_attr( $index ); ?>][colors]" value="<?php echo esc_attr( $style['colors'] ?? '' ); ?>" class="regular-text" placeholder="e.g. Vibrant, Pastel, Monochromatic, Moody Dark"></td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Negative Prompt', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="image_styles[<?php echo esc_attr( $index ); ?>][negative_prompt]" rows="2" class="large-text"><?php echo esc_textarea( $style['negative_prompt'] ?? '' ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'What to avoid in the image (e.g. text, blurry, distorted hands, low quality)', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+						</table>
+					</div>
+				</div>
+			<?php endforeach; ?>
+		</div>
+
+		<button type="button" id="add-image-style" class="button action"><?php esc_html_e( 'Add New Image Style', 'meowseo' ); ?></button>
+		
+		<?php
+		$this->render_style_management_script( 'image_styles', 'image-styles-container', 'add-image-style' );
+	}
+
+	/**
+	 * Render generic style management script
+	 */
+	private function render_style_management_script( string $option_key, string $container_id, string $add_button_id ): void {
+		?>
+		<script>
+		(function($) {
+			$(document).ready(function() {
+				var container = $('#<?php echo esc_attr( $container_id ); ?>');
+				var addButton = $('#<?php echo esc_attr( $add_button_id ); ?>');
+				
+				addButton.on('click', function() {
+					var index = container.find('.meowseo-style-item').length;
+					var id = 'style_' + Math.random().toString(36).substr(2, 9);
+					
+					var html = '';
+					if ('<?php echo esc_attr( $option_key ); ?>' === 'writing_styles') {
+						html = `
+							<div class="meowseo-style-item postbox" data-index="${index}">
+								<div class="postbox-header">
+									<h2 class="hndle"><span class="style-label-display"><?php esc_html_e( 'New Style', 'meowseo' ); ?></span></h2>
+									<div class="handle-actions">
+										<button type="button" class="button-link delete-style"><span class="dashicons dashicons-trash"></span></button>
+										<button type="button" class="handlediv" aria-expanded="true"><span class="toggle-indicator"></span></button>
+									</div>
+								</div>
+								<div class="inside">
+									<input type="hidden" name="writing_styles[${index}][id]" value="${id}">
+									<table class="form-table">
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Style Label', 'meowseo' ); ?></label></th>
+											<td><input type="text" name="writing_styles[${index}][label]" value="" class="regular-text style-label-input"></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Persona', 'meowseo' ); ?></label></th>
+											<td><textarea name="writing_styles[${index}][persona]" rows="3" class="large-text"></textarea></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Tone', 'meowseo' ); ?></label></th>
+											<td><textarea name="writing_styles[${index}][tone]" rows="2" class="large-text"></textarea></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Linguistic Rules', 'meowseo' ); ?></label></th>
+											<td><textarea name="writing_styles[${index}][linguistic_rules]" rows="3" class="large-text"></textarea></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Content Anatomy', 'meowseo' ); ?></label></th>
+											<td><textarea name="writing_styles[${index}][anatomy]" rows="3" class="large-text"></textarea></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Greetings/Sign-off', 'meowseo' ); ?></label></th>
+											<td>
+												<div class="meowseo-flex-row">
+													<input type="text" name="writing_styles[${index}][greetings]" value="" placeholder="Greetings" class="regular-text">
+													<input type="text" name="writing_styles[${index}][outro]" value="" placeholder="Sign-off" class="regular-text">
+												</div>
+											</td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Article Intro Hook', 'meowseo' ); ?></label></th>
+											<td><input type="text" name="writing_styles[${index}][intro]" value="" class="large-text"></td>
+										</tr>
+									</table>
+								</div>
+							</div>`;
+					} else {
+						html = `
+							<div class="meowseo-style-item postbox" data-index="${index}">
+								<div class="postbox-header">
+									<h2 class="hndle"><span class="style-label-display"><?php esc_html_e( 'New Style', 'meowseo' ); ?></span></h2>
+									<div class="handle-actions">
+										<button type="button" class="button-link delete-style"><span class="dashicons dashicons-trash"></span></button>
+										<button type="button" class="handlediv" aria-expanded="true"><span class="toggle-indicator"></span></button>
+									</div>
+								</div>
+								<div class="inside">
+									<input type="hidden" name="image_styles[${index}][id]" value="${id}">
+									<table class="form-table">
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Style Label', 'meowseo' ); ?></label></th>
+											<td><input type="text" name="image_styles[${index}][label]" value="" class="regular-text style-label-input"></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Visual Description', 'meowseo' ); ?></label></th>
+											<td><textarea name="image_styles[${index}][description]" rows="3" class="large-text"></textarea></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Art Medium', 'meowseo' ); ?></label></th>
+											<td><input type="text" name="image_styles[${index}][medium]" value="" class="regular-text"></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Color Palette', 'meowseo' ); ?></label></th>
+											<td><input type="text" name="image_styles[${index}][colors]" value="" class="regular-text"></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Negative Prompt', 'meowseo' ); ?></label></th>
+											<td><textarea name="image_styles[${index}][negative_prompt]" rows="2" class="large-text"></textarea></td>
+										</tr>
+									</table>
+								</div>
+							</div>`;
+					}
+					
+					container.find('.meowseo-empty-state').remove();
+					container.append(html);
+				});
+				
+				container.on('click', '.delete-style', function() {
+					if (confirm('<?php esc_html_e( 'Are you sure you want to delete this style?', 'meowseo' ); ?>')) {
+						$(this).closest('.meowseo-style-item').remove();
+						if (container.find('.meowseo-style-item').length === 0) {
+							container.append('<div class="meowseo-empty-state"><p><?php esc_html_e( 'No styles defined.', 'meowseo' ); ?></p></div>');
+						}
+					}
+				});
+				
+				container.on('input', '.style-label-input', function() {
+					var label = $(this).val() || '<?php esc_html_e( 'Unnamed Style', 'meowseo' ); ?>';
+					$(this).closest('.meowseo-style-item').find('.style-label-display').text(label);
+				});
+				
+				container.on('click', '.handlediv', function() {
+					$(this).closest('.postbox').toggleClass('closed');
+				});
+			});
+		})(jQuery);
+		</script>
+		<style>
+			.meowseo-style-item { margin-bottom: 20px; }
+			.meowseo-style-item .postbox-header { display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
+			.meowseo-style-item .handle-actions { display: flex; align-items: center; }
+			.meowseo-style-item .delete-style { color: #d63638; margin-right: 10px; border: none; background: none; cursor: pointer; padding: 0; }
+			.meowseo-style-item .delete-style:hover { color: #991113; }
+			.meowseo-flex-row { display: flex; gap: 10px; }
+			.meowseo-empty-state { padding: 40px; text-align: center; background: #fff; border: 1px dashed #ccc; margin-bottom: 20px; }
+		</style>
+		<?php
 	}
 }

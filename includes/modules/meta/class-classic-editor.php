@@ -153,7 +153,7 @@ class Classic_Editor {
 						<p class="description" style="margin:0"><?php esc_html_e( 'Generate all SEO metadata at once using your preferred AI profile and writing style.', 'meowseo' ); ?></p>
 					</div>
 					
-					<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end">
+					<div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
 						<div>
 							<label style="display:block;margin-bottom:5px;font-size:12px;font-weight:600"><?php esc_html_e( 'AI Profile', 'meowseo' ); ?></label>
 							<select id="meowseo-bulk-ai-profile" style="width:100%">
@@ -176,6 +176,18 @@ class Classic_Editor {
 								<?php
 								$writing_styles = $meowseo_opt['writing_styles'] ?? array();
 								foreach ( $writing_styles as $style ) {
+									printf( '<option value="%s">%s</option>', esc_attr( $style['id'] ), esc_html( $style['label'] ) );
+								}
+								?>
+							</select>
+						</div>
+						<div>
+							<label style="display:block;margin-bottom:5px;font-size:12px;font-weight:600"><?php esc_html_e( 'Image Style', 'meowseo' ); ?></label>
+							<select id="meowseo-bulk-ai-image-style" style="width:100%">
+								<option value=""><?php esc_html_e( 'Standard MeowSEO', 'meowseo' ); ?></option>
+								<?php
+								$image_styles = $meowseo_opt['image_styles'] ?? array();
+								foreach ( $image_styles as $style ) {
 									printf( '<option value="%s">%s</option>', esc_attr( $style['id'] ), esc_html( $style['label'] ) );
 								}
 								?>

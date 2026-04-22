@@ -135,8 +135,9 @@ class AI_Generator {
 	public function generate_all_meta( int $post_id, bool $generate_image = false, array $options = [] ) {
 		$bypass_cache = ! empty( $options['bypass_cache'] );
 		$provider     = $options['provider'] ?? '';
-		$profile_id   = $options['profile_id'] ?? '';
-		$style_id     = $options['style_id'] ?? '';
+		$profile_id     = $options['profile_id'] ?? '';
+		$style_id       = $options['style_id'] ?? '';
+		$image_style_id = $options['image_style_id'] ?? '';
 
 		// Check cache first.
 		if ( ! $bypass_cache ) {
@@ -220,7 +221,7 @@ class AI_Generator {
 		// Generate image if requested.
 		if ( $generate_image ) {
 			$seo_title = $parsed['seo_title'] ?? $post->post_title;
-			$image_prompt = $this->build_image_prompt( $post, $seo_title );
+			$image_prompt = $this->build_image_prompt( $post, $seo_title, $image_style_id );
 			$image_result = $this->provider_manager->generate_image( $image_prompt );
 
 			if ( ! is_wp_error( $image_result ) ) {
@@ -547,41 +548,68 @@ class AI_Generator {
 	 * @param string   $seo_title SEO title for context.
 	 * @return string Image generation prompt.
 	 */
-	public function build_image_prompt( $post, string $seo_title = '' ): string {
+	public function build_image_prompt( $post, string $seo_title = '', string $image_style_id = '' ): string {
 		// Use SEO title or post title for context.
 		$title = ! empty( $seo_title ) ? $seo_title : $post->post_title;
 
-		// Get settings.
-		$style = $this->options->get( 'ai_image_style', 'professional' );
-		$color_palette = $this->options->get( 'ai_image_color_palette', '' );
+		// Build base prompt.
+		$prompt = "Generate a high-quality featured image for an article about: {$title}\n\n";
 
-		// Build prompt.
-		$prompt = "Generate a featured image for an article about: {$title}\n\n";
+		// Apply Image Style if selected.
+		if ( ! empty( $image_style_id ) ) {
+			$image_styles = $this->options->get( 'image_styles', array() );
+			$selected_style = null;
+			foreach ( $image_styles as $style ) {
+				if ( $style['id'] === $image_style_id ) {
+					$selected_style = $style;
+					break;
+				}
+			}
 
-		// Add style.
-		$style_descriptions = [
-			'professional'      => 'Clean, corporate, business-appropriate style',
-			'modern'            => 'Contemporary, sleek, minimalist modern style',
-			'minimal'           => 'Simple, clean, with plenty of white space',
-			'illustrative'      => 'Artistic illustration style, hand-drawn feel',
-			'photography-style' => 'Photorealistic, high-quality photography style',
-		];
+			if ( $selected_style ) {
+				$prompt = "Generate a featured image for an article about: {$title}\n";
+				$prompt .= "VISUAL STYLE REQUIREMENTS:\n";
+				if ( ! empty( $selected_style['description'] ) ) {
+					$prompt .= "- Overall Style: {$selected_style['description']}\n";
+				}
+				if ( ! empty( $selected_style['medium'] ) ) {
+					$prompt .= "- Art Medium: {$selected_style['medium']}\n";
+				}
+				if ( ! empty( $selected_style['colors'] ) ) {
+					$prompt .= "- Color Palette: {$selected_style['colors']}\n";
+				}
+				if ( ! empty( $selected_style['negative_prompt'] ) ) {
+					$prompt .= "- IMPORTANT - DO NOT INCLUDE: {$selected_style['negative_prompt']}\n";
+				}
+				$prompt .= "\nGoal: Create a visually stunning image that perfectly matches the artistic style described above.\n";
+			}
+		} else {
+			// Fallback to legacy settings or default.
+			$style = $this->options->get( 'ai_image_style', 'professional' );
+			$color_palette = $this->options->get( 'ai_image_color_palette', '' );
 
-		$style_desc = $style_descriptions[ $style ] ?? $style;
-		$prompt .= "Style: {$style_desc}\n";
+			$style_descriptions = [
+				'professional'      => 'Clean, corporate, business-appropriate style',
+				'modern'            => 'Contemporary, sleek, minimalist modern style',
+				'minimal'           => 'Simple, clean, with plenty of white space',
+				'illustrative'      => 'Artistic illustration style, hand-drawn feel',
+				'photography-style' => 'Photorealistic, high-quality photography style',
+			];
 
-		// Add color palette if set.
-		if ( ! empty( $color_palette ) ) {
-			$prompt .= "Color palette: {$color_palette}\n";
+			$style_desc = $style_descriptions[ $style ] ?? $style;
+			$prompt .= "Style: {$style_desc}\n";
+
+			if ( ! empty( $color_palette ) ) {
+				$prompt .= "Color palette: {$color_palette}\n";
+			}
 		}
 
 		// Add format requirements.
-		$prompt .= "\nRequirements:\n";
+		$prompt .= "\nFinal Requirements:\n";
 		$prompt .= "- Clean, professional, suitable for web publishing\n";
-		$prompt .= "- No text overlay or watermarks\n";
+		$prompt .= "- No text overlay, watermarks, or logos\n";
 		$prompt .= "- Wide format 16:9 aspect ratio (1200x630 pixels)\n";
-		$prompt .= "- High resolution\n";
-		$prompt .= "- PNG format preferred\n";
+		$prompt .= "- High resolution with sharp details\n";
 
 		return $prompt;
 	}

@@ -122,6 +122,11 @@ class AI_REST {
 						'required'          => false,
 						'sanitize_callback' => 'sanitize_key',
 					),
+					'image_style_id' => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
+					),
 				),
 			)
 		);
@@ -155,6 +160,11 @@ class AI_REST {
 						'required'          => false,
 						'sanitize_callback' => 'sanitize_key',
 					),
+					'image_style_id' => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
+					),
 				),
 			)
 		);
@@ -178,6 +188,11 @@ class AI_REST {
 						'sanitize_callback' => 'sanitize_textarea_field',
 					),
 					'profile_id' => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'image_style_id' => array(
 						'type'              => 'string',
 						'required'          => false,
 						'sanitize_callback' => 'sanitize_key',
@@ -305,11 +320,13 @@ class AI_REST {
 		$bypass_cache   = $request->get_param( 'bypass_cache' ) ?: false;
 		$profile_id     = $request->get_param( 'profile_id' );
 		$style_id       = $request->get_param( 'style_id' );
+		$image_style_id = $request->get_param( 'image_style_id' );
 
 		$gen_options = array(
-			'bypass_cache' => $bypass_cache,
-			'profile_id'   => $profile_id,
-			'style_id'     => $style_id,
+			'bypass_cache'   => $bypass_cache,
+			'profile_id'     => $profile_id,
+			'style_id'       => $style_id,
+			'image_style_id' => $image_style_id,
 		);
 
 		// Validate post_id as integer (Requirement 28.2).
@@ -431,13 +448,14 @@ class AI_REST {
 
 		try {
 			$profile_id = $request->get_param( 'profile_id' );
-			$style_id   = $request->get_param( 'style_id' );
+			$image_style_id = $request->get_param( 'image_style_id' );
 
 			$gen_options = array(
-				'provider'   => $provider,
-				'profile_id' => $profile_id,
-				'style_id'   => $style_id,
-				'bypass_cache' => true,
+				'provider'       => $provider,
+				'profile_id'     => $profile_id,
+				'style_id'       => $style_id,
+				'image_style_id' => $image_style_id,
+				'bypass_cache'   => true,
 			);
 
 			$result = $this->generator->generate_all_meta( $post_id, false, $gen_options );
@@ -491,9 +509,10 @@ class AI_REST {
 		}
 
 		try {
-			$profile_id = $request->get_param( 'profile_id' );
+			$image_style_id = $request->get_param( 'image_style_id' );
 			$gen_options = array(
-				'profile_id' => $profile_id,
+				'profile_id'     => $profile_id,
+				'image_style_id' => $image_style_id,
 			);
 
 			// Generate only featured image (Requirement 9.2).

@@ -362,6 +362,7 @@
 				data: JSON.stringify( {
 					post_id: meowseoClassic.postId,
 					type: action,
+					style_id: $( '#meowseo-bulk-ai-style' ).val(),
 				} ),
 				success: function ( data ) {
 					try {
@@ -416,6 +417,7 @@
 			var $btn = $( this );
 			var profileId = $( '#meowseo-bulk-ai-profile' ).val();
 			var styleId = $( '#meowseo-bulk-ai-style' ).val();
+			var imageStyleId = $( '#meowseo-bulk-ai-image-style' ).val();
 			var origText = $btn.html();
 
 			$logArea.empty().append( '<div style="color:#6a9955">// MeowSEO AI Progress Log</div>' );
@@ -426,8 +428,10 @@
 
 			var profileName = profileId ? $( '#meowseo-bulk-ai-profile option:selected' ).text() : 'Auto (Default)';
 			var styleName = styleId ? $( '#meowseo-bulk-ai-style option:selected' ).text() : 'Standard MeowSEO';
+			var imageStyleName = imageStyleId ? $( '#meowseo-bulk-ai-image-style option:selected' ).text() : 'Standard MeowSEO';
 			addLog( 'AI Profile: ' + profileName, '#ce9178' );
 			addLog( 'Writing Style: ' + styleName, '#ce9178' );
+			addLog( 'Image Style: ' + imageStyleName, '#ce9178' );
 
 			$.ajax( {
 				url: meowseoClassic.restUrl + '/ai/generate-all',
@@ -439,8 +443,9 @@
 				},
 				data: JSON.stringify( {
 					post_id: meowseoClassic.postId,
-					profile_id: $( '#meowseo-bulk-ai-profile' ).val(),
-					style_id: $( '#meowseo-bulk-ai-style' ).val(),
+					profile_id: profileId,
+					style_id: styleId,
+					image_style_id: imageStyleId,
 				} ),
 				success: function ( data ) {
 					if ( data.success && data.data && data.data.text ) {
