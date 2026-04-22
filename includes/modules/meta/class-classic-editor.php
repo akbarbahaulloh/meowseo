@@ -177,6 +177,9 @@ class Classic_Editor {
 							&#10024; <?php esc_html_e( 'Generate All', 'meowseo' ); ?>
 						</button>
 					</div>
+					<div id="meowseo-bulk-ai-log" style="width:100%;background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:4px;font-family:monospace;font-size:11px;margin-top:10px;display:none;max-height:150px;overflow-y:auto;border:1px solid #333">
+						<div style="color:#6a9955">// MeowSEO AI Progress Log</div>
+					</div>
 				</div>
 
 				<!-- SERP Preview -->

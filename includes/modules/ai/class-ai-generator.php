@@ -88,7 +88,7 @@ class AI_Generator {
 	 *
 	 * @var int
 	 */
-	private const MIN_WORD_COUNT = 300;
+	private const MIN_WORD_COUNT = 50;
 
 	/**
 	 * Maximum words to include in prompt.

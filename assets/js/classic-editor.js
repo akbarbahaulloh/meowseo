@@ -389,12 +389,30 @@
 	}
 
 	function initBulkAi() {
+		var $logArea = $( '#meowseo-bulk-ai-log' );
+
+		function addLog( message, color ) {
+			var timestamp = new \Date().toLocaleTimeString();
+			var $log = $( '<div>' ).css( 'margin-bottom', '2px' );
+			if ( color ) $log.css( 'color', color );
+			$log.html( '<span style="color:#888">[' + timestamp + ']</span> ' + message );
+			$logArea.append( $log ).show();
+			$logArea.scrollTop( $logArea[ 0 ].scrollHeight );
+		}
+
 		$( '#meowseo-bulk-ai-btn' ).on( 'click', function () {
 			var $btn = $( this );
 			var provider = $( '#meowseo-bulk-ai-provider' ).val();
 			var origText = $btn.html();
 
-			$btn.prop( 'disabled', true ).html( '&#10024; Generating…' );
+			$logArea.empty().append( '<div style="color:#6a9955">// MeowSEO AI Progress Log</div>' );
+			$btn.prop( 'disabled', true ).html( '&#10024; Processing…' );
+
+			addLog( 'Initializing bulk SEO generation...', '#569cd6' );
+			addLog( 'Analyzing post content and context...', '#dcdcaa' );
+
+			var providerName = provider ? $( '#meowseo-bulk-ai-provider option:selected' ).text() : 'Default (Settings)';
+			addLog( 'Connecting to AI Provider: ' + providerName + '...', '#ce9178' );
 
 			$.ajax( {
 				url: meowseoClassic.restUrl + '/ai/generate-all',
@@ -402,6 +420,7 @@
 				beforeSend: function ( xhr ) {
 					xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
 					xhr.setRequestHeader( 'Content-Type', 'application/json' );
+					addLog( 'Request sent to backend...', '#888' );
 				},
 				data: JSON.stringify( {
 					post_id: meowseoClassic.postId,
@@ -409,36 +428,52 @@
 				} ),
 				success: function ( data ) {
 					if ( data.success && data.data && data.data.text ) {
+						addLog( 'AI Response received successfully.', '#4ec9b0' );
+						addLog( 'Parsing SEO package...', '#dcdcaa' );
+
 						var res = data.data.text;
+						var updatedCount = 0;
 						
 						if ( res.seo_title ) {
 							$( '#meowseo_title' ).val( res.seo_title ).trigger( 'input' );
+							addLog( '✓ Updated SEO Title', '#b5cea8' );
+							updatedCount++;
 						}
 						if ( res.seo_description ) {
 							$( '#meowseo_description' ).val( res.seo_description ).trigger( 'input' );
+							addLog( '✓ Updated Meta Description', '#b5cea8' );
+							updatedCount++;
 						}
 						if ( res.focus_keyword ) {
 							$( '#meowseo_focus_keyword' ).val( res.focus_keyword ).trigger( 'input' );
+							addLog( '✓ Updated Focus Keyword', '#b5cea8' );
+							updatedCount++;
 						}
 						if ( res.direct_answer ) {
 							$( '#meowseo_direct_answer' ).val( res.direct_answer ).trigger( 'input' );
+							addLog( '✓ Updated Featured Snippet', '#b5cea8' );
+							updatedCount++;
 						}
 						
-						// Show a success message
-						alert( 'SEO content generated successfully!' );
+						addLog( 'Success! ' + updatedCount + ' fields updated.', '#4ec9b0' );
 					} else {
-						alert( 'Failed to generate content. Please try again.' );
+						var errorMsg = data.message || 'Unknown error occurred.';
+						addLog( 'ERROR: ' + errorMsg, '#f44747' );
 					}
 				},
 				error: function ( xhr ) {
 					var error = 'AI generation failed.';
 					if ( xhr.responseJSON && xhr.responseJSON.message ) {
-						error += ' ' + xhr.responseJSON.message;
+						error = xhr.responseJSON.message;
+					} else if ( xhr.statusText ) {
+						error = xhr.statusText;
 					}
-					alert( error );
+					addLog( 'FATAL ERROR: ' + error, '#f44747' );
+					addLog( 'Check your AI API key and connection settings.', '#888' );
 				},
 				complete: function () {
 					$btn.prop( 'disabled', false ).html( origText );
+					addLog( 'Process finished.', '#569cd6' );
 				},
 			} );
 		} );
