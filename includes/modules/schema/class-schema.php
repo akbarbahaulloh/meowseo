@@ -154,7 +154,7 @@ class Schema implements Module {
 
 		// Output debug comments if WP_DEBUG is enabled (Requirements 17.5, 17.6)
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			echo $this->builder->get_debug_output();
+			echo $this->schema_builder->get_debug_output();
 		}
 
 		$schema_json = $this->get_schema_json( $post_id );

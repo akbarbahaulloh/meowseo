@@ -67,6 +67,7 @@ class Options {
 			'has_regex_rules'        => false, // Performance flag for redirect module.
 			'ai_profiles'            => array(),
 			'writing_styles'         => array(),
+			'image_styles'           => array(),
 		);
 
 		foreach ( $defaults as $key => $value ) {
