@@ -1842,10 +1842,31 @@ class Settings_Manager {
 
 		// Validate AI settings (Requirements: 2.1-2.9, 15.1-15.4, 34.1).
 		$ai_providers = array( 'gemini', 'openai', 'anthropic', 'imagen', 'dalle', 'deepseek', 'glm', 'qwen' );
+		$ai_module = $this->module_manager->get_module( 'ai' );
+		$provider_manager = null;
+		if ( $ai_module instanceof \MeowSEO\Modules\AI\AI_Module ) {
+			// Access provider manager via reflection or property if public.
+			// For simplicity, we'll instantiate a temporary one or use the module's if accessible.
+			// Actually, AI_Provider_Manager is needed for encryption.
+			$provider_manager = new \MeowSEO\Modules\AI\AI_Provider_Manager( $this->options );
+		}
+
 		foreach ( $ai_providers as $provider ) {
 			$key = 'ai_api_key_' . $provider;
 			if ( isset( $settings[ $key ] ) ) {
-				$validated[ $key ] = sanitize_text_field( $settings[ $key ] );
+				$value = sanitize_text_field( $settings[ $key ] );
+				// If the value is masked (contains '...'), keep the existing saved key.
+				if ( strpos( $value, '...' ) !== false && ! empty( $this->options->get( $key, '' ) ) ) {
+					$validated[ $key ] = $this->options->get( $key, '' );
+				} else {
+					// Encrypt the new key if provider manager is available.
+					if ( ! empty( $value ) && $provider_manager ) {
+						$encrypted = $provider_manager->encrypt_key( $value );
+						$validated[ $key ] = $encrypted ?: $value;
+					} else {
+						$validated[ $key ] = $value;
+					}
+				}
 			}
 		}
 
@@ -2218,6 +2239,9 @@ class Settings_Manager {
 			);
 
 			wp_safe_redirect( add_query_arg( 'meowseo_settings_saved', '1', $redirect_url ) );
+			
+			// Clear AI provider status cache to ensure immediate update in UI.
+			wp_cache_delete( 'ai_provider_statuses', 'meowseo' );
 		} else {
 			wp_safe_redirect( add_query_arg( 'meowseo_settings_error', urlencode( __( 'Failed to save settings. Please try again.', 'meowseo' ) ), $redirect_url ) );
 		}

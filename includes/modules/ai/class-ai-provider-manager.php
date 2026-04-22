@@ -494,8 +494,8 @@ class AI_Provider_Manager {
 	 * @return string|null Decrypted API key or null if not available.
 	 */
 	private function get_decrypted_api_key( string $provider_slug ): ?string {
-		$option_key = "meowseo_ai_{$provider_slug}_api_key";
-		$encrypted = get_option( $option_key, '' );
+		$key = 'ai_api_key_' . $provider_slug;
+		$encrypted = $this->options->get( $key, '' );
 
 		if ( empty( $encrypted ) ) {
 			return null;

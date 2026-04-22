@@ -630,12 +630,21 @@ class AI_Settings {
 									<label for="ai_api_key_<?php echo esc_attr( $provider_slug ); ?>">
 										<?php esc_html_e( 'API Key', 'meowseo' ); ?>
 									</label>
+									<?php
+									$saved_key = $this->options->get( 'ai_api_key_' . $provider_slug, '' );
+									$display_key = $saved_key;
+									if ( ! empty( $saved_key ) ) {
+										// Mask the middle part of the key if it's already saved.
+										$display_key = substr( $saved_key, 0, 4 ) . '...' . substr( $saved_key, -4 );
+									}
+									?>
 									<input
 										type="text"
 										id="ai_api_key_<?php echo esc_attr( $provider_slug ); ?>"
 										name="ai_api_key_<?php echo esc_attr( $provider_slug ); ?>"
 										class="meowseo-api-key-input"
 										placeholder="<?php esc_attr_e( 'Enter API key', 'meowseo' ); ?>"
+										value="<?php echo esc_attr( $display_key ); ?>"
 										data-provider="<?php echo esc_attr( $provider_slug ); ?>"
 									>
 									<button
