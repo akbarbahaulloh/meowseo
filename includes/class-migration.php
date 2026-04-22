@@ -199,7 +199,7 @@ class Migration {
 					AND post_status IN ('publish', 'draft', 'pending', 'private', 'future')
 					ORDER BY ID ASC
 					LIMIT %d OFFSET %d",
-					...array_merge( $post_types, array( $batch_size, $offset ) )
+					array_merge( $post_types, array( $batch_size, $offset ) )
 				)
 			);
 
