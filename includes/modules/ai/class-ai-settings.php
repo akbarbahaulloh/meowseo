@@ -78,6 +78,29 @@ class AI_Settings {
 			);
 		}
 
+		// Gemini specific models.
+		register_setting(
+			'meowseo_ai_settings',
+			'meowseo_ai_gemini_model',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => 'gemini-2.0-flash',
+				'show_in_rest'      => false,
+			]
+		);
+
+		register_setting(
+			'meowseo_ai_settings',
+			'meowseo_ai_gemini_image_model',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => 'gemini-3.1-flash-image-preview',
+				'show_in_rest'      => false,
+			]
+		);
+
 		// Provider order array.
 		register_setting(
 			'meowseo_ai_settings',
@@ -656,6 +679,38 @@ class AI_Settings {
 										<?php esc_html_e( 'Test Connection', 'meowseo' ); ?>
 									</button>
 								</div>
+
+								<?php if ( 'gemini' === $provider_slug ) : ?>
+									<div class="meowseo-provider-row">
+										<label for="ai_gemini_model">
+											<?php esc_html_e( 'Text Model', 'meowseo' ); ?>
+										</label>
+										<input
+											type="text"
+											id="ai_gemini_model"
+											name="ai_gemini_model"
+											placeholder="gemini-2.0-flash"
+											value="<?php echo esc_attr( $this->options->get( 'ai_gemini_model', 'gemini-2.0-flash' ) ); ?>"
+											style="width:100%"
+										>
+										<p class="description"><?php esc_html_e( 'e.g., gemini-3-flash-preview, gemini-2.5-pro, etc.', 'meowseo' ); ?></p>
+									</div>
+
+									<div class="meowseo-provider-row">
+										<label for="ai_gemini_image_model">
+											<?php esc_html_e( 'Image Model', 'meowseo' ); ?>
+										</label>
+										<input
+											type="text"
+											id="ai_gemini_image_model"
+											name="ai_gemini_image_model"
+											placeholder="gemini-3.1-flash-image-preview"
+											value="<?php echo esc_attr( $this->options->get( 'ai_gemini_image_model', 'gemini-3.1-flash-image-preview' ) ); ?>"
+											style="width:100%"
+										>
+										<p class="description"><?php esc_html_e( 'e.g., gemini-3.1-flash-image-preview, gemini-2.5-flash-image, etc.', 'meowseo' ); ?></p>
+									</div>
+								<?php endif; ?>
 
 								<div class="meowseo-provider-row">
 									<label for="ai_active_<?php echo esc_attr( $provider_slug ); ?>">

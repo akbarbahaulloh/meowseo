@@ -32,22 +32,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Provider_Gemini implements AI_Provider {
 
 	/**
-	 * Gemini API endpoint URL.
+	 * Gemini API base URL.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
-	private const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+	private const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
 	/**
-	 * Gemini Image API endpoint URL.
+	 * Default text generation model.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
-	private const IMAGE_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateImage';
+	private const DEFAULT_TEXT_MODEL = 'gemini-2.0-flash';
 
 	/**
 	 * Default image generation model.
@@ -57,6 +57,20 @@ class Provider_Gemini implements AI_Provider {
 	 * @var string
 	 */
 	private const DEFAULT_IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
+
+	/**
+	 * Current text model.
+	 *
+	 * @var string
+	 */
+	private string $text_model;
+
+	/**
+	 * Current image model.
+	 *
+	 * @var string
+	 */
+	private string $image_model;
 
 	/**
 	 * Request timeout in seconds.
@@ -90,10 +104,14 @@ class Provider_Gemini implements AI_Provider {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param string $api_key The Gemini API key.
+	 * @param string $api_key     The Gemini API key.
+	 * @param string $text_model  Optional. Text model name.
+	 * @param string $image_model Optional. Image model name.
 	 */
-	public function __construct( string $api_key ) {
+	public function __construct( string $api_key, string $text_model = '', string $image_model = '' ) {
 		$this->api_key = $api_key;
+		$this->text_model = ! empty( $text_model ) ? $text_model : self::DEFAULT_TEXT_MODEL;
+		$this->image_model = ! empty( $image_model ) ? $image_model : self::DEFAULT_IMAGE_MODEL;
 	}
 
 	/**
@@ -190,7 +208,7 @@ class Provider_Gemini implements AI_Provider {
 			],
 		];
 
-		$url = add_query_arg( 'key', $this->api_key, self::API_URL );
+		$url = add_query_arg( 'key', $this->api_key, self::BASE_URL . $this->text_model . ':generateContent' );
 		$response = wp_remote_post(
 			$url,
 			[
@@ -252,7 +270,7 @@ class Provider_Gemini implements AI_Provider {
 			}
 		}
 
-		$url = add_query_arg( 'key', $this->api_key, self::IMAGE_API_URL );
+		$url = add_query_arg( 'key', $this->api_key, self::BASE_URL . $this->image_model . ':generateImage' );
 		// Make request to Gemini Image API with 90-second timeout.
 		$response = wp_remote_post(
 			$url,
@@ -281,7 +299,7 @@ class Provider_Gemini implements AI_Provider {
 	public function validate_api_key( string $key ): bool {
 		$this->last_error = null;
 
-		$url = add_query_arg( 'key', $key, self::API_URL );
+		$url = add_query_arg( 'key', $key, self::BASE_URL . $this->text_model . ':generateContent' );
 		$response = wp_remote_post(
 			$url,
 			[

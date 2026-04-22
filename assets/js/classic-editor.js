@@ -469,6 +469,14 @@
 						error = xhr.statusText;
 					}
 					addLog( 'FATAL ERROR: ' + error, '#f44747' );
+					
+					// Show detailed provider errors if available
+					if ( xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.errors ) {
+						$.each( xhr.responseJSON.data.errors, function( slug, msg ) {
+							addLog( '→ ' + slug.toUpperCase() + ': ' + msg, '#f44747' );
+						} );
+					}
+
 					addLog( 'Check your AI API key and connection settings.', '#888' );
 				},
 				complete: function () {

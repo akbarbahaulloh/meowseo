@@ -1883,6 +1883,15 @@ class Settings_Manager {
 			}
 		}
 
+		// Gemini specific models.
+		if ( isset( $settings['ai_gemini_model'] ) ) {
+			$validated['ai_gemini_model'] = sanitize_text_field( $settings['ai_gemini_model'] );
+		}
+
+		if ( isset( $settings['ai_gemini_image_model'] ) ) {
+			$validated['ai_gemini_image_model'] = sanitize_text_field( $settings['ai_gemini_image_model'] );
+		}
+
 		if ( isset( $settings['ai_custom_instructions'] ) ) {
 			$validated['ai_custom_instructions'] = wp_kses_post( $settings['ai_custom_instructions'] );
 		}

@@ -163,7 +163,13 @@ class AI_Provider_Manager {
 			$api_key = $this->get_decrypted_api_key( $slug );
 
 			if ( ! empty( $api_key ) ) {
-				$this->providers[ $slug ] = new $class( $api_key );
+				if ( 'gemini' === $slug ) {
+					$text_model = $this->options->get( 'ai_gemini_model', '' );
+					$image_model = $this->options->get( 'ai_gemini_image_model', '' );
+					$this->providers[ $slug ] = new $class( $api_key, $text_model, $image_model );
+				} else {
+					$this->providers[ $slug ] = new $class( $api_key );
+				}
 			}
 		}
 	}
@@ -185,57 +191,37 @@ class AI_Provider_Manager {
 	 */
 	private function get_ordered_providers( string $type = 'all' ): array {
 		$order = $this->options->get( 'ai_provider_order', [] );
-		$active = $this->options->get( 'ai_active_providers', [] );
-
-		// Ensure arrays.
 		$order = is_array( $order ) ? $order : [];
-		$active = is_array( $active ) ? $active : [];
 
 		$ordered = [];
 
-		// Add providers in configured order.
+		// 1. Add providers from the configured order (if they have keys).
 		foreach ( $order as $slug ) {
 			if ( ! isset( $this->providers[ $slug ] ) ) {
 				continue;
 			}
-
-			if ( ! in_array( $slug, $active, true ) ) {
-				continue;
-			}
-
 			$provider = $this->providers[ $slug ];
-
-			// Filter by capability.
 			if ( 'text' === $type && ! $provider->supports_text() ) {
 				continue;
 			}
-
 			if ( 'image' === $type && ! $provider->supports_image() ) {
 				continue;
 			}
-
 			$ordered[] = $provider;
 		}
 
-		// Add remaining active providers not in order.
+		// 2. Add remaining providers that have keys (fallback).
+		// This ensures that if a key exists, the provider can be used.
 		foreach ( $this->providers as $slug => $provider ) {
-			if ( ! in_array( $slug, $active, true ) ) {
-				continue;
-			}
-
 			if ( in_array( $provider, $ordered, true ) ) {
 				continue;
 			}
-
-			// Filter by capability.
 			if ( 'text' === $type && ! $provider->supports_text() ) {
 				continue;
 			}
-
 			if ( 'image' === $type && ! $provider->supports_image() ) {
 				continue;
 			}
-
 			$ordered[] = $provider;
 		}
 
