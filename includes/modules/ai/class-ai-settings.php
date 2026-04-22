@@ -421,9 +421,9 @@ class AI_Settings {
 		// Enqueue settings JavaScript
 		wp_enqueue_script(
 			'meowseo-ai-settings',
-			MEOWSEO_PLUGIN_URL . 'includes/modules/ai/assets/js/ai-settings.js',
+			\MEOWSEO_URL . 'includes/modules/ai/assets/js/ai-settings.js',
 			array(),
-			MEOWSEO_VERSION,
+			\MEOWSEO_VERSION,
 			true
 		);
 
