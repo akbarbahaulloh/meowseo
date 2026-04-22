@@ -171,13 +171,12 @@
 		 * Requirements: 2.4, 2.5, 2.6, 2.7
 		 */
 		initTestConnection: function() {
-			const buttons = document.querySelectorAll(this.config.testButtonSelector);
-
-			buttons.forEach((button) => {
-				button.addEventListener('click', (e) => {
+			document.addEventListener('click', (e) => {
+				const button = e.target.closest(this.config.testButtonSelector);
+				if (button) {
 					e.preventDefault();
 					this.testProviderConnection(button);
-				});
+				}
 			});
 		},
 
@@ -187,21 +186,24 @@
 		 * @param {HTMLElement} button - The test button element
 		 */
 		testProviderConnection: function(button) {
-			const provider = button.getAttribute('data-provider');
-			if (!provider || this.state.isTestingProvider[provider]) {
+			const profileId = button.getAttribute('data-profile-id');
+			const provider = button.getAttribute('data-provider'); // Legacy support
+			
+			if (this.state.isTestingProvider[profileId || provider]) {
 				return;
 			}
 
-			// Get API key from input
-			const apiKeyInput = document.querySelector(
-				`input[data-provider="${provider}"].meowseo-api-key-input`
-			);
-			if (!apiKeyInput || !apiKeyInput.value.trim()) {
-				this.showTestStatus(provider, 'error', 'Please enter an API key');
+			// Find API key input in the same profile item
+			const profileItem = button.closest('.meowseo-profile-item');
+			const apiKeyInput = profileItem ? profileItem.querySelector('input[name*="[api_key]"]') : null;
+			
+			if (apiKeyInput && !apiKeyInput.value.trim() && !profileId) {
+				this.showTestStatus(profileId || provider, 'error', 'Please enter an API key');
 				return;
 			}
 
-			const apiKey = apiKeyInput.value.trim();
+			const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+			const selectedProvider = profileItem ? profileItem.querySelector('select[name*="[provider]"]').value : provider;
 
 			// Show loading state
 			this.state.isTestingProvider[provider] = true;
@@ -218,20 +220,18 @@
 					'X-WP-Nonce': this.state.nonce,
 				},
 				body: JSON.stringify({
-					provider: provider,
+					profile_id: profileId,
+					provider: selectedProvider,
 					api_key: apiKey,
 				}),
 			})
 				.then((response) => response.json())
 				.then((data) => {
 					if (data.success && data.data && data.data.valid) {
-						this.showTestStatus(provider, 'success', data.data.message || 'Connection successful');
-						// Update status indicator
-						this.updateStatusIndicator(provider, 'active');
+						this.showTestStatus(profileId || provider, 'success', data.data.message || 'Connection successful');
 					} else {
 						const errorMsg = data.data?.message || data.message || 'Connection failed';
-						this.showTestStatus(provider, 'error', errorMsg);
-						this.updateStatusIndicator(provider, 'error');
+						this.showTestStatus(profileId || provider, 'error', errorMsg);
 					}
 				})
 				.catch((error) => {
@@ -241,7 +241,7 @@
 				})
 				.finally(() => {
 					// Restore button state
-					this.state.isTestingProvider[provider] = false;
+					this.state.isTestingProvider[profileId || provider] = false;
 					button.disabled = false;
 					button.classList.remove('meowseo-loading');
 					button.textContent = originalText;

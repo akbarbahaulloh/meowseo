@@ -132,7 +132,12 @@ class AI_Generator {
 	 *     @type array  $image    Generated image data (if requested).
 	 * }
 	 */
-	public function generate_all_meta( int $post_id, bool $generate_image = false, bool $bypass_cache = false, string $provider = '' ) {
+	public function generate_all_meta( int $post_id, bool $generate_image = false, array $options = [] ) {
+		$bypass_cache = ! empty( $options['bypass_cache'] );
+		$provider     = $options['provider'] ?? '';
+		$profile_id   = $options['profile_id'] ?? '';
+		$style_id     = $options['style_id'] ?? '';
+
 		// Check cache first.
 		if ( ! $bypass_cache ) {
 			$cached = $this->get_cached_result( $post_id, 'all' );
@@ -187,10 +192,13 @@ class AI_Generator {
 		}
 
 		// Build prompt.
-		$prompt = $this->build_text_prompt( $post );
+		$prompt = $this->build_text_prompt( $post, $style_id );
 
 		// Generate text content.
-		$text_result = $this->provider_manager->generate_text( $prompt, [ 'provider' => $provider ] );
+		$text_result = $this->provider_manager->generate_text( $prompt, [ 
+			'provider'   => $provider,
+			'profile_id' => $profile_id,
+		] );
 
 		if ( is_wp_error( $text_result ) ) {
 			return $text_result;
@@ -405,10 +413,11 @@ class AI_Generator {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param \WP_Post $post Post object.
+	 * @param \WP_Post $post     Post object.
+	 * @param string   $style_id Optional. Writing style ID.
 	 * @return string Generation prompt.
 	 */
-	public function build_text_prompt( $post ): string {
+	public function build_text_prompt( $post, string $style_id = '' ): string {
 		// Get post data.
 		$title = $post->post_title;
 		$content = wp_strip_all_tags( $post->post_content );
@@ -426,8 +435,47 @@ class AI_Generator {
 		// Get analysis results.
 		$analysis = $this->get_analysis_results( $post->ID );
 
-		// Build prompt.
+		// Build base prompt.
 		$prompt = "You are an SEO expert. Generate SEO metadata for the following article.\n\n";
+
+		// Apply Writing Style if selected.
+		if ( ! empty( $style_id ) ) {
+			$writing_styles = $this->options->get( 'writing_styles', array() );
+			$selected_style = null;
+			foreach ( $writing_styles as $style ) {
+				if ( $style['id'] === $style_id ) {
+					$selected_style = $style;
+					break;
+				}
+			}
+
+			if ( $selected_style ) {
+				$prompt = "You are an AI assistant configured with a specific Writing Style.\n";
+				if ( ! empty( $selected_style['persona'] ) ) {
+					$prompt .= "PERSONA: {$selected_style['persona']}\n";
+				}
+				if ( ! empty( $selected_style['tone'] ) ) {
+					$prompt .= "TONE: {$selected_style['tone']}\n";
+				}
+				if ( ! empty( $selected_style['linguistic_rules'] ) ) {
+					$prompt .= "LINGUISTIC RULES: {$selected_style['linguistic_rules']}\n";
+				}
+				if ( ! empty( $selected_style['anatomy'] ) ) {
+					$prompt .= "ARTICLE STRUCTURE/ANATOMY: {$selected_style['anatomy']}\n";
+				}
+				if ( ! empty( $selected_style['greetings'] ) ) {
+					$prompt .= "GREETINGS/SAPAAN: Use '{$selected_style['greetings']}' in relevant fields (e.g., snippet/intro if applicable).\n";
+				}
+				if ( ! empty( $selected_style['intro'] ) ) {
+					$prompt .= "OPENING PATTERN: Follow this pattern for intros: {$selected_style['intro']}\n";
+				}
+				if ( ! empty( $selected_style['outro'] ) ) {
+					$prompt .= "CLOSING PATTERN: Follow this pattern for conclusions/outros: {$selected_style['outro']}\n";
+				}
+				$prompt .= "\nGoal: Generate SEO metadata that strictly adheres to the style above while maintaining high search engine optimization standards.\n\n";
+			}
+		}
+
 		$prompt .= "Article Title: {$title}\n";
 		$prompt .= "Article Excerpt: {$excerpt}\n";
 		$prompt .= "Article Content: {$content}\n";
@@ -994,8 +1042,8 @@ class AI_Generator {
 	 * @param bool $bypass_cache Optional. Whether to bypass cache. Default false.
 	 * @return array|WP_Error Generated text content or error.
 	 */
-	public function generate_text_only( int $post_id, bool $bypass_cache = false ) {
-		return $this->generate_all_meta( $post_id, false, $bypass_cache );
+	public function generate_text_only( int $post_id, array $options = [] ) {
+		return $this->generate_all_meta( $post_id, false, $options );
 	}
 
 	/**
@@ -1008,7 +1056,10 @@ class AI_Generator {
 	 * @param bool        $bypass_cache Optional. Whether to bypass cache. Default false.
 	 * @return array|WP_Error Generated image data or error.
 	 */
-	public function generate_image_only( int $post_id, ?string $custom_prompt = null, bool $bypass_cache = false ) {
+	public function generate_image_only( int $post_id, ?string $custom_prompt = null, array $options = [] ) {
+		$bypass_cache = ! empty( $options['bypass_cache'] );
+		$profile_id   = $options['profile_id'] ?? '';
+
 		// Check cache first.
 		if ( ! $bypass_cache ) {
 			$cached = $this->get_cached_result( $post_id, 'image' );
@@ -1036,7 +1087,9 @@ class AI_Generator {
 		}
 
 		// Generate image.
-		$image_result = $this->provider_manager->generate_image( $prompt );
+		$image_result = $this->provider_manager->generate_image( $prompt, [
+			'profile_id' => $profile_id,
+		] );
 
 		if ( is_wp_error( $image_result ) ) {
 			return $image_result;

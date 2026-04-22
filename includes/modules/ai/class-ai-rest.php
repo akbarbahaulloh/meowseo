@@ -112,6 +112,16 @@ class AI_REST {
 						'default'           => false,
 						'sanitize_callback' => 'rest_sanitize_boolean',
 					),
+					'profile_id'     => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'style_id'       => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
+					),
 				),
 			)
 		);
@@ -135,6 +145,16 @@ class AI_REST {
 						'required'          => false,
 						'sanitize_callback' => 'sanitize_text_field',
 					),
+					'profile_id' => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'style_id' => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
+					),
 				),
 			)
 		);
@@ -156,6 +176,11 @@ class AI_REST {
 					'custom_prompt' => array(
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_textarea_field',
+					),
+					'profile_id' => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
 					),
 				),
 			)
@@ -218,8 +243,13 @@ class AI_REST {
 					),
 					'api_key' => array(
 						'type'              => 'string',
-						'required'          => true,
+						'required'          => false,
 						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'profile_id' => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
 					),
 				),
 			)
@@ -273,6 +303,14 @@ class AI_REST {
 		$type           = $request->get_param( 'type' ) ?: 'all';
 		$generate_image = $request->get_param( 'generate_image' ) ?: false;
 		$bypass_cache   = $request->get_param( 'bypass_cache' ) ?: false;
+		$profile_id     = $request->get_param( 'profile_id' );
+		$style_id       = $request->get_param( 'style_id' );
+
+		$gen_options = array(
+			'bypass_cache' => $bypass_cache,
+			'profile_id'   => $profile_id,
+			'style_id'     => $style_id,
+		);
 
 		// Validate post_id as integer (Requirement 28.2).
 		if ( ! is_int( $post_id ) || $post_id <= 0 ) {
@@ -305,12 +343,12 @@ class AI_REST {
 		try {
 			// Call Generator with appropriate parameters (Requirement 28.4, 28.5).
 			if ( 'text' === $type ) {
-				$result = $this->generator->generate_text_only( $post_id, $bypass_cache );
+				$result = $this->generator->generate_text_only( $post_id, $gen_options );
 			} elseif ( 'image' === $type ) {
-				$result = $this->generator->generate_image_only( $post_id, null, $bypass_cache );
+				$result = $this->generator->generate_image_only( $post_id, null, $gen_options );
 			} else {
 				// 'all' type
-				$result = $this->generator->generate_all_meta( $post_id, $generate_image, $bypass_cache );
+				$result = $this->generator->generate_all_meta( $post_id, $generate_image, $gen_options );
 			}
 
 			// Handle errors from generator.
@@ -392,12 +430,17 @@ class AI_REST {
 		}
 
 		try {
-			// If provider is specified, we might need a way to pass it to generate_all_meta.
-			// For now, generate_all_meta uses ProviderManager which handles ordering.
-			// If we want to FORCE a provider, we'd need to modify AI_Generator.
-			// But the user just wants it to work.
-			
-			$result = $this->generator->generate_all_meta( $post_id, false, true, $provider );
+			$profile_id = $request->get_param( 'profile_id' );
+			$style_id   = $request->get_param( 'style_id' );
+
+			$gen_options = array(
+				'provider'   => $provider,
+				'profile_id' => $profile_id,
+				'style_id'   => $style_id,
+				'bypass_cache' => true,
+			);
+
+			$result = $this->generator->generate_all_meta( $post_id, false, $gen_options );
 
 			if ( is_wp_error( $result ) ) {
 				return $result;
@@ -448,8 +491,13 @@ class AI_REST {
 		}
 
 		try {
+			$profile_id = $request->get_param( 'profile_id' );
+			$gen_options = array(
+				'profile_id' => $profile_id,
+			);
+
 			// Generate only featured image (Requirement 9.2).
-			$result = $this->generator->generate_image_only( $post_id, $custom_prompt );
+			$result = $this->generator->generate_image_only( $post_id, $custom_prompt, $gen_options );
 
 			if ( is_wp_error( $result ) ) {
 				return new WP_Error(
@@ -614,8 +662,9 @@ class AI_REST {
 	 * @return WP_REST_Response|WP_Error Response object or error.
 	 */
 	public function test_provider( WP_REST_Request $request ) {
-		$provider = $request->get_param( 'provider' );
-		$api_key  = $request->get_param( 'api_key' );
+		$provider   = $request->get_param( 'provider' );
+		$api_key    = $request->get_param( 'api_key' );
+		$profile_id = $request->get_param( 'profile_id' );
 
 		// Validate provider against whitelist (Requirement 2.4, 2.5).
 		if ( ! in_array( $provider, $this->valid_providers, true ) ) {
@@ -626,13 +675,25 @@ class AI_REST {
 			);
 		}
 
-		// Validate API key is not empty.
-		if ( empty( $api_key ) ) {
+		// Validate API key is not empty (if not using saved profile).
+		if ( empty( $api_key ) && empty( $profile_id ) ) {
 			return new WP_Error(
 				'empty_api_key',
 				__( 'API key is required.', 'meowseo' ),
 				array( 'status' => 400 )
 			);
+		}
+
+		// Handle masked key for existing profile.
+		if ( ! empty( $profile_id ) && ( empty( $api_key ) || strpos( $api_key, '...' ) !== false ) ) {
+			$profiles = $this->provider_manager->get_options()->get( 'ai_profiles', array() );
+			foreach ( $profiles as $profile ) {
+				if ( $profile['id'] === $profile_id ) {
+					$api_key = $this->provider_manager->get_decrypted_profile_key( $profile );
+					$provider = $profile['provider'];
+					break;
+				}
+			}
 		}
 
 		try {

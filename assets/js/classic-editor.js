@@ -414,7 +414,8 @@
 
 		$( '#meowseo-bulk-ai-btn' ).on( 'click', function () {
 			var $btn = $( this );
-			var provider = $( '#meowseo-bulk-ai-provider' ).val();
+			var profileId = $( '#meowseo-bulk-ai-profile' ).val();
+			var styleId = $( '#meowseo-bulk-ai-style' ).val();
 			var origText = $btn.html();
 
 			$logArea.empty().append( '<div style="color:#6a9955">// MeowSEO AI Progress Log</div>' );
@@ -423,8 +424,10 @@
 			addLog( 'Initializing bulk SEO generation...', '#569cd6' );
 			addLog( 'Analyzing post content and context...', '#dcdcaa' );
 
-			var providerName = provider ? $( '#meowseo-bulk-ai-provider option:selected' ).text() : 'Default (Settings)';
-			addLog( 'Connecting to AI Provider: ' + providerName + '...', '#ce9178' );
+			var profileName = profileId ? $( '#meowseo-bulk-ai-profile option:selected' ).text() : 'Auto (Default)';
+			var styleName = styleId ? $( '#meowseo-bulk-ai-style option:selected' ).text() : 'Standard MeowSEO';
+			addLog( 'AI Profile: ' + profileName, '#ce9178' );
+			addLog( 'Writing Style: ' + styleName, '#ce9178' );
 
 			$.ajax( {
 				url: meowseoClassic.restUrl + '/ai/generate-all',
@@ -436,7 +439,8 @@
 				},
 				data: JSON.stringify( {
 					post_id: meowseoClassic.postId,
-					provider: provider,
+					profile_id: $( '#meowseo-bulk-ai-profile' ).val(),
+					style_id: $( '#meowseo-bulk-ai-style' ).val(),
 				} ),
 				success: function ( data ) {
 					if ( data.success && data.data && data.data.text ) {

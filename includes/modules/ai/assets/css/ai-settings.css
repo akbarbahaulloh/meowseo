@@ -239,6 +239,60 @@
 	margin-right: 5px;
 }
 
+/* AI Profile Item Styling */
+.meowseo-profile-item {
+	background: #fff;
+	border: 1px solid #ccd0d4;
+	padding: 20px;
+	margin-bottom: 20px;
+	border-radius: 4px;
+	box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.meowseo-profile-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 15px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #eee;
+}
+
+.meowseo-profile-actions {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+}
+
+.meowseo-profile-remove {
+	color: #d63638;
+	text-decoration: none;
+	font-size: 13px;
+}
+
+.meowseo-profile-remove:hover {
+	color: #9b2021;
+}
+
+.meowseo-profile-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 20px;
+	align-items: end;
+}
+
+.meowseo-profile-field label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 5px;
+	font-size: 13px;
+}
+
+.meowseo-profile-field input,
+.meowseo-profile-field select {
+	width: 100%;
+}
+
 /* Provider Status Table */
 .meowseo-provider-status-table {
 	width: 100%;

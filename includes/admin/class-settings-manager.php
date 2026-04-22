@@ -92,6 +92,16 @@ class Settings_Manager {
 				'icon'   => 'dashicons-share',
 				'method' => 'render_social_profiles_tab',
 			),
+			'ai'              => array(
+				'title'    => __( 'AI', 'meowseo' ),
+				'icon'     => 'dashicons-admin-appearance',
+				'callback' => array( $this->module_manager->get_module( 'ai' ), 'render_settings_tab' ),
+			),
+			'writing_styles'  => array(
+				'title'    => __( 'Writing Styles', 'meowseo' ),
+				'icon'     => 'dashicons-editor-spellcheck',
+				'callback' => array( $this, 'render_writing_styles_tab' ),
+			),
 			'sitemap'         => array(
 				'title'  => __( 'Sitemap', 'meowseo' ),
 				'icon'   => 'dashicons-networking',
@@ -1920,6 +1930,68 @@ class Settings_Manager {
 		}
 
 		$validated['ai_save_to_media_library'] = ! empty( $settings['ai_save_to_media_library'] );
+
+		// Validate AI Profiles (Requirement 1.1).
+		if ( isset( $settings['ai_profiles'] ) && is_array( $settings['ai_profiles'] ) ) {
+			$validated['ai_profiles'] = array();
+			foreach ( $settings['ai_profiles'] as $profile ) {
+				if ( empty( $profile['provider'] ) ) {
+					continue;
+				}
+
+				$p_id = sanitize_key( $profile['id'] ?? 'profile_' . uniqid() );
+				$p_label = sanitize_text_field( $profile['label'] ?? 'New Profile' );
+				$p_provider = sanitize_key( $profile['provider'] );
+				$p_model = sanitize_text_field( $profile['model'] ?? '' );
+				$p_active = ! empty( $profile['active'] );
+				$p_key = sanitize_text_field( $profile['api_key'] ?? '' );
+
+				// Masking handle.
+				if ( strpos( $p_key, '...' ) !== false ) {
+					// Find existing profile and keep key.
+					$existing_profiles = $this->options->get( 'ai_profiles', array() );
+					foreach ( $existing_profiles as $existing ) {
+						if ( $existing['id'] === $p_id ) {
+							$p_key = $existing['api_key'];
+							break;
+						}
+					}
+				} else if ( ! empty( $p_key ) && $provider_manager ) {
+					$p_key = $provider_manager->encrypt_key( $p_key ) ?: $p_key;
+				}
+
+				$validated['ai_profiles'][] = array(
+					'id'       => $p_id,
+					'label'    => $p_label,
+					'provider' => $p_provider,
+					'model'    => $p_model,
+					'api_key'  => $p_key,
+					'active'   => $p_active,
+				);
+			}
+		}
+
+		// Validate Writing Styles (Requirement 1.2).
+		if ( isset( $settings['writing_styles'] ) && is_array( $settings['writing_styles'] ) ) {
+			$validated['writing_styles'] = array();
+			foreach ( $settings['writing_styles'] as $style ) {
+				if ( empty( $style['label'] ) ) {
+					continue;
+				}
+
+				$validated['writing_styles'][] = array(
+					'id'               => sanitize_key( $style['id'] ?? 'style_' . uniqid() ),
+					'label'            => sanitize_text_field( $style['label'] ),
+					'persona'          => sanitize_textarea_field( $style['persona'] ?? '' ),
+					'tone'             => sanitize_textarea_field( $style['tone'] ?? '' ),
+					'linguistic_rules' => sanitize_textarea_field( $style['linguistic_rules'] ?? '' ),
+					'anatomy'          => sanitize_textarea_field( $style['anatomy'] ?? '' ),
+					'greetings'        => sanitize_text_field( $style['greetings'] ?? '' ),
+					'intro'            => sanitize_text_field( $style['intro'] ?? '' ),
+					'outro'            => sanitize_text_field( $style['outro'] ?? '' ),
+				);
+			}
+		}
 
 		// Return errors if any.
 		if ( ! empty( $this->errors ) ) {

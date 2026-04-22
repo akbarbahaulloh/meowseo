@@ -513,244 +513,127 @@ class AI_Settings {
 	 * @return void
 	 */
 	private function render_provider_configuration_section(): void {
-		$provider_order = $this->options->get( 'ai_provider_order', array( 'gemini', 'openai', 'anthropic', 'imagen', 'dalle', 'deepseek', 'glm', 'qwen' ) );
-		$active_providers = $this->options->get( 'ai_active_providers', array() );
-		$providers = array(
-			'gemini'    => array(
-				'label'           => __( 'Google Gemini', 'meowseo' ),
-				'supports_text'   => true,
-				'supports_image'  => true,
-				'model'           => 'Gemini 2.0 Flash / Nano Banana 2',
-				'context_window'  => '1M tokens',
-				'pricing'         => __( 'Text: $0.10/$0.40 per 1M tokens | Image: $0.045-$0.150 per image', 'meowseo' ),
-				'api_key_url'     => 'https://aistudio.google.com/app/apikey',
-				'regional_note'   => '',
-			),
-			'openai'    => array(
-				'label'           => __( 'OpenAI', 'meowseo' ),
-				'supports_text'   => true,
-				'supports_image'  => true,
-				'model'           => 'GPT-4o-mini / DALL-E-3',
-				'context_window'  => '128K tokens',
-				'pricing'         => __( 'Text: $0.15/$0.60 per 1M tokens | Image: $0.040 per image', 'meowseo' ),
-				'api_key_url'     => 'https://platform.openai.com/api-keys',
-				'regional_note'   => '',
-			),
-			'anthropic' => array(
-				'label'           => __( 'Anthropic Claude', 'meowseo' ),
-				'supports_text'   => true,
-				'supports_image'  => false,
-				'model'           => 'Claude Haiku',
-				'context_window'  => '200K tokens',
-				'pricing'         => __( 'Text: $0.25/$1.25 per 1M tokens', 'meowseo' ),
-				'api_key_url'     => 'https://console.anthropic.com/settings/keys',
-				'regional_note'   => '',
-			),
-			'imagen'    => array(
-				'label'           => __( 'Google Imagen', 'meowseo' ),
-				'supports_text'   => false,
-				'supports_image'  => true,
-				'model'           => 'Imagen 3',
-				'context_window'  => 'N/A',
-				'pricing'         => __( 'Image: $0.020 per image', 'meowseo' ),
-				'api_key_url'     => 'https://aistudio.google.com/app/apikey',
-				'regional_note'   => '',
-			),
-			'dalle'     => array(
-				'label'           => __( 'DALL-E', 'meowseo' ),
-				'supports_text'   => false,
-				'supports_image'  => true,
-				'model'           => 'DALL-E-3',
-				'context_window'  => 'N/A',
-				'pricing'         => __( 'Image: $0.040 per image', 'meowseo' ),
-				'api_key_url'     => 'https://platform.openai.com/api-keys',
-				'regional_note'   => '',
-			),
-			'deepseek'  => array(
-				'label'           => __( 'DeepSeek', 'meowseo' ),
-				'supports_text'   => true,
-				'supports_image'  => true,
-				'model'           => 'DeepSeek-V3.2 / Janus-Pro-7B',
-				'context_window'  => '128K tokens',
-				'pricing'         => __( 'Text: $0.07/$0.28 per 1M tokens | Image: Varies', 'meowseo' ),
-				'api_key_url'     => 'https://platform.deepseek.com/api_keys',
-				'regional_note'   => __( 'Excellent for cost optimization (94-97% cost reduction vs major providers)', 'meowseo' ),
-			),
-			'glm'       => array(
-				'label'           => __( 'Zhipu AI GLM', 'meowseo' ),
-				'supports_text'   => true,
-				'supports_image'  => true,
-				'model'           => 'GLM-4.7-flash / GLM-Image (16B)',
-				'context_window'  => '128K tokens',
-				'pricing'         => __( 'Text: $0.014/$0.014 per 1M tokens | Image: ~$0.02 per image | Free tier available', 'meowseo' ),
-				'api_key_url'     => 'https://open.bigmodel.cn/usercenter/apikeys',
-				'regional_note'   => __( 'Best for Chinese language content. Excellent text rendering in images.', 'meowseo' ),
-			),
-			'qwen'      => array(
-				'label'           => __( 'Alibaba Qwen', 'meowseo' ),
-				'supports_text'   => true,
-				'supports_image'  => true,
-				'model'           => 'Qwen-Plus / Qwen-Image (20B)',
-				'context_window'  => '128K tokens',
-				'pricing'         => __( 'Text: $0.40/$2.00 per 1M tokens | Image: ~$0.03 per image', 'meowseo' ),
-				'api_key_url'     => 'https://dashscope.console.aliyun.com/apiKey',
-				'regional_note'   => __( 'Strong multilingual support. Better accessibility in China region.', 'meowseo' ),
-			),
-		);
+		$profiles = $this->options->get( 'ai_profiles', array() );
+		$available_providers = [
+			'gemini'    => 'Google Gemini',
+			'openai'    => 'OpenAI',
+			'anthropic' => 'Anthropic Claude',
+			'imagen'    => 'Google Imagen',
+			'dalle'     => 'OpenAI DALL-E',
+			'deepseek'  => 'DeepSeek',
+			'glm'       => 'Zhipu AI GLM',
+			'qwen'      => 'Alibaba Qwen',
+		];
 		?>
 		<div class="meowseo-ai-section">
-			<h3><?php esc_html_e( 'AI Providers Configuration', 'meowseo' ); ?></h3>
-			<p class="description"><?php esc_html_e( 'Configure your AI providers. Drag to reorder priority. The first available provider will be used for generation.', 'meowseo' ); ?></p>
+			<h3><?php esc_html_e( 'AI Profiles', 'meowseo' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'Manage your AI provider profiles. You can add multiple profiles for the same provider (e.g., Free and Pro keys).', 'meowseo' ); ?></p>
 
-			<div class="meowseo-providers-list" id="meowseo-providers-sortable">
-				<?php foreach ( $provider_order as $index => $provider_slug ) : ?>
-					<?php if ( isset( $providers[ $provider_slug ] ) ) : ?>
-						<?php $provider = $providers[ $provider_slug ]; ?>
-						<div class="meowseo-provider-item" data-provider="<?php echo esc_attr( $provider_slug ); ?>" data-priority="<?php echo esc_attr( $index ); ?>">
-							<div class="meowseo-provider-header">
-								<span class="meowseo-provider-drag-handle" title="<?php esc_attr_e( 'Drag to reorder', 'meowseo' ); ?>">⋮⋮</span>
-								<span class="meowseo-provider-priority"><?php echo esc_html( $index + 1 ); ?></span>
-								<span class="meowseo-provider-label"><?php echo esc_html( $provider['label'] ); ?></span>
-								<span class="meowseo-provider-capabilities">
-									<?php if ( $provider['supports_text'] ) : ?>
-										<span class="meowseo-capability-badge" title="<?php esc_attr_e( 'Supports text generation', 'meowseo' ); ?>">📝</span>
-									<?php endif; ?>
-									<?php if ( $provider['supports_image'] ) : ?>
-										<span class="meowseo-capability-badge" title="<?php esc_attr_e( 'Supports image generation', 'meowseo' ); ?>">🖼️</span>
-									<?php endif; ?>
-								</span>
-							</div>
-
-							<div class="meowseo-provider-config">
-								<!-- Provider Information -->
-								<div class="meowseo-provider-info">
-									<div class="meowseo-provider-info-row">
-										<strong><?php esc_html_e( 'Model:', 'meowseo' ); ?></strong>
-										<span><?php echo esc_html( $provider['model'] ); ?></span>
-										<span class="meowseo-provider-info-separator">|</span>
-										<strong><?php esc_html_e( 'Context:', 'meowseo' ); ?></strong>
-										<span><?php echo esc_html( $provider['context_window'] ); ?></span>
-									</div>
-									<div class="meowseo-provider-info-row">
-										<strong><?php esc_html_e( 'Pricing:', 'meowseo' ); ?></strong>
-										<span><?php echo esc_html( $provider['pricing'] ); ?></span>
-									</div>
-									<?php if ( ! empty( $provider['regional_note'] ) ) : ?>
-										<div class="meowseo-provider-info-row meowseo-provider-regional-note">
-											<span class="dashicons dashicons-info"></span>
-											<span><?php echo esc_html( $provider['regional_note'] ); ?></span>
-										</div>
-									<?php endif; ?>
-									<div class="meowseo-provider-info-row">
-										<a href="<?php echo esc_url( $provider['api_key_url'] ); ?>" target="_blank" rel="noopener noreferrer" class="meowseo-api-key-link">
-											<?php esc_html_e( 'Get API Key', 'meowseo' ); ?>
-											<span class="dashicons dashicons-external"></span>
-										</a>
-									</div>
-								</div>
-
-								<div class="meowseo-provider-row">
-									<label for="ai_api_key_<?php echo esc_attr( $provider_slug ); ?>">
-										<?php esc_html_e( 'API Key', 'meowseo' ); ?>
-									</label>
-									<?php
-									$saved_key = $this->options->get( 'ai_api_key_' . $provider_slug, '' );
-									$display_key = $saved_key;
-									if ( ! empty( $saved_key ) ) {
-										// Mask the middle part of the key if it's already saved.
-										$display_key = substr( $saved_key, 0, 4 ) . '...' . substr( $saved_key, -4 );
-									}
-									?>
-									<input
-										type="text"
-										id="ai_api_key_<?php echo esc_attr( $provider_slug ); ?>"
-										name="ai_api_key_<?php echo esc_attr( $provider_slug ); ?>"
-										class="meowseo-api-key-input"
-										placeholder="<?php esc_attr_e( 'Enter API key', 'meowseo' ); ?>"
-										value="<?php echo esc_attr( $display_key ); ?>"
-										data-provider="<?php echo esc_attr( $provider_slug ); ?>"
-									>
-									<button
-										type="button"
-										class="button meowseo-test-connection-btn"
-										data-provider="<?php echo esc_attr( $provider_slug ); ?>"
-										title="<?php esc_attr_e( 'Test connection to this provider', 'meowseo' ); ?>"
-									>
-										<?php esc_html_e( 'Test Connection', 'meowseo' ); ?>
-									</button>
-								</div>
-
-								<?php if ( 'gemini' === $provider_slug ) : ?>
-									<div class="meowseo-provider-row">
-										<label for="ai_gemini_model">
-											<?php esc_html_e( 'Text Model', 'meowseo' ); ?>
-										</label>
-										<select id="ai_gemini_model" name="ai_gemini_model" style="width:100%">
-											<?php
-											$gemini_text_models = [
-												'gemini-3-flash-preview'        => 'Gemini 3 Flash Preview (Latest Speed)',
-												'gemini-3.1-pro-preview'        => 'Gemini 3.1 Pro Preview (Latest Intelligence)',
-												'gemini-3.1-flash-lite-preview' => 'Gemini 3.1 Flash Lite Preview (Efficient)',
-												'gemini-2.5-pro'                => 'Gemini 2.5 Pro (Stable Reasoning)',
-												'gemini-2.5-flash'              => 'Gemini 2.5 Flash (Balanced)',
-												'gemini-2.5-flash-lite'         => 'Gemini 2.5 Flash-Lite (Fastest)',
-												'gemini-2.0-flash'              => 'Gemini 2.0 Flash (Legacy Stable)',
-												'gemini-flash-latest'           => 'Gemini Flash Latest (Auto-update)',
-												'gemini-pro-latest'            => 'Gemini Pro Latest (Auto-update)',
-												'deep-research-preview-04-2026' => 'Deep Research Preview (Agentic)',
-											];
-											$current_text_model = $this->options->get( 'ai_gemini_model', 'gemini-2.0-flash' );
-											foreach ( $gemini_text_models as $val => $label ) {
-												printf( '<option value="%s" %s>%s</option>', esc_attr( $val ), selected( $current_text_model, $val, false ), esc_html( $label ) );
-											}
-											?>
-										</select>
-										<p class="description"><?php esc_html_e( 'Select the model for SEO content generation.', 'meowseo' ); ?></p>
-									</div>
-
-									<div class="meowseo-provider-row">
-										<label for="ai_gemini_image_model">
-											<?php esc_html_e( 'Image Model', 'meowseo' ); ?>
-										</label>
-										<select id="ai_gemini_image_model" name="ai_gemini_image_model" style="width:100%">
-											<?php
-											$gemini_img_models = [
-												'gemini-3.1-flash-image-preview' => 'Gemini 3.1 Flash Image Preview',
-												'gemini-3-pro-image-preview'     => 'Gemini 3 Pro Image Preview',
-												'gemini-2.5-flash-image'         => 'Gemini 2.5 Flash Image',
-											];
-											$current_img_model = $this->options->get( 'ai_gemini_image_model', 'gemini-3.1-flash-image-preview' );
-											foreach ( $gemini_img_models as $val => $label ) {
-												printf( '<option value="%s" %s>%s</option>', esc_attr( $val ), selected( $current_img_model, $val, false ), esc_html( $label ) );
-											}
-											?>
-										</select>
-										<p class="description"><?php esc_html_e( 'Select the model for AI image generation.', 'meowseo' ); ?></p>
-									</div>
-								<?php endif; ?>
-
-								<div class="meowseo-provider-row">
-									<label for="ai_active_<?php echo esc_attr( $provider_slug ); ?>">
-										<input
-											type="checkbox"
-											id="ai_active_<?php echo esc_attr( $provider_slug ); ?>"
-											name="ai_active_providers[]"
-											value="<?php echo esc_attr( $provider_slug ); ?>"
-											class="meowseo-provider-active-toggle"
-											<?php checked( in_array( $provider_slug, $active_providers, true ) ); ?>
-										>
-										<?php esc_html_e( 'Active', 'meowseo' ); ?>
-									</label>
-									<span class="meowseo-test-status" id="test-status-<?php echo esc_attr( $provider_slug ); ?>"></span>
-								</div>
-							</div>
-						</div>
-					<?php endif; ?>
-				<?php endforeach; ?>
+			<div id="meowseo-ai-profiles-list">
+				<?php if ( ! empty( $profiles ) ) : ?>
+					<?php foreach ( $profiles as $index => $profile ) : ?>
+						<?php $this->render_profile_item( $profile, $index, $available_providers ); ?>
+					<?php endforeach; ?>
+				<?php else : ?>
+					<p class="meowseo-no-profiles"><?php esc_html_e( 'No AI profiles configured. Click the button below to add one.', 'meowseo' ); ?></p>
+				<?php endif; ?>
 			</div>
 
-			<input type="hidden" id="ai_provider_order" name="ai_provider_order" value="<?php echo esc_attr( wp_json_encode( $provider_order ) ); ?>">
+			<button type="button" id="meowseo-add-ai-profile" class="button button-secondary">
+				<span class="dashicons dashicons-plus-alt" style="vertical-align: middle; margin-top: 3px;"></span>
+				<?php esc_html_e( 'Add New AI Profile', 'meowseo' ); ?>
+			</button>
 		</div>
+
+		<script type="text/template" id="meowseo-ai-profile-template">
+			<?php $this->render_profile_item( array( 'id' => 'PROFILE_ID', 'label' => '', 'provider' => 'gemini', 'api_key' => '', 'model' => 'gemini-2.0-flash', 'active' => true ), 'INDEX', $available_providers ); ?>
+		</script>
+
+		<script>
+			jQuery(document).ready(function($) {
+				var profileIndex = <?php echo count( $profiles ); ?>;
+				
+				$('#meowseo-add-ai-profile').on('click', function() {
+					var template = $('#meowseo-ai-profile-template').html();
+					var id = 'profile_' + Date.now();
+					var html = template.replace(/INDEX/g, profileIndex).replace(/PROFILE_ID/g, id);
+					
+					$('.meowseo-no-profiles').hide();
+					$('#meowseo-ai-profiles-list').append(html);
+					profileIndex++;
+				});
+
+				$(document).on('click', '.meowseo-profile-remove', function(e) {
+					e.preventDefault();
+					if (confirm('<?php esc_attr_e( 'Are you sure you want to remove this profile?', 'meowseo' ); ?>')) {
+						$(this).closest('.meowseo-profile-item').remove();
+						if ($('#meowseo-ai-profiles-list').children().length === 0) {
+							$('.meowseo-no-profiles').show();
+						}
+					}
+				});
+			});
+		</script>
+		<?php
+	}
+
+	/**
+	 * Render a single AI profile item
+	 *
+	 * @param array $profile Profile data.
+	 * @param int|string $index Index or placeholder.
+	 * @param array $available_providers List of providers.
+	 * @return void
+	 */
+	private function render_profile_item( array $profile, $index, array $available_providers ): void {
+		$id = $profile['id'] ?? '';
+		?>
+		<div class="meowseo-profile-item">
+			<div class="meowseo-profile-header">
+				<input type="text" name="ai_profiles[<?php echo esc_attr( $index ); ?>][label]" value="<?php echo esc_attr( $profile['label'] ); ?>" placeholder="<?php esc_attr_e( 'Profile Label (e.g., Gemini Free)', 'meowseo' ); ?>" class="regular-text" required>
+				<input type="hidden" name="ai_profiles[<?php echo esc_attr( $index ); ?>][id]" value="<?php echo esc_attr( $id ); ?>">
+				<div class="meowseo-profile-actions">
+					<label>
+						<input type="checkbox" name="ai_profiles[<?php echo esc_attr( $index ); ?>][active]" value="1" <?php checked( ! empty( $profile['active'] ) ); ?>>
+						<?php esc_html_e( 'Active', 'meowseo' ); ?>
+					</label>
+					<a href="#" class="meowseo-profile-remove"><?php esc_html_e( 'Remove', 'meowseo' ); ?></a>
+				</div>
+			</div>
+
+			<div class="meowseo-profile-grid">
+				<div class="meowseo-profile-field">
+					<label><?php esc_html_e( 'AI Provider', 'meowseo' ); ?></label>
+					<select name="ai_profiles[<?php echo esc_attr( $index ); ?>][provider]" class="meowseo-provider-select">
+						<?php foreach ( $available_providers as $slug => $label ) : ?>
+							<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $profile['provider'] ?? '', $slug ); ?>><?php echo esc_html( $label ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+				<div class="meowseo-profile-field">
+					<label><?php esc_html_e( 'API Key', 'meowseo' ); ?></label>
+					<?php
+					$display_key = $profile['api_key'] ?? '';
+					if ( ! empty( $display_key ) && strpos( $display_key, '...' ) === false ) {
+						$display_key = substr( $display_key, 0, 4 ) . '...' . substr( $display_key, -4 );
+					}
+					?>
+					<input type="password" name="ai_profiles[<?php echo esc_attr( $index ); ?>][api_key]" value="<?php echo esc_attr( $display_key ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Enter API Key', 'meowseo' ); ?>">
+				</div>
+				<div class="meowseo-profile-field">
+					<label><?php esc_html_e( 'Model Version', 'meowseo' ); ?></label>
+					<input type="text" name="ai_profiles[<?php echo esc_attr( $index ); ?>][model]" value="<?php echo esc_attr( $profile['model'] ?? '' ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g., gemini-2.0-flash', 'meowseo' ); ?>">
+				</div>
+				<div class="meowseo-profile-field">
+					<button type="button" class="button meowseo-test-connection-btn" data-profile-id="<?php echo esc_attr( $id ); ?>">
+						<?php esc_html_e( 'Test Connection', 'meowseo' ); ?>
+					</button>
+					<span class="meowseo-test-status" id="test-status-<?php echo esc_attr( $id ); ?>"></span>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
 		<?php
 	}
 

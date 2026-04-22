@@ -65,6 +65,8 @@ class Options {
 			'default_social_image'   => '',
 			'delete_on_uninstall'    => false,
 			'has_regex_rules'        => false, // Performance flag for redirect module.
+			'ai_profiles'            => array(),
+			'writing_styles'         => array(),
 		);
 
 		foreach ( $defaults as $key => $value ) {

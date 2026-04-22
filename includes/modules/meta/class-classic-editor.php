@@ -147,36 +147,45 @@ class Classic_Editor {
 			<div id="meowseo-tab-general" class="meowseo-tab-panel">
 				
 				<!-- Bulk AI Generation Section -->
-				<div class="meowseo-bulk-ai-section" style="background:#f0f6fb;padding:12px;border-radius:6px;margin-bottom:20px;border:1px solid #c3d9ef;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-					<div style="flex-grow:1">
-						<strong style="display:block;margin-bottom:4px"><?php esc_html_e( 'Bulk AI SEO', 'meowseo' ); ?></strong>
-						<p class="description" style="margin:0"><?php esc_html_e( 'Generate Title, Description, Keyword, and Snippet in one click.', 'meowseo' ); ?></p>
+				<div class="meowseo-bulk-ai-section" style="background:#f0f6fb;padding:15px;border-radius:6px;margin-bottom:20px;border:1px solid #c3d9ef">
+					<div style="margin-bottom:12px">
+						<strong style="display:block;margin-bottom:4px;font-size:14px"><?php esc_html_e( 'Bulk AI SEO Generation', 'meowseo' ); ?></strong>
+						<p class="description" style="margin:0"><?php esc_html_e( 'Generate all SEO metadata at once using your preferred AI profile and writing style.', 'meowseo' ); ?></p>
 					</div>
-					<div style="display:flex;align-items:center;gap:8px">
-						<select id="meowseo-bulk-ai-provider" style="min-width:140px">
-							<option value=""><?php esc_html_e( 'Auto (Settings)', 'meowseo' ); ?></option>
-							<?php
-							$meowseo_opt = get_option( 'meowseo_options', array() );
-							$active_providers = isset( $meowseo_opt['ai_active_providers'] ) ? $meowseo_opt['ai_active_providers'] : array();
-							$provider_labels = array(
-								'gemini'    => 'Google Gemini',
-								'openai'    => 'OpenAI',
-								'anthropic' => 'Anthropic Claude',
-								'deepseek'  => 'DeepSeek',
-								'glm'       => 'Zhipu AI GLM',
-								'qwen'      => 'Alibaba Qwen',
-							);
-							foreach ( $active_providers as $slug ) {
-								if ( isset( $provider_labels[ $slug ] ) ) {
-									printf( '<option value="%s">%s</option>', esc_attr( $slug ), esc_html( $provider_labels[ $slug ] ) );
+					
+					<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end">
+						<div>
+							<label style="display:block;margin-bottom:5px;font-size:12px;font-weight:600"><?php esc_html_e( 'AI Profile', 'meowseo' ); ?></label>
+							<select id="meowseo-bulk-ai-profile" style="width:100%">
+								<option value=""><?php esc_html_e( 'Auto (Default)', 'meowseo' ); ?></option>
+								<?php
+								$meowseo_opt = get_option( 'meowseo_options', array() );
+								$ai_profiles = $meowseo_opt['ai_profiles'] ?? array();
+								foreach ( $ai_profiles as $profile ) {
+									if ( ! empty( $profile['active'] ) ) {
+										printf( '<option value="%s">%s (%s)</option>', esc_attr( $profile['id'] ), esc_html( $profile['label'] ), esc_html( $profile['provider'] ) );
+									}
 								}
-							}
-							?>
-						</select>
-						<button type="button" class="button button-primary" id="meowseo-bulk-ai-btn">
+								?>
+							</select>
+						</div>
+						<div>
+							<label style="display:block;margin-bottom:5px;font-size:12px;font-weight:600"><?php esc_html_e( 'Writing Style', 'meowseo' ); ?></label>
+							<select id="meowseo-bulk-ai-style" style="width:100%">
+								<option value=""><?php esc_html_e( 'Standard MeowSEO', 'meowseo' ); ?></option>
+								<?php
+								$writing_styles = $meowseo_opt['writing_styles'] ?? array();
+								foreach ( $writing_styles as $style ) {
+									printf( '<option value="%s">%s</option>', esc_attr( $style['id'] ), esc_html( $style['label'] ) );
+								}
+								?>
+							</select>
+						</div>
+						<button type="button" class="button button-primary" id="meowseo-bulk-ai-btn" style="height:30px">
 							&#10024; <?php esc_html_e( 'Generate All', 'meowseo' ); ?>
 						</button>
 					</div>
+
 					<div id="meowseo-bulk-ai-log" style="width:100%;background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:4px;font-family:monospace;font-size:11px;margin-top:10px;display:none;max-height:150px;overflow-y:auto;border:1px solid #333">
 						<div style="color:#6a9955">// MeowSEO AI Progress Log</div>
 					</div>

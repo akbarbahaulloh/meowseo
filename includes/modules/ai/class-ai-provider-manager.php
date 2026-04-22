@@ -57,7 +57,7 @@ class AI_Provider_Manager {
 	private Options $options;
 
 	/**
-	 * Array of instantiated providers, keyed by provider slug.
+	 * Array of instantiated providers, keyed by profile ID.
 	 *
 	 * @since 1.0.0
 	 *
@@ -134,7 +134,48 @@ class AI_Provider_Manager {
 	 */
 	public function __construct( Options $options ) {
 		$this->options = $options;
+		$this->run_migration();
 		$this->load_providers();
+	}
+
+	/**
+	 * Migrate old provider-based settings to the new profile-based system.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	private function run_migration(): void {
+		$profiles = $this->options->get( 'ai_profiles', [] );
+		if ( ! empty( $profiles ) ) {
+			return; // Already migrated or profiles exist.
+		}
+
+		$old_slugs = [ 'gemini', 'openai', 'anthropic', 'imagen', 'dalle', 'deepseek', 'glm', 'qwen' ];
+		$migrated = [];
+
+		foreach ( $old_slugs as $slug ) {
+			$api_key = $this->options->get( 'ai_api_key_' . $slug, '' );
+			if ( ! empty( $api_key ) ) {
+				$model = '';
+				if ( 'gemini' === $slug ) {
+					$model = $this->options->get( 'ai_gemini_model', 'gemini-2.0-flash' );
+				}
+
+				$migrated[] = [
+					'id'       => 'profile_' . $slug . '_' . uniqid(),
+					'label'    => 'Default ' . ucfirst( $slug ),
+					'provider' => $slug,
+					'api_key'  => $api_key,
+					'model'    => $model,
+					'active'   => true,
+				];
+			}
+		}
+
+		if ( ! empty( $migrated ) ) {
+			$this->options->set( 'ai_profiles', $migrated );
+			$this->options->save();
+		}
 	}
 
 	/**
@@ -148,6 +189,11 @@ class AI_Provider_Manager {
 	 * @return void
 	 */
 	private function load_providers(): void {
+		$profiles = $this->options->get( 'ai_profiles', [] );
+		if ( ! is_array( $profiles ) ) {
+			return;
+		}
+
 		$provider_classes = [
 			'gemini'    => Provider_Gemini::class,
 			'openai'    => Provider_OpenAI::class,
@@ -159,17 +205,30 @@ class AI_Provider_Manager {
 			'qwen'      => Provider_Qwen::class,
 		];
 
-		foreach ( $provider_classes as $slug => $class ) {
-			$api_key = $this->get_decrypted_api_key( $slug );
+		foreach ( $profiles as $profile ) {
+			if ( empty( $profile['active'] ) ) {
+				continue;
+			}
 
-			if ( ! empty( $api_key ) ) {
-				if ( 'gemini' === $slug ) {
-					$text_model = $this->options->get( 'ai_gemini_model', '' );
-					$image_model = $this->options->get( 'ai_gemini_image_model', '' );
-					$this->providers[ $slug ] = new $class( $api_key, $text_model, $image_model );
-				} else {
-					$this->providers[ $slug ] = new $class( $api_key );
-				}
+			$slug = $profile['provider'] ?? '';
+			if ( ! isset( $provider_classes[ $slug ] ) ) {
+				continue;
+			}
+
+			$api_key = $this->decrypt_key( $profile['api_key'] ?? '' );
+			if ( empty( $api_key ) ) {
+				continue;
+			}
+
+			$class = $provider_classes[ $slug ];
+			$profile_id = $profile['id'];
+
+			if ( 'gemini' === $slug ) {
+				$text_model = $profile['model'] ?? 'gemini-2.0-flash';
+				$image_model = $this->options->get( 'ai_gemini_image_model', 'gemini-3.1-flash-image-preview' );
+				$this->providers[ $profile_id ] = new $class( $api_key, $text_model, $image_model );
+			} else {
+				$this->providers[ $profile_id ] = new $class( $api_key );
 			}
 		}
 	}
@@ -190,32 +249,11 @@ class AI_Provider_Manager {
 	 * @return array<AI_Provider> Ordered array of provider instances.
 	 */
 	private function get_ordered_providers( string $type = 'all' ): array {
-		$order = $this->options->get( 'ai_provider_order', [] );
-		$order = is_array( $order ) ? $order : [];
-
 		$ordered = [];
 
-		// 1. Add providers from the configured order (if they have keys).
-		foreach ( $order as $slug ) {
-			if ( ! isset( $this->providers[ $slug ] ) ) {
-				continue;
-			}
-			$provider = $this->providers[ $slug ];
-			if ( 'text' === $type && ! $provider->supports_text() ) {
-				continue;
-			}
-			if ( 'image' === $type && ! $provider->supports_image() ) {
-				continue;
-			}
-			$ordered[] = $provider;
-		}
-
-		// 2. Add remaining providers that have keys (fallback).
-		// This ensures that if a key exists, the provider can be used.
-		foreach ( $this->providers as $slug => $provider ) {
-			if ( in_array( $provider, $ordered, true ) ) {
-				continue;
-			}
+		// For now, we use the order in ai_profiles.
+		// In the future, we could add a separate ai_profile_order option.
+		foreach ( $this->providers as $profile_id => $provider ) {
 			if ( 'text' === $type && ! $provider->supports_text() ) {
 				continue;
 			}
@@ -256,9 +294,18 @@ class AI_Provider_Manager {
 	 * }
 	 */
 	public function generate_text( string $prompt, array $options = [] ) {
+		$profile_id = $options['profile_id'] ?? '';
 		$provider_slug = $options['provider'] ?? '';
-		if ( ! empty( $provider_slug ) && isset( $this->providers[ $provider_slug ] ) ) {
-			$ordered_providers = [ $this->providers[ $provider_slug ] ];
+
+		if ( ! empty( $profile_id ) && isset( $this->providers[ $profile_id ] ) ) {
+			$ordered_providers = [ $this->providers[ $profile_id ] ];
+		} elseif ( ! empty( $provider_slug ) ) {
+			$ordered_providers = [];
+			foreach ( $this->providers as $p ) {
+				if ( $p->get_slug() === $provider_slug ) {
+					$ordered_providers[] = $p;
+				}
+			}
 		} else {
 			$ordered_providers = $this->get_ordered_providers( 'text' );
 		}
@@ -351,7 +398,12 @@ class AI_Provider_Manager {
 	 * }
 	 */
 	public function generate_image( string $prompt, array $options = [] ) {
-		$ordered_providers = $this->get_ordered_providers( 'image' );
+		$profile_id = $options['profile_id'] ?? '';
+		if ( ! empty( $profile_id ) && isset( $this->providers[ $profile_id ] ) ) {
+			$ordered_providers = [ $this->providers[ $profile_id ] ];
+		} else {
+			$ordered_providers = $this->get_ordered_providers( 'image' );
+		}
 		$this->errors = [];
 
 		// Check if any providers are available.
@@ -473,27 +525,6 @@ class AI_Provider_Manager {
 		);
 	}
 
-	/**
-	 * Get decrypted API key for a provider.
-	 *
-	 * Retrieves the encrypted API key from WordPress options and decrypts it.
-	 * Returns null if no key is stored or decryption fails.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string $provider_slug The provider slug.
-	 * @return string|null Decrypted API key or null if not available.
-	 */
-	private function get_decrypted_api_key( string $provider_slug ): ?string {
-		$key = 'ai_api_key_' . $provider_slug;
-		$encrypted = $this->options->get( $key, '' );
-
-		if ( empty( $encrypted ) ) {
-			return null;
-		}
-
-		return $this->decrypt_key( $encrypted );
-	}
 
 	/**
 	 * Decrypt an API key using AES-256-CBC.
@@ -625,58 +656,32 @@ class AI_Provider_Manager {
 		}
 
 		$statuses = [];
-		$order = $this->options->get( 'ai_provider_order', [] );
-		$active = $this->options->get( 'ai_active_providers', [] );
+		$profiles = $this->options->get( 'ai_profiles', [] );
 
-		// Ensure arrays.
-		$order = is_array( $order ) ? $order : [];
-		$active = is_array( $active ) ? $active : [];
+		foreach ( $profiles as $index => $profile ) {
+			$profile_id = $profile['id'];
+			$slug       = $profile['provider'];
+			$provider   = $this->providers[ $profile_id ] ?? null;
 
-		// Get status for loaded providers.
-		foreach ( $this->providers as $slug => $provider ) {
 			$rate_limit_end = wp_cache_get(
-				self::RATE_LIMIT_KEY_PREFIX . $slug,
+				self::RATE_LIMIT_KEY_PREFIX . $profile_id,
 				self::CACHE_GROUP
 			);
 
 			$rate_limited = false !== $rate_limit_end && time() < (int) $rate_limit_end;
 			$rate_limit_remaining = $rate_limited ? max( 0, (int) $rate_limit_end - time() ) : 0;
 
-			$priority = array_search( $slug, $order, true );
-			$priority = false !== $priority ? (int) $priority : 999;
-
-			$statuses[ $slug ] = [
-				'label'               => $provider->get_label(),
-				'active'              => in_array( $slug, $active, true ),
-				'has_api_key'         => true,
-				'supports_text'       => $provider->supports_text(),
-				'supports_image'      => $provider->supports_image(),
+			$statuses[ $profile_id ] = [
+				'label'               => $profile['label'] ?? $this->get_provider_label( $slug ),
+				'active'              => (bool) ( $profile['active'] ?? false ),
+				'has_api_key'         => ! empty( $profile['api_key'] ),
+				'supports_text'       => $provider ? $provider->supports_text() : in_array( $slug, [ 'gemini', 'openai', 'anthropic', 'deepseek', 'glm', 'qwen' ], true ),
+				'supports_image'      => $provider ? $provider->supports_image() : in_array( $slug, [ 'gemini', 'imagen', 'dalle', 'openai', 'deepseek', 'glm', 'qwen' ], true ),
 				'rate_limited'        => $rate_limited,
 				'rate_limit_remaining' => $rate_limit_remaining,
-				'priority'            => $priority,
-			];
-		}
-
-		// Add providers without API keys.
-		$all_slugs = [ 'gemini', 'openai', 'anthropic', 'imagen', 'dalle', 'deepseek', 'glm', 'qwen' ];
-
-		foreach ( $all_slugs as $slug ) {
-			if ( isset( $statuses[ $slug ] ) ) {
-				continue;
-			}
-
-			$priority = array_search( $slug, $order, true );
-			$priority = false !== $priority ? (int) $priority : 999;
-
-			$statuses[ $slug ] = [
-				'label'               => $this->get_provider_label( $slug ),
-				'active'              => in_array( $slug, $active, true ),
-				'has_api_key'         => false,
-				'supports_text'       => in_array( $slug, [ 'gemini', 'openai', 'anthropic', 'deepseek', 'glm', 'qwen' ], true ),
-				'supports_image'      => in_array( $slug, [ 'gemini', 'imagen', 'dalle', 'openai', 'deepseek', 'glm', 'qwen' ], true ),
-				'rate_limited'        => false,
-				'rate_limit_remaining' => 0,
-				'priority'            => $priority,
+				'priority'            => $index,
+				'provider'            => $slug,
+				'model'               => $profile['model'] ?? '',
 			];
 		}
 
@@ -823,5 +828,19 @@ class AI_Provider_Manager {
 	 */
 	public function clear_provider_status_cache(): bool {
 		return wp_cache_delete( self::PROVIDER_STATUS_CACHE_KEY, self::CACHE_GROUP );
+	}
+
+
+	/**
+	 * Get decrypted key from profile.
+	 *
+	 * @param array $profile Profile data.
+	 * @return string Decrypted key.
+	 */
+	public function get_decrypted_profile_key( array $profile ): string {
+		if ( empty( $profile['api_key'] ) ) {
+			return '';
+		}
+		return $this->decrypt_key( $profile['api_key'] ) ?: '';
 	}
 }
