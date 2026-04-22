@@ -104,18 +104,36 @@ class AI_REST {
 					),
 					'type'           => array(
 						'type'              => 'string',
-						'default'           => 'all',
+						'required'          => true,
 						'sanitize_callback' => 'sanitize_text_field',
-					),
-					'generate_image' => array(
-						'type'              => 'boolean',
-						'default'           => false,
-						'sanitize_callback' => 'rest_sanitize_boolean',
 					),
 					'bypass_cache'   => array(
 						'type'              => 'boolean',
 						'default'           => false,
 						'sanitize_callback' => 'rest_sanitize_boolean',
+					),
+				),
+			)
+		);
+
+		// POST /meowseo/v1/ai/generate-all - Bulk generate SEO metadata.
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/generate-all',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'generate_all' ),
+				'permission_callback' => array( $this, 'check_permission_and_nonce' ),
+				'args'                => array(
+					'post_id'  => array(
+						'type'              => 'integer',
+						'required'          => true,
+						'sanitize_callback' => 'absint',
+					),
+					'provider' => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
 					),
 				),
 			)
@@ -332,6 +350,7 @@ class AI_REST {
 			return new WP_REST_Response(
 				array(
 					'success' => true,
+					'result'  => $result['text'][ $type ] ?? ( $result['result'] ?? '' ),
 					'data'    => $result,
 				),
 				200
@@ -340,17 +359,59 @@ class AI_REST {
 			Logger::error(
 				'AI generation exception',
 				array(
-					'module'   => 'ai',
-					'post_id'  => $post_id,
-					'error'    => $e->getMessage(),
+					'module'  => 'ai',
+					'post_id' => $post_id,
+					'error'   => $e->getMessage(),
 				)
 			);
 
 			return new WP_Error(
 				'generation_exception',
-				__( 'An error occurred during generation.', 'meowseo' ),
+				$e->getMessage(),
 				array( 'status' => 500 )
 			);
+		}
+	}
+
+	/**
+	 * Bulk generate SEO metadata for a post.
+	 *
+	 * POST /meowseo/v1/ai/generate-all
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error Response object or error.
+	 */
+	public function generate_all( WP_REST_Request $request ) {
+		$post_id  = $request->get_param( 'post_id' );
+		$provider = $request->get_param( 'provider' );
+
+		// Validate post exists.
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return new WP_Error( 'post_not_found', __( 'Post not found.', 'meowseo' ), array( 'status' => 404 ) );
+		}
+
+		try {
+			// If provider is specified, we might need a way to pass it to generate_all_meta.
+			// For now, generate_all_meta uses ProviderManager which handles ordering.
+			// If we want to FORCE a provider, we'd need to modify AI_Generator.
+			// But the user just wants it to work.
+			
+			$result = $this->generator->generate_all_meta( $post_id, false, true, $provider );
+
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+
+			return new WP_REST_Response(
+				array(
+					'success' => true,
+					'data'    => $result,
+				),
+				200
+			);
+		} catch ( \Exception $e ) {
+			return new WP_Error( 'generation_error', $e->getMessage(), array( 'status' => 500 ) );
 		}
 	}
 

@@ -132,7 +132,7 @@ class AI_Generator {
 	 *     @type array  $image    Generated image data (if requested).
 	 * }
 	 */
-	public function generate_all_meta( int $post_id, bool $generate_image = false, bool $bypass_cache = false ) {
+	public function generate_all_meta( int $post_id, bool $generate_image = false, bool $bypass_cache = false, string $provider = '' ) {
 		// Check cache first.
 		if ( ! $bypass_cache ) {
 			$cached = $this->get_cached_result( $post_id, 'all' );
@@ -190,7 +190,7 @@ class AI_Generator {
 		$prompt = $this->build_text_prompt( $post );
 
 		// Generate text content.
-		$text_result = $this->provider_manager->generate_text( $prompt );
+		$text_result = $this->provider_manager->generate_text( $prompt, [ 'provider' => $provider ] );
 
 		if ( is_wp_error( $text_result ) ) {
 			return $text_result;

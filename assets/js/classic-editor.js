@@ -388,6 +388,62 @@
 		} );
 	}
 
+	function initBulkAi() {
+		$( '#meowseo-bulk-ai-btn' ).on( 'click', function () {
+			var $btn = $( this );
+			var provider = $( '#meowseo-bulk-ai-provider' ).val();
+			var origText = $btn.html();
+
+			$btn.prop( 'disabled', true ).html( '&#10024; Generating…' );
+
+			$.ajax( {
+				url: meowseoClassic.restUrl + '/ai/generate-all',
+				method: 'POST',
+				beforeSend: function ( xhr ) {
+					xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
+					xhr.setRequestHeader( 'Content-Type', 'application/json' );
+				},
+				data: JSON.stringify( {
+					post_id: meowseoClassic.postId,
+					provider: provider,
+				} ),
+				success: function ( data ) {
+					if ( data.success && data.data && data.data.text ) {
+						var res = data.data.text;
+						
+						if ( res.seo_title ) {
+							$( '#meowseo_title' ).val( res.seo_title ).trigger( 'input' );
+						}
+						if ( res.seo_description ) {
+							$( '#meowseo_description' ).val( res.seo_description ).trigger( 'input' );
+						}
+						if ( res.focus_keyword ) {
+							$( '#meowseo_focus_keyword' ).val( res.focus_keyword ).trigger( 'input' );
+						}
+						if ( res.direct_answer ) {
+							$( '#meowseo_direct_answer' ).val( res.direct_answer ).trigger( 'input' );
+						}
+						
+						// Show a success message
+						alert( 'SEO content generated successfully!' );
+					} else {
+						alert( 'Failed to generate content. Please try again.' );
+					}
+				},
+				error: function ( xhr ) {
+					var error = 'AI generation failed.';
+					if ( xhr.responseJSON && xhr.responseJSON.message ) {
+						error += ' ' + xhr.responseJSON.message;
+					}
+					alert( error );
+				},
+				complete: function () {
+					$btn.prop( 'disabled', false ).html( origText );
+				},
+			} );
+		} );
+	}
+
 	// -------------------------------------------------------------------------
 	// GSC Submit
 	// -------------------------------------------------------------------------
@@ -484,6 +540,12 @@
 			initAiButtons();
 		} catch ( e ) {
 			console.error( 'MeowSEO AI Buttons Initialization Error:', e );
+		}
+
+		try {
+			initBulkAi();
+		} catch ( e ) {
+			console.error( 'MeowSEO Bulk AI Initialization Error:', e );
 		}
 
 		try {

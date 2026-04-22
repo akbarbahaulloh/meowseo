@@ -270,7 +270,12 @@ class AI_Provider_Manager {
 	 * }
 	 */
 	public function generate_text( string $prompt, array $options = [] ) {
-		$ordered_providers = $this->get_ordered_providers( 'text' );
+		$provider_slug = $options['provider'] ?? '';
+		if ( ! empty( $provider_slug ) && isset( $this->providers[ $provider_slug ] ) ) {
+			$ordered_providers = [ $this->providers[ $provider_slug ] ];
+		} else {
+			$ordered_providers = $this->get_ordered_providers( 'text' );
+		}
 		$this->errors = [];
 
 		// Check if any providers are available.

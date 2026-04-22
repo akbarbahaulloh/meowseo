@@ -145,6 +145,39 @@ class Classic_Editor {
 			<!-- TAB: General                                                  -->
 			<!-- ============================================================ -->
 			<div id="meowseo-tab-general" class="meowseo-tab-panel">
+				
+				<!-- Bulk AI Generation Section -->
+				<div class="meowseo-bulk-ai-section" style="background:#f0f6fb;padding:12px;border-radius:6px;margin-bottom:20px;border:1px solid #c3d9ef;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+					<div style="flex-grow:1">
+						<strong style="display:block;margin-bottom:4px"><?php esc_html_e( 'Bulk AI SEO', 'meowseo' ); ?></strong>
+						<p class="description" style="margin:0"><?php esc_html_e( 'Generate Title, Description, Keyword, and Snippet in one click.', 'meowseo' ); ?></p>
+					</div>
+					<div style="display:flex;align-items:center;gap:8px">
+						<select id="meowseo-bulk-ai-provider" style="min-width:140px">
+							<option value=""><?php esc_html_e( 'Auto (Settings)', 'meowseo' ); ?></option>
+							<?php
+							$options = new \MeowSEO\Options();
+							$active_providers = $options->get( 'ai_active_providers', array() );
+							$provider_labels = array(
+								'gemini'    => 'Google Gemini',
+								'openai'    => 'OpenAI',
+								'anthropic' => 'Anthropic Claude',
+								'deepseek'  => 'DeepSeek',
+								'glm'       => 'Zhipu AI GLM',
+								'qwen'      => 'Alibaba Qwen',
+							);
+							foreach ( $active_providers as $slug ) {
+								if ( isset( $provider_labels[ $slug ] ) ) {
+									printf( '<option value="%s">%s</option>', esc_attr( $slug ), esc_html( $provider_labels[ $slug ] ) );
+								}
+							}
+							?>
+						</select>
+						<button type="button" class="button button-primary" id="meowseo-bulk-ai-btn">
+							&#10024; <?php esc_html_e( 'Generate All', 'meowseo' ); ?>
+						</button>
+					</div>
+				</div>
 
 				<!-- SERP Preview -->
 				<div class="meowseo-serp-preview">
