@@ -64,6 +64,13 @@ class Plugin {
 	private ?Admin $admin = null;
 
 	/**
+	 * GitHub Update Checker instance.
+	 *
+	 * @var \MeowSEO\Updater\GitHub_Update_Checker|null
+	 */
+	private ?\MeowSEO\Updater\GitHub_Update_Checker $updater_checker = null;
+
+	/**
 	 * Private constructor to prevent direct instantiation.
 	 */
 	private function __construct() {
@@ -165,13 +172,13 @@ class Plugin {
 			$logger = new \MeowSEO\Updater\Update_Logger();
 
 			// Create update checker instance.
-			$checker = new \MeowSEO\Updater\GitHub_Update_Checker( MEOWSEO_FILE, $config, $logger );
+			$this->updater_checker = new \MeowSEO\Updater\GitHub_Update_Checker( MEOWSEO_FILE, $config, $logger );
 
 			// Initialize the checker (register hooks).
-			$checker->init();
+			$this->updater_checker->init();
 
 			// Create and register settings page.
-			$settings_page = new \MeowSEO\Updater\Update_Settings_Page( $config, $checker, $logger );
+			$settings_page = new \MeowSEO\Updater\Update_Settings_Page( $config, $this->updater_checker, $logger );
 			$settings_page->register();
 		} catch ( \Exception $e ) {
 			// Log updater initialization error but don't break the plugin.
@@ -179,6 +186,15 @@ class Plugin {
 				error_log( 'MeowSEO: Failed to initialize GitHub updater: ' . $e->getMessage() );
 			}
 		}
+	}
+
+	/**
+	 * Get GitHub Update Checker instance.
+	 *
+	 * @return \MeowSEO\Updater\GitHub_Update_Checker|null
+	 */
+	public function get_updater_checker(): ?\MeowSEO\Updater\GitHub_Update_Checker {
+		return $this->updater_checker;
 	}
 
 	/**

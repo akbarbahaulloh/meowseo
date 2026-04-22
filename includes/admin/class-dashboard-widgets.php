@@ -66,47 +66,62 @@ class Dashboard_Widgets {
 		$this->options        = $options;
 		$this->module_manager = $module_manager;
 
-		// Define available widgets with their metadata.
-		$this->widgets = array(
-			'content-health'         => array(
-				'title'    => __( 'Content Health', 'meowseo' ),
-				'endpoint' => '/meowseo/v1/dashboard/content-health',
-				'icon'     => 'dashicons-heart',
-			),
-			'cornerstone-content'    => array(
-				'title'    => __( 'Cornerstone Content', 'meowseo' ),
-				'endpoint' => '/meowseo/v1/dashboard/cornerstone-content',
-				'icon'     => 'dashicons-star-filled',
-			),
-			'sitemap-status'         => array(
-				'title'    => __( 'Sitemap Status', 'meowseo' ),
-				'endpoint' => '/meowseo/v1/dashboard/sitemap-status',
-				'icon'     => 'dashicons-networking',
-			),
-			'top-404s'               => array(
-				'title'    => __( 'Top 404 Errors', 'meowseo' ),
-				'endpoint' => '/meowseo/v1/dashboard/top-404s',
-				'icon'     => 'dashicons-warning',
-			),
-			'gsc-summary'            => array(
-				'title'    => __( 'Search Console Summary', 'meowseo' ),
-				'endpoint' => '/meowseo/v1/dashboard/gsc-summary',
-				'icon'     => 'dashicons-chart-line',
-			),
-			'discover-performance'   => array(
-				'title'    => __( 'Discover Performance', 'meowseo' ),
-				'endpoint' => '/meowseo/v1/dashboard/discover-performance',
-				'icon'     => 'dashicons-google',
-			),
-			'index-queue'            => array(
-				'title'    => __( 'Index Queue Status', 'meowseo' ),
-				'endpoint' => '/meowseo/v1/dashboard/index-queue',
-				'icon'     => 'dashicons-list-view',
-			),
-		);
-
 		// Register cache invalidation hooks.
 		$this->register_cache_invalidation_hooks();
+	}
+
+	/**
+	 * Get widget definitions
+	 *
+	 * Returns widget metadata with translated strings.
+	 * Lazy-loaded to avoid translation loading issues.
+	 *
+	 * @since 1.0.0
+	 * @return array<string, array<string, string>> Widget definitions.
+	 */
+	private function get_widgets(): array {
+		if ( ! isset( $this->widgets ) ) {
+			// Define available widgets with their metadata.
+			$this->widgets = array(
+				'content-health'         => array(
+					'title'    => __( 'Content Health', 'meowseo' ),
+					'endpoint' => '/meowseo/v1/dashboard/content-health',
+					'icon'     => 'dashicons-heart',
+				),
+				'cornerstone-content'    => array(
+					'title'    => __( 'Cornerstone Content', 'meowseo' ),
+					'endpoint' => '/meowseo/v1/dashboard/cornerstone-content',
+					'icon'     => 'dashicons-star-filled',
+				),
+				'sitemap-status'         => array(
+					'title'    => __( 'Sitemap Status', 'meowseo' ),
+					'endpoint' => '/meowseo/v1/dashboard/sitemap-status',
+					'icon'     => 'dashicons-networking',
+				),
+				'top-404s'               => array(
+					'title'    => __( 'Top 404 Errors', 'meowseo' ),
+					'endpoint' => '/meowseo/v1/dashboard/top-404s',
+					'icon'     => 'dashicons-warning',
+				),
+				'gsc-summary'            => array(
+					'title'    => __( 'Search Console Summary', 'meowseo' ),
+					'endpoint' => '/meowseo/v1/dashboard/gsc-summary',
+					'icon'     => 'dashicons-chart-line',
+				),
+				'discover-performance'   => array(
+					'title'    => __( 'Discover Performance', 'meowseo' ),
+					'endpoint' => '/meowseo/v1/dashboard/discover-performance',
+					'icon'     => 'dashicons-google',
+				),
+				'index-queue'            => array(
+					'title'    => __( 'Index Queue Status', 'meowseo' ),
+					'endpoint' => '/meowseo/v1/dashboard/index-queue',
+					'icon'     => 'dashicons-list-view',
+				),
+			);
+		}
+
+		return $this->widgets;
 	}
 
 	/**
@@ -121,9 +136,12 @@ class Dashboard_Widgets {
 	public function render_widgets(): void {
 		// Generate unique nonce for dashboard page (Requirement 28.5).
 		$dashboard_nonce = wp_create_nonce( 'meowseo_dashboard_widgets' );
+		
+		// Get widgets with translated strings.
+		$widgets = $this->get_widgets();
 		?>
 		<div class="meowseo-dashboard-widgets">
-			<?php foreach ( $this->widgets as $widget_id => $widget_config ) : ?>
+			<?php foreach ( $widgets as $widget_id => $widget_config ) : ?>
 				<div 
 					class="meowseo-widget" 
 					id="meowseo-widget-<?php echo esc_attr( $widget_id ); ?>"
