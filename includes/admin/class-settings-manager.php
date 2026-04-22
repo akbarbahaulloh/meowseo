@@ -1712,7 +1712,7 @@ class Settings_Manager {
 
 		// Validate enabled modules.
 		if ( isset( $settings['enabled_modules'] ) && is_array( $settings['enabled_modules'] ) ) {
-			$valid_modules = array( 'meta', 'schema', 'sitemap', 'redirects', 'monitor_404', 'internal_links', 'gsc', 'social', 'woocommerce' );
+			$valid_modules = array( 'meta', 'schema', 'sitemap', 'redirects', 'monitor_404', 'internal_links', 'gsc', 'social', 'woocommerce', 'ai' );
 			$validated['enabled_modules'] = array_values( array_intersect( $settings['enabled_modules'], $valid_modules ) );
 		}
 
@@ -1839,6 +1839,57 @@ class Settings_Manager {
 			$this->errors = array_merge( $this->errors, $validated['title_patterns']->get_error_data() );
 			unset( $validated['title_patterns'] );
 		}
+
+		// Validate AI settings (Requirements: 2.1-2.9, 15.1-15.4, 34.1).
+		$ai_providers = array( 'gemini', 'openai', 'anthropic', 'imagen', 'dalle', 'deepseek', 'glm', 'qwen' );
+		foreach ( $ai_providers as $provider ) {
+			$key = 'ai_api_key_' . $provider;
+			if ( isset( $settings[ $key ] ) ) {
+				$validated[ $key ] = sanitize_text_field( $settings[ $key ] );
+			}
+		}
+
+		if ( isset( $settings['ai_active_providers'] ) && is_array( $settings['ai_active_providers'] ) ) {
+			$validated['ai_active_providers'] = array_map( 'sanitize_key', $settings['ai_active_providers'] );
+		} else {
+			$validated['ai_active_providers'] = array();
+		}
+
+		if ( isset( $settings['ai_provider_order'] ) ) {
+			$order = json_decode( wp_unslash( $settings['ai_provider_order'] ), true );
+			if ( is_array( $order ) ) {
+				$validated['ai_provider_order'] = array_map( 'sanitize_key', $order );
+			}
+		}
+
+		if ( isset( $settings['ai_custom_instructions'] ) ) {
+			$validated['ai_custom_instructions'] = wp_kses_post( $settings['ai_custom_instructions'] );
+		}
+
+		$validated['ai_auto_generate'] = ! empty( $settings['ai_auto_generate'] );
+		
+		if ( isset( $settings['ai_overwrite_behavior'] ) ) {
+			$valid_behaviors = array( 'ask', 'always', 'never' );
+			$validated['ai_overwrite_behavior'] = in_array( $settings['ai_overwrite_behavior'], $valid_behaviors, true ) ? $settings['ai_overwrite_behavior'] : 'ask';
+		}
+
+		if ( isset( $settings['ai_output_language'] ) ) {
+			$valid_languages = array( 'auto-detect', 'english', 'indonesian' );
+			$validated['ai_output_language'] = in_array( $settings['ai_output_language'], $valid_languages, true ) ? $settings['ai_output_language'] : 'auto-detect';
+		}
+
+		$validated['ai_image_generation_enabled'] = ! empty( $settings['ai_image_generation_enabled'] );
+
+		if ( isset( $settings['ai_visual_style'] ) ) {
+			$valid_styles = array( 'professional', 'modern', 'minimal', 'illustrative', 'photography' );
+			$validated['ai_visual_style'] = in_array( $settings['ai_visual_style'], $valid_styles, true ) ? $settings['ai_visual_style'] : 'professional';
+		}
+
+		if ( isset( $settings['ai_color_palette_hint'] ) ) {
+			$validated['ai_color_palette_hint'] = sanitize_text_field( $settings['ai_color_palette_hint'] );
+		}
+
+		$validated['ai_save_to_media_library'] = ! empty( $settings['ai_save_to_media_library'] );
 
 		// Return errors if any.
 		if ( ! empty( $this->errors ) ) {
