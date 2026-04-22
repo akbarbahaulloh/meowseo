@@ -179,18 +179,17 @@ class Title_Patterns {
 	public function get_pattern_for_post_type( string $post_type ): string {
 		$patterns = $this->options->get( 'title_patterns', $this->get_default_patterns() );
 		
+		$pattern = '{title} {sep} {site_name}'; // Final fallback.
+
 		// Check for specific post type pattern.
-		if ( isset( $patterns[ $post_type ] ) ) {
-			return $patterns[ $post_type ];
+		if ( isset( $patterns[ $post_type ] ) && is_string( $patterns[ $post_type ] ) ) {
+			$pattern = $patterns[ $post_type ];
+		} elseif ( isset( $patterns['post'] ) && is_string( $patterns['post'] ) ) {
+			// Fall back to 'post' pattern for custom post types.
+			$pattern = $patterns['post'];
 		}
 		
-		// Fall back to 'post' pattern for custom post types.
-		if ( isset( $patterns['post'] ) ) {
-			return $patterns['post'];
-		}
-		
-		// Final fallback.
-		return '{title} {sep} {site_name}';
+		return (string) $pattern;
 	}
 
 	/**
@@ -203,7 +202,7 @@ class Title_Patterns {
 		$patterns = $this->options->get( 'title_patterns', $this->get_default_patterns() );
 		
 		// Check for specific page type pattern.
-		if ( isset( $patterns[ $page_type ] ) ) {
+		if ( isset( $patterns[ $page_type ] ) && is_string( $patterns[ $page_type ] ) ) {
 			return $patterns[ $page_type ];
 		}
 		
@@ -221,7 +220,7 @@ class Title_Patterns {
 		$patterns = $this->options->get( 'title_patterns', $this->get_default_patterns() );
 		
 		// Check for specific archive type pattern.
-		if ( isset( $patterns[ $archive_type ] ) ) {
+		if ( isset( $patterns[ $archive_type ] ) && is_string( $patterns[ $archive_type ] ) ) {
 			return $patterns[ $archive_type ];
 		}
 		

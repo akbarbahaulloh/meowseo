@@ -2134,7 +2134,8 @@ class Settings_Manager {
 
 			// Compare values (handle arrays specially).
 			if ( is_array( $value ) && is_array( $old_value ) ) {
-				if ( ! empty( array_diff( $value, $old_value ) ) || ! empty( array_diff( $old_value, $value ) ) ) {
+				// Use serialization for deep comparison to handle multidimensional arrays.
+				if ( serialize( $value ) !== serialize( $old_value ) ) {
 					$changed_fields[] = $key;
 				}
 			} elseif ( $value !== $old_value ) {
