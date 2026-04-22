@@ -156,8 +156,8 @@ class Classic_Editor {
 						<select id="meowseo-bulk-ai-provider" style="min-width:140px">
 							<option value=""><?php esc_html_e( 'Auto (Settings)', 'meowseo' ); ?></option>
 							<?php
-							$options = new \MeowSEO\Options();
-							$active_providers = $options->get( 'ai_active_providers', array() );
+							$meowseo_opt = get_option( 'meowseo_options', array() );
+							$active_providers = isset( $meowseo_opt['ai_active_providers'] ) ? $meowseo_opt['ai_active_providers'] : array();
 							$provider_labels = array(
 								'gemini'    => 'Google Gemini',
 								'openai'    => 'OpenAI',

@@ -392,7 +392,7 @@
 		var $logArea = $( '#meowseo-bulk-ai-log' );
 
 		function addLog( message, color ) {
-			var timestamp = new \Date().toLocaleTimeString();
+			var timestamp = new Date().toLocaleTimeString();
 			var $log = $( '<div>' ).css( 'margin-bottom', '2px' );
 			if ( color ) $log.css( 'color', color );
 			$log.html( '<span style="color:#888">[' + timestamp + ']</span> ' + message );
