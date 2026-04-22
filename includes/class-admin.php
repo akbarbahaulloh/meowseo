@@ -164,18 +164,27 @@ class Admin {
 	 * @return void
 	 */
 	public function register_admin_menu(): void {
-		// Add top-level menu with cat icon (Requirements 1.1, 1.2).
+		// Custom SEO icon (magnifying glass with chart) - free to use.
+		$icon_svg = 'data:image/svg+xml;base64,' . base64_encode(
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">' .
+			'<path fill="#a0aec0" d="M9 0C4.03 0 0 4.03 0 9s4.03 9 9 9c1.84 0 3.55-.55 4.99-1.5l4.51 4.51 1.41-1.41-4.51-4.51C16.45 14.55 17 12.84 17 11c0-4.97-4.03-9-9-9zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>' .
+			'<path fill="#a0aec0" d="M8 5h2v5H8zM8 11h2v2H8z"/>' .
+			'</svg>'
+		);
+
+		// Add top-level menu with SEO icon.
 		add_menu_page(
 			__( 'MeowSEO', 'meowseo' ),
 			__( 'MeowSEO', 'meowseo' ),
 			'manage_options',
 			'meowseo',
 			array( $this, 'render_dashboard_page' ),
-			'dashicons-cat',
-			80
+			$icon_svg,
+			25  // Position after Dashboard, before Media
 		);
 
-		// Register submenu pages (Requirement 1.3).
+		// Register submenu pages in logical order.
+		// 1. Dashboard - Overview
 		add_submenu_page(
 			'meowseo',
 			__( 'Dashboard', 'meowseo' ),
@@ -185,6 +194,7 @@ class Admin {
 			array( $this, 'render_dashboard_page' )
 		);
 
+		// 2. Settings - Configuration
 		add_submenu_page(
 			'meowseo',
 			__( 'Settings', 'meowseo' ),
@@ -194,24 +204,7 @@ class Admin {
 			array( $this, 'render_settings_page' )
 		);
 
-		add_submenu_page(
-			'meowseo',
-			__( 'Redirects', 'meowseo' ),
-			__( 'Redirects', 'meowseo' ),
-			'manage_options',
-			'meowseo-redirects',
-			array( $this, 'render_redirects_page' )
-		);
-
-		add_submenu_page(
-			'meowseo',
-			__( '404 Monitor', 'meowseo' ),
-			__( '404 Monitor', 'meowseo' ),
-			'manage_options',
-			'meowseo-404-monitor',
-			array( $this, 'render_404_monitor_page' )
-		);
-
+		// 3. Search Console - Integration
 		add_submenu_page(
 			'meowseo',
 			__( 'Search Console', 'meowseo' ),
@@ -221,6 +214,27 @@ class Admin {
 			array( $this, 'render_search_console_page' )
 		);
 
+		// 4. Redirects - URL Management
+		add_submenu_page(
+			'meowseo',
+			__( 'Redirects', 'meowseo' ),
+			__( 'Redirects', 'meowseo' ),
+			'manage_options',
+			'meowseo-redirects',
+			array( $this, 'render_redirects_page' )
+		);
+
+		// 5. 404 Monitor - Error Tracking
+		add_submenu_page(
+			'meowseo',
+			__( '404 Monitor', 'meowseo' ),
+			__( '404 Monitor', 'meowseo' ),
+			'manage_options',
+			'meowseo-404-monitor',
+			array( $this, 'render_404_monitor_page' )
+		);
+
+		// 6. Tools - Utilities (last)
 		add_submenu_page(
 			'meowseo',
 			__( 'Tools', 'meowseo' ),
