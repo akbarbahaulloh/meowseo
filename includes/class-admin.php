@@ -161,6 +161,9 @@ class Admin {
 
 		// Display admin notices.
 		add_action( 'admin_notices', array( $this, 'display_admin_notices' ) );
+
+		// Reorder submenus (Requirement: Logical flow).
+		add_action( 'admin_menu', array( $this, 'reorder_submenus' ), 999 );
 	}
 
 	/**
@@ -931,5 +934,59 @@ class Admin {
 			$class = 'notice notice-' . ( $notice['type'] ?? 'info' ) . ' is-dismissible';
 			printf( '<div class="%s"><p>%s</p></div>', esc_attr( $class ), esc_html( $notice['message'] ) );
 		}
+	}
+
+	/**
+	 * Reorder MeowSEO submenus
+	 *
+	 * Organizes submenus in a logical order to improve user experience.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function reorder_submenus(): void {
+		global $submenu;
+
+		if ( ! isset( $submenu['meowseo'] ) ) {
+			return;
+		}
+
+		// Desired order of submenu slugs.
+		$desired_order = array(
+			'meowseo',                          // Dashboard
+			'meowseo-analytics',               // Analytics
+			'meowseo-search-console',          // Search Console
+			'edit.php?post_type=meowseo_location', // All Locations
+			'meowseo-redirects',               // Redirects
+			'meowseo-404-monitor',             // 404 Monitor
+			'meowseo-orphaned',                // Orphaned Content
+			'meowseo-roles',                   // Role Manager
+			'meowseo-tools',                   // Tools
+			'meowseo-import',                  // Import
+			'meowseo-settings',                // Settings
+		);
+
+		$current_submenu = $submenu['meowseo'];
+		$new_submenu     = array();
+
+		// 1. Add items that match our desired order.
+		foreach ( $desired_order as $slug ) {
+			foreach ( $current_submenu as $key => $item ) {
+				if ( isset( $item[2] ) && $item[2] === $slug ) {
+					$new_submenu[] = $item;
+					unset( $current_submenu[ $key ] );
+					break;
+				}
+			}
+		}
+
+		// 2. Add any remaining items that weren't in our list (e.g. from third-party extensions).
+		if ( ! empty( $current_submenu ) ) {
+			foreach ( $current_submenu as $item ) {
+				$new_submenu[] = $item;
+			}
+		}
+
+		$submenu['meowseo'] = $new_submenu;
 	}
 }

@@ -68,17 +68,17 @@ spl_autoload_register( function ( $class ) {
 register_activation_hook( __FILE__, array( 'MeowSEO\Installer', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'MeowSEO\Installer', 'deactivate' ) );
 
-// Load plugin textdomain at plugins_loaded hook (before plugin initialization).
-// This ensures translations are available when the plugin boots.
-add_action( 'plugins_loaded', function() {
+// Load plugin textdomain at init hook.
+// Requirement: WordPress 6.7+ compatibility (avoid early translation loading notice).
+add_action( 'init', function() {
 	load_plugin_textdomain( 'meowseo', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 }, 1 );
 
-// Check for migrations on plugins_loaded (before plugin initialization).
-add_action( 'plugins_loaded', array( 'MeowSEO\Installer', 'maybe_migrate' ), 5 );
+// Check for migrations (Requirement: Data integrity).
+add_action( 'init', array( 'MeowSEO\Installer', 'maybe_migrate' ), 5 );
 
-// Initialize the plugin on plugins_loaded hook at priority 10.
-add_action( 'plugins_loaded', function() {
+// Initialize the plugin on init hook at priority 10.
+add_action( 'init', function() {
 	try {
 		\MeowSEO\Plugin::instance()->boot();
 	} catch ( \Exception $e ) {
@@ -99,7 +99,7 @@ add_action( 'plugins_loaded', function() {
 
 // Register WP-CLI commands.
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
-	add_action( 'plugins_loaded', function() {
+	add_action( 'init', function() {
 		try {
 			$plugin = \MeowSEO\Plugin::instance();
 			$options = $plugin->get_options();
