@@ -463,7 +463,7 @@ class Meta implements Module {
 			'meowseo/v1',
 			'/analysis/(?P<post_id>\d+)',
 			array(
-				'methods'             => 'POST',
+				'methods'             => 'GET',
 				'callback'            => array( $this, 'rest_get_analysis' ),
 				'permission_callback' => array( $this, 'check_analysis_permission' ),
 				'args'                => array(
@@ -471,14 +471,12 @@ class Meta implements Module {
 						'required'          => true,
 						'type'              => 'integer',
 						'sanitize_callback' => 'absint',
-						'validate_callback' => function ( $param ) {
-							return $param > 0 && get_post( $param ) !== null;
-						},
 					),
 					'content'       => array(
-						'required'          => true,
+						'required'          => false,
 						'type'              => 'string',
 						'sanitize_callback' => 'wp_kses_post',
+						'default'           => '',
 					),
 					'focus_keyword' => array(
 						'required'          => false,

@@ -236,16 +236,14 @@
 
 			$.ajax( {
 				url: meowseoClassic.restUrl + '/analysis/' + meowseoClassic.postId,
-				method: 'POST',
-				beforeSend: function ( xhr ) {
-					xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
-					xhr.setRequestHeader( 'Content-Type', 'application/json' );
-				},
-				data: JSON.stringify( {
-					post_id: meowseoClassic.postId,
+				method: 'GET',
+				data: {
 					content: content,
 					focus_keyword: $( '#meowseo_focus_keyword' ).val() || ''
-				} ),
+				},
+				beforeSend: function ( xhr ) {
+					xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
+				},
 				success: function ( data ) {
 					try {
 						renderAnalysis( $panel, data );
@@ -255,18 +253,18 @@
 					}
 				},
 				error: function ( xhr, status, error ) {
-					var errorMsg = 'Analysis failed. ';
+					var errorMsg = 'Analysis failed (Code: ' + xhr.status + '). ';
 					
 					// Handle authentication errors
 					if ( xhr.status === 401 || xhr.status === 403 ) {
-						errorMsg += 'Authentication failed. Please refresh the page and try again.';
+						errorMsg += 'Authentication failed. Please refresh the page.';
 						console.error( 'MeowSEO Analysis Authentication Error:', xhr.status, error );
-					} else if ( xhr.status === 0 ) {
-						errorMsg += 'Network error. Please check your connection and try again.';
-						console.error( 'MeowSEO Analysis Network Error:', error );
+					} else if ( xhr.status === 404 ) {
+						errorMsg += 'Route not found. Please check your permalink settings.';
+						console.error( 'MeowSEO Analysis 404 Error:', error );
 					} else {
-						errorMsg += 'Check your content and focus keyword, then try again.';
-						console.error( 'MeowSEO Analysis Error:', status, error, xhr.responseText );
+						errorMsg += 'Please ensure the post is saved and try again.';
+						console.error( 'MeowSEO Analysis Error:', xhr.status, error, xhr.responseText );
 					}
 					
 					$panel.html( '<p style="color:#721c24">' + escHtml( errorMsg ) + '</p>' );
