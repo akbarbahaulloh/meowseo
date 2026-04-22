@@ -440,9 +440,9 @@ class AI_Settings {
 		// Enqueue settings CSS
 		wp_enqueue_style(
 			'meowseo-ai-settings',
-			MEOWSEO_PLUGIN_URL . 'includes/modules/ai/assets/css/ai-settings.css',
+			\MEOWSEO_URL . 'includes/modules/ai/assets/css/ai-settings.css',
 			array(),
-			MEOWSEO_VERSION
+			\MEOWSEO_VERSION
 		);
 	}
 
