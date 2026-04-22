@@ -113,6 +113,8 @@ class Settings_Manager {
 				'method' => 'render_breadcrumbs_tab',
 			),
 		);
+		
+		$this->tabs = apply_filters( 'meowseo_settings_tabs', $this->tabs );
 	}
 
 	/**
@@ -137,8 +139,8 @@ class Settings_Manager {
 					aria-controls="meowseo-tabpanel-<?php echo esc_attr( $tab_slug ); ?>"
 					data-tab="<?php echo esc_attr( $tab_slug ); ?>"
 				>
-					<span class="<?php echo esc_attr( $tab_config['icon'] ); ?> meowseo-tab-icon"></span>
-					<span class="meowseo-tab-title"><?php echo esc_html( $tab_config['title'] ); ?></span>
+					<span class="dashicons <?php echo esc_attr( $tab_config['icon'] ); ?> meowseo-tab-icon"></span>
+					<span class="meowseo-tab-title"><?php echo esc_html( $tab_config['title'] ?? $tab_config['label'] ); ?></span>
 				</button>
 			<?php endforeach; ?>
 		</div>
@@ -241,8 +243,10 @@ class Settings_Manager {
 							<?php echo $active_tab !== $tab_slug ? 'hidden' : ''; ?>
 						>
 							<?php
-							if ( method_exists( $this, $tab_config['method'] ) ) {
-								call_user_func( array( $this, $tab_config['method'] ) );
+							if ( isset( $tab_config['callback'] ) && is_callable( $tab_config['callback'] ) ) {
+								call_user_func( $tab_config['callback'] );
+							} elseif ( isset( $tab_config['method'] ) && method_exists( $this, $tab_config['method'] ) ) {
+								$this->{$tab_config['method']}();
 							}
 							?>
 						</div>

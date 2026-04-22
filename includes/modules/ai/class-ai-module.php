@@ -311,9 +311,9 @@ class AI_Module implements Module {
 	 */
 	public function add_settings_tab( array $tabs ): array {
 		$tabs['ai'] = [
-			'label'    => __( 'AI', 'meowseo' ),
+			'title'    => __( 'AI', 'meowseo' ),
 			'callback' => [ $this, 'render_settings_tab' ],
-			'icon'     => 'dashicons-superhero',
+			'icon'     => 'dashicons-sparkles',
 		];
 
 		return $tabs;

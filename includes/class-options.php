@@ -60,7 +60,7 @@ class Options {
 	 */
 	private function set_defaults(): void {
 		$defaults = array(
-			'enabled_modules'        => array( 'meta', 'redirects', 'monitor_404', 'gsc', 'import', 'roles', 'multilingual', 'multisite', 'locations', 'bulk', 'analytics', 'admin-bar', 'orphaned', 'synonyms' ), // Core modules enabled by default.
+			'enabled_modules'        => array( 'meta', 'schema', 'sitemap', 'redirects', 'monitor_404', 'internal_links', 'gsc', 'social', 'ai', 'import', 'image_seo', 'indexnow', 'roles', 'multilingual', 'multisite', 'locations', 'bulk', 'analytics', 'admin-bar', 'orphaned', 'synonyms' ), // Core modules enabled by default.
 			'separator'              => '|',
 			'default_social_image'   => '',
 			'delete_on_uninstall'    => false,

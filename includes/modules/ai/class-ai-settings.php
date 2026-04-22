@@ -446,24 +446,6 @@ class AI_Settings {
 		);
 	}
 
-	/**
-	 * Add AI tab to settings tabs.
-	 *
-	 * Filter callback for meowseo_settings_tabs to add the AI tab.
-	 * Requirements: 2.1, 2.2
-	 *
-	 * @param array $tabs Existing settings tabs.
-	 * @return array Modified tabs array with AI tab added.
-	 */
-	public function add_ai_tab( array $tabs ): array {
-		$tabs['ai'] = array(
-			'title'  => __( 'AI', 'meowseo' ),
-			'icon'   => 'dashicons-sparkles',
-			'method' => 'render_ai_tab',
-		);
-
-		return $tabs;
-	}
 
 	/**
 	 * Render AI settings tab.
