@@ -1,5 +1,5 @@
 <?php
-require_once dirname(__FILE__) . '/../wp-load.php';
+require_once 'C:/laragon/www/meowseo/wp-load.php';
 
 $owner = 'akbarbahaulloh';
 $repo = 'meowseo';
