@@ -819,4 +819,64 @@ class Admin {
 		exit;
 	}
 
+	/**
+	 * Handle manual update check from plugins page
+	 *
+	 * Processes the "Check for Updates" action from the plugins page.
+	 * Verifies nonce and user capabilities, triggers an immediate update check,
+	 * and redirects back to the plugins page with a result message.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function handle_check_update(): void {
+		// Verify nonce.
+		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( $_GET['_wpnonce'] ), 'meowseo_check_update_nonce' ) ) {
+			wp_safe_redirect( add_query_arg( 'meowseo_update_error', urlencode( __( 'Security check failed.', 'meowseo' ) ), admin_url( 'plugins.php' ) ) );
+			exit;
+		}
+
+		// Verify user capabilities.
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			wp_die(
+				esc_html__( 'You do not have sufficient permissions to perform this action.', 'meowseo' ),
+				esc_html__( 'Permission Denied', 'meowseo' ),
+				array( 'response' => 403 )
+			);
+		}
+
+		try {
+			// Create configuration instance.
+			$config = new \MeowSEO\Updater\Update_Config();
+
+			// Create logger instance.
+			$logger = new \MeowSEO\Updater\Update_Logger();
+
+			// Create update checker instance.
+			$checker = new \MeowSEO\Updater\GitHub_Update_Checker( MEOWSEO_FILE, $config, $logger );
+
+			// Clear all update caches.
+			$checker->clear_cache();
+
+			// Trigger immediate update check.
+			$transient = get_site_transient( 'update_plugins' );
+			$transient = $checker->check_for_update( $transient );
+			set_site_transient( 'update_plugins', $transient );
+
+			// Log manual check.
+			$logger->log_check( true, null, array( 'manual' => true, 'source' => 'plugins_page' ) );
+
+			// Redirect with success message.
+			wp_safe_redirect( add_query_arg( 'meowseo_update_success', '1', admin_url( 'plugins.php' ) ) );
+		} catch ( \Exception $e ) {
+			// Log error and redirect with error message.
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'MeowSEO: Check update failed: ' . $e->getMessage() );
+			}
+			wp_safe_redirect( add_query_arg( 'meowseo_update_error', urlencode( $e->getMessage() ), admin_url( 'plugins.php' ) ) );
+		}
+
+		exit;
+	}
+
 }
