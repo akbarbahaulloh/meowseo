@@ -226,12 +226,26 @@
 			var $panel = $( '#meowseo-analysis-panel' );
 			$panel.html( '<p style="color:#50575e">Running analysis…</p>' );
 
+			// Get current content from TinyMCE or textarea
+			var content = '';
+			if ( typeof tinyMCE !== 'undefined' && tinyMCE.activeEditor && ! tinyMCE.activeEditor.isHidden() ) {
+				content = tinyMCE.activeEditor.getContent();
+			} else {
+				content = $( '#content' ).val() || '';
+			}
+
 			$.ajax( {
 				url: meowseoClassic.restUrl + '/analysis/' + meowseoClassic.postId,
-				method: 'GET',
+				method: 'POST',
 				beforeSend: function ( xhr ) {
 					xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
+					xhr.setRequestHeader( 'Content-Type', 'application/json' );
 				},
+				data: JSON.stringify( {
+					post_id: meowseoClassic.postId,
+					content: content,
+					focus_keyword: $( '#meowseo_focus_keyword' ).val() || ''
+				} ),
 				success: function ( data ) {
 					try {
 						renderAnalysis( $panel, data );
@@ -251,7 +265,7 @@
 						errorMsg += 'Network error. Please check your connection and try again.';
 						console.error( 'MeowSEO Analysis Network Error:', error );
 					} else {
-						errorMsg += 'Save the post first, then try again.';
+						errorMsg += 'Check your content and focus keyword, then try again.';
 						console.error( 'MeowSEO Analysis Error:', status, error, xhr.responseText );
 					}
 					
