@@ -874,13 +874,13 @@ class Dashboard_Widgets {
 	 * Only invalidates when cornerstone meta key is deleted.
 	 *
 	 * @since 1.0.0
-	 * @param array  $meta_ids   Meta IDs.
-	 * @param int    $object_id  Object ID.
-	 * @param string $meta_key   Meta key.
-	 * @param mixed  $meta_value Meta value.
+	 * @param int    $meta_id    Meta ID.
+	 * @param int    $object_id  Object ID (optional).
+	 * @param string $meta_key   Meta key (optional).
+	 * @param mixed  $meta_value Meta value (optional).
 	 * @return void
 	 */
-	public function invalidate_cornerstone_cache_on_meta_delete( array $meta_ids, int $object_id, string $meta_key, $meta_value ): void {
+	public function invalidate_cornerstone_cache_on_meta_delete( int $meta_id, int $object_id = 0, string $meta_key = '', $meta_value = null ): void {
 		if ( '_meowseo_is_cornerstone' === $meta_key ) {
 			Cache::delete( 'dashboard_cornerstone_content' );
 		}
