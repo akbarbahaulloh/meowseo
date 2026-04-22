@@ -143,6 +143,8 @@ function renderWidgetData( widgetId, data ) {
 	switch ( widgetId ) {
 		case 'content-health':
 			return renderContentHealthWidget( data );
+		case 'cornerstone-content':
+			return renderCornerstoneContentWidget( data );
 		case 'sitemap-status':
 			return renderSitemapStatusWidget( data );
 		case 'top-404s':
@@ -197,6 +199,59 @@ function renderContentHealthWidget( data ) {
 				<p><strong>Missing Description:</strong> ${ missingDescription }</p>
 				<p><strong>Missing Focus Keyword:</strong> ${ missingFocusKeyword }</p>
 			</div>
+		</div>
+	`;
+}
+
+/**
+ * Render Cornerstone Content widget
+ *
+ * @param {Object} data - Widget data
+ * @return {string} HTML string
+ */
+function renderCornerstoneContentWidget( data ) {
+	const totalCount = data.total_count || 0;
+	const posts = data.posts || [];
+	const filterUrl = data.filter_url || '#';
+
+	if ( totalCount === 0 ) {
+		return '<p>No cornerstone content has been marked yet. Mark your most important posts as cornerstone content to track them here.</p>';
+	}
+
+	const postsList = posts
+		.map( ( post ) => {
+			const title = escapeHtml( post.title || 'Untitled' );
+			const editUrl = post.edit_url || '#';
+			const viewUrl = post.view_url || '#';
+			const postType = escapeHtml( post.post_type || 'post' );
+			const lastModified = post.last_modified
+				? new Date( post.last_modified ).toLocaleDateString()
+				: 'Unknown';
+
+			return `
+				<li class="meowseo-cornerstone-post">
+					<div class="meowseo-cornerstone-post-title">
+						<a href="${ editUrl }" target="_blank">${ title }</a>
+						<span class="meowseo-post-type-badge">${ postType }</span>
+					</div>
+					<div class="meowseo-cornerstone-post-meta">
+						<span>Last modified: ${ escapeHtml( lastModified ) }</span>
+						<a href="${ viewUrl }" target="_blank" class="meowseo-view-link">View</a>
+					</div>
+				</li>
+			`;
+		} )
+		.join( '' );
+
+	return `
+		<div class="meowseo-cornerstone-content">
+			<div class="meowseo-cornerstone-header">
+				<p><strong>Total Cornerstone Posts:</strong> ${ totalCount }</p>
+				<a href="${ filterUrl }" class="button button-secondary">View All</a>
+			</div>
+			<ul class="meowseo-cornerstone-list">
+				${ postsList }
+			</ul>
 		</div>
 	`;
 }

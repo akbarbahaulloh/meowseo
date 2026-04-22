@@ -279,6 +279,17 @@ class REST_API {
 				'permission_callback' => array( $this, 'dashboard_permission' ),
 			)
 		);
+
+		// Cornerstone Content widget endpoint.
+		register_rest_route(
+			self::NAMESPACE,
+			'/dashboard/cornerstone-content',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_cornerstone_content' ),
+				'permission_callback' => array( $this, 'dashboard_permission' ),
+			)
+		);
 	}
 
 	/**
@@ -978,6 +989,77 @@ class REST_API {
 		$response->header( 'Cache-Control', 'public, max-age=300' );
 
 		return $response;
+	}
+
+	/**
+	 * Get cornerstone content widget data
+	 *
+	 * Requirements: 3.1, 3.4, 6.10
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $request REST request object.
+	 * @return \WP_REST_Response REST response.
+	 */
+	public function get_cornerstone_content( \WP_REST_Request $request ): \WP_REST_Response {
+		// Verify nonce (Requirement 3.2, 2.19).
+		if ( ! $this->verify_nonce( $request ) ) {
+			// Log the failed nonce verification (Requirement 2.19).
+			\MeowSEO\Helpers\Logger::warning(
+				'REST request failed: invalid nonce',
+				array(
+					'endpoint' => 'dashboard/cornerstone-content',
+					'user_id'  => get_current_user_id(),
+				)
+			);
+
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Security verification failed. Please refresh the page and try again.', 'meowseo' ),
+					'code'    => 'rest_invalid_nonce',
+				),
+				403
+			);
+		}
+
+		try {
+			// Get Dashboard_Widgets instance.
+			$dashboard_widgets = new \MeowSEO\Admin\Dashboard_Widgets( $this->options, $this->module_manager );
+			$data = $dashboard_widgets->get_cornerstone_content_data();
+
+			$response = new \WP_REST_Response(
+				array(
+					'success' => true,
+					'data'    => $data,
+				),
+				200
+			);
+
+			// Add cache headers (Requirement 3.4).
+			$response->header( 'Cache-Control', 'public, max-age=300' );
+
+			return $response;
+		} catch ( \Exception $e ) {
+			// Log the error with context (Requirement 32.2).
+			\MeowSEO\Helpers\Logger::error(
+				'Failed to retrieve cornerstone content data',
+				array(
+					'endpoint'  => 'dashboard/cornerstone-content',
+					'user_id'   => get_current_user_id(),
+					'error_msg' => $e->getMessage(),
+				)
+			);
+
+			// Return user-friendly error message without exposing internals (Requirement 32.2, 32.5).
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'An error occurred while loading cornerstone content. Please try again.', 'meowseo' ),
+					'code'    => 'database_error',
+				),
+				500
+			);
+		}
 	}
 
 	/**
