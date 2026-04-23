@@ -1991,10 +1991,12 @@ class Settings_Manager {
 					'persona'          => sanitize_textarea_field( $style['persona'] ?? '' ),
 					'tone'             => sanitize_textarea_field( $style['tone'] ?? '' ),
 					'linguistic_rules' => sanitize_textarea_field( $style['linguistic_rules'] ?? '' ),
-					'anatomy'          => sanitize_textarea_field( $style['anatomy'] ?? '' ),
-					'greetings'        => sanitize_text_field( $style['greetings'] ?? '' ),
-					'intro'            => sanitize_text_field( $style['intro'] ?? '' ),
-					'outro'            => sanitize_text_field( $style['outro'] ?? '' ),
+					'anatomy'                    => sanitize_textarea_field( $style['anatomy'] ?? '' ),
+					'single_prompt_template'     => sanitize_textarea_field( $style['single_prompt_template'] ?? '' ),
+					'outline_prompt_template'    => sanitize_textarea_field( $style['outline_prompt_template'] ?? '' ),
+					'intro_prompt_template'      => sanitize_textarea_field( $style['intro_prompt_template'] ?? '' ),
+					'body_prompt_template'       => sanitize_textarea_field( $style['body_prompt_template'] ?? '' ),
+					'conclusion_prompt_template' => sanitize_textarea_field( $style['conclusion_prompt_template'] ?? '' ),
 				);
 			}
 		}
@@ -2429,11 +2431,16 @@ class Settings_Manager {
 							<tr>
 								<th scope="row"><label><?php esc_html_e( 'Generation Mode', 'meowseo' ); ?></label></th>
 								<td>
-									<select name="writing_styles[<?php echo esc_attr( $index ); ?>][mode]">
+									<select name="writing_styles[<?php echo esc_attr( $index ); ?>][mode]" class="meowseo-generation-mode-select">
 										<option value="advance" <?php selected( $style['mode'] ?? 'advance', 'advance' ); ?>><?php esc_html_e( 'Advance (Multi-step, Long form)', 'meowseo' ); ?></option>
 										<option value="simple" <?php selected( $style['mode'] ?? 'advance', 'simple' ); ?>><?php esc_html_e( 'Simple (Single prompt, Quick)', 'meowseo' ); ?></option>
 									</select>
-									<p class="description"><?php esc_html_e( 'Advance mode generates outline, intro, body, and conclusion. Simple mode uses a single prompt.', 'meowseo' ); ?></p>
+									<p class="description"><?php esc_html_e( 'Advance mode generates outline, intro, iteratively deep-dives into each body section (looping), and conclusion. Simple mode uses a single prompt.', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+							<tr>
+								<td colspan="2" style="padding-top:20px; padding-bottom:0;">
+									<h3 style="margin:0; border-bottom:1px solid #ccd0d4; padding-bottom:8px;"><?php esc_html_e( 'Style Configuration (System Prompt)', 'meowseo' ); ?></h3>
 								</td>
 							</tr>
 							<tr>
@@ -2464,18 +2471,51 @@ class Settings_Manager {
 									<p class="description"><?php esc_html_e( 'How to structure the article (e.g. Key takeaways at start, Conclusion with FAQ)', 'meowseo' ); ?></p>
 								</td>
 							</tr>
+
+							<!-- Prompt Templates Section -->
 							<tr>
-								<th scope="row"><label><?php esc_html_e( 'Greetings/Sign-off', 'meowseo' ); ?></label></th>
-								<td>
-									<div class="meowseo-flex-row">
-										<input type="text" name="writing_styles[<?php echo esc_attr( $index ); ?>][greetings]" value="<?php echo esc_attr( $style['greetings'] ?? '' ); ?>" placeholder="Greetings" class="regular-text">
-										<input type="text" name="writing_styles[<?php echo esc_attr( $index ); ?>][outro]" value="<?php echo esc_attr( $style['outro'] ?? '' ); ?>" placeholder="Sign-off" class="regular-text">
-									</div>
+								<td colspan="2" style="padding-top:20px; padding-bottom:0;">
+									<h3 style="margin:0; border-bottom:1px solid #ccd0d4; padding-bottom:8px;"><?php esc_html_e( 'Prompt Templates', 'meowseo' ); ?></h3>
 								</td>
 							</tr>
-							<tr>
-								<th scope="row"><label><?php esc_html_e( 'Article Intro Hook', 'meowseo' ); ?></label></th>
-								<td><input type="text" name="writing_styles[<?php echo esc_attr( $index ); ?>][intro]" value="<?php echo esc_attr( $style['intro'] ?? '' ); ?>" class="large-text"></td>
+
+							<!-- Simple Mode Templates -->
+							<tr class="meowseo-template-simple" style="<?php echo ( $style['mode'] ?? 'advance' ) === 'simple' ? '' : 'display:none;'; ?>">
+								<th scope="row"><label><?php esc_html_e( 'Single Prompt Template', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][single_prompt_template]" rows="4" class="large-text" placeholder="Tuliskan artikel lengkap tentang [TOPIC]..."><?php echo esc_textarea( $style['single_prompt_template'] ?? 'Write a comprehensive article about [TOPIC].' ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Available placeholder: [TOPIC]', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+
+							<!-- Advance Mode Templates -->
+							<tr class="meowseo-template-advance" style="<?php echo ( $style['mode'] ?? 'advance' ) === 'advance' ? '' : 'display:none;'; ?>">
+								<th scope="row"><label><?php esc_html_e( 'Outline Prompt Template', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][outline_prompt_template]" rows="4" class="large-text" placeholder="Generate outline for [TOPIC]..."><?php echo esc_textarea( $style['outline_prompt_template'] ?? 'Generate a comprehensive outline for an article about: [TOPIC]. Return JSON format only.' ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Must instruct AI to return JSON format. Available placeholder: [TOPIC]', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+							<tr class="meowseo-template-advance" style="<?php echo ( $style['mode'] ?? 'advance' ) === 'advance' ? '' : 'display:none;'; ?>">
+								<th scope="row"><label><?php esc_html_e( 'Intro Prompt Template', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][intro_prompt_template]" rows="4" class="large-text" placeholder="Write intro for [TOPIC]..."><?php echo esc_textarea( $style['intro_prompt_template'] ?? "Write an engaging introduction for: [TOPIC].\n\nOutline context:\n[OUTLINE]" ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [OUTLINE]', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+							<tr class="meowseo-template-advance" style="<?php echo ( $style['mode'] ?? 'advance' ) === 'advance' ? '' : 'display:none;'; ?>">
+								<th scope="row"><label><?php esc_html_e( 'Body/Core Prompt Template', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][body_prompt_template]" rows="4" class="large-text" placeholder="Write section [HEADING] for [TOPIC]..."><?php echo esc_textarea( $style['body_prompt_template'] ?? "Topic: [TOPIC]\n\nWrite a comprehensive section for this heading:\n[HEADING]\n\nCover these subpoints:\n[SUBPOINTS]" ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [HEADING], [SUBPOINTS]', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+							<tr class="meowseo-template-advance" style="<?php echo ( $style['mode'] ?? 'advance' ) === 'advance' ? '' : 'display:none;'; ?>">
+								<th scope="row"><label><?php esc_html_e( 'Conclusion Prompt Template', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][conclusion_prompt_template]" rows="4" class="large-text" placeholder="Write conclusion for [TOPIC]..."><?php echo esc_textarea( $style['conclusion_prompt_template'] ?? "Write a strong conclusion for: [TOPIC].\n\nBased on this outline:\n[OUTLINE]" ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [OUTLINE]', 'meowseo' ); ?></p>
+								</td>
 							</tr>
 						</table>
 					</div>
@@ -2594,11 +2634,11 @@ class Settings_Manager {
 										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Generation Mode', 'meowseo' ); ?></label></th>
 											<td>
-												<select name="writing_styles[${index}][mode]">
+												<select name="writing_styles[${index}][mode]" class="meowseo-generation-mode-select">
 													<option value="advance"><?php esc_html_e( 'Advance (Multi-step, Long form)', 'meowseo' ); ?></option>
 													<option value="simple"><?php esc_html_e( 'Simple (Single prompt, Quick)', 'meowseo' ); ?></option>
 												</select>
-												<p class="description"><?php esc_html_e( 'Advance mode generates outline, intro, body, and conclusion. Simple mode uses a single prompt.', 'meowseo' ); ?></p>
+												<p class="description"><?php esc_html_e( 'Advance mode generates outline, intro, iteratively deep-dives into each body section (looping), and conclusion. Simple mode uses a single prompt.', 'meowseo' ); ?></p>
 											</td>
 										</tr>
 										<tr>
@@ -2618,13 +2658,12 @@ class Settings_Manager {
 											<td><textarea name="writing_styles[${index}][anatomy]" rows="3" class="large-text"></textarea></td>
 										</tr>
 										<tr>
-											<th scope="row"><label><?php esc_html_e( 'Greetings/Sign-off', 'meowseo' ); ?></label></th>
-											<td>
-												<div class="meowseo-flex-row">
-													<input type="text" name="writing_styles[${index}][greetings]" value="" placeholder="Greetings" class="regular-text">
-													<input type="text" name="writing_styles[${index}][outro]" value="" placeholder="Sign-off" class="regular-text">
-												</div>
-											</td>
+											<th scope="row"><label><?php esc_html_e( 'Greetings (Pembuka)', 'meowseo' ); ?></label></th>
+											<td><textarea name="writing_styles[${index}][greetings]" rows="2" class="large-text"></textarea></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Sign-off (Penutup)', 'meowseo' ); ?></label></th>
+											<td><textarea name="writing_styles[${index}][outro]" rows="2" class="large-text"></textarea></td>
 										</tr>
 										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Article Intro Hook', 'meowseo' ); ?></label></th>
@@ -2691,6 +2730,18 @@ class Settings_Manager {
 				
 				container.on('click', '.handlediv', function() {
 					$(this).closest('.postbox').toggleClass('closed');
+				});
+				
+				// Handle Generation Mode toggle for prompt templates
+				container.on('change', '.meowseo-generation-mode-select', function() {
+					var $postbox = $(this).closest('.meowseo-style-item');
+					if ( $(this).val() === 'simple' ) {
+						$postbox.find('.meowseo-template-simple').show();
+						$postbox.find('.meowseo-template-advance').hide();
+					} else {
+						$postbox.find('.meowseo-template-simple').hide();
+						$postbox.find('.meowseo-template-advance').show();
+					}
 				});
 			});
 		})(jQuery);
