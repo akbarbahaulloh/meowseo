@@ -553,6 +553,19 @@ class AI_Settings {
 			jQuery(document).ready(function($) {
 				var profileIndex = <?php echo count( $profiles ); ?>;
 				
+				// Default models for each provider
+				var defaultModels = {
+					'gemini': 'gemini-3-flash-preview',
+					'openai': 'gpt-4o',
+					'anthropic': 'claude-3-5-sonnet-20241022',
+					'imagen': 'imagen-4.0-generate-001',
+					'dalle': 'dall-e-3',
+					'deepseek': 'deepseek-chat',
+					'glm': 'glm-4-plus',
+					'qwen': 'qwen-max'
+				};
+				
+				// Add new profile
 				$('#meowseo-add-ai-profile').on('click', function() {
 					var template = $('#meowseo-ai-profile-template').html();
 					var id = 'profile_' + Date.now();
@@ -563,6 +576,7 @@ class AI_Settings {
 					profileIndex++;
 				});
 
+				// Remove profile
 				$(document).on('click', '.meowseo-profile-remove', function(e) {
 					e.preventDefault();
 					if (confirm('<?php esc_attr_e( 'Are you sure you want to remove this profile?', 'meowseo' ); ?>')) {
@@ -570,6 +584,40 @@ class AI_Settings {
 						if ($('#meowseo-ai-profiles-list').children().length === 0) {
 							$('.meowseo-no-profiles').show();
 						}
+					}
+				});
+				
+				// Auto-fill model when provider changes
+				$(document).on('change', '.meowseo-provider-select', function() {
+					var provider = $(this).val();
+					var index = $(this).data('index');
+					var modelInput = $(this).closest('.meowseo-profile-item').find('.meowseo-model-input');
+					
+					if (modelInput.length && defaultModels[provider]) {
+						// Only auto-fill if empty or still has default value
+						var currentValue = modelInput.val().trim();
+						if (!currentValue || Object.values(defaultModels).indexOf(currentValue) !== -1) {
+							modelInput.val(defaultModels[provider]);
+							modelInput.attr('placeholder', defaultModels[provider]);
+						}
+						
+						// Update description
+						var description = modelInput.next('.description');
+						if (description.length) {
+							description.find('code').text(defaultModels[provider]);
+						}
+					}
+				});
+				
+				// Show API key on focus (for editing)
+				$(document).on('focus', '.meowseo-api-key-input', function() {
+					var $input = $(this);
+					var isEncrypted = $input.data('is-encrypted');
+					
+					// If encrypted (saved), clear the masked value so user can enter new key
+					if (isEncrypted && $input.val().indexOf('...') !== -1) {
+						$input.val('');
+						$input.attr('placeholder', '<?php esc_attr_e( 'Enter new API key to replace', 'meowseo' ); ?>');
 					}
 				});
 			});
@@ -587,10 +635,38 @@ class AI_Settings {
 	 */
 	private function render_profile_item( array $profile, $index, array $available_providers ): void {
 		$id = $profile['id'] ?? '';
+		$provider = $profile['provider'] ?? 'gemini';
+		
+		// Get default model for provider
+		$default_models = array(
+			'gemini'    => 'gemini-3-flash-preview',
+			'openai'    => 'gpt-4o',
+			'anthropic' => 'claude-3-5-sonnet-20241022',
+			'imagen'    => 'imagen-4.0-generate-001',
+			'dalle'     => 'dall-e-3',
+			'deepseek'  => 'deepseek-chat',
+			'glm'       => 'glm-4-plus',
+			'qwen'      => 'qwen-max',
+		);
+		
+		$default_model = $default_models[ $provider ] ?? '';
+		$current_model = $profile['model'] ?? $default_model;
+		
+		// Handle API key display
+		$api_key = $profile['api_key'] ?? '';
+		$is_encrypted = ! empty( $api_key ) && ( strpos( $api_key, '...' ) !== false || strlen( $api_key ) > 50 );
+		
+		// If encrypted/saved, show partial key
+		if ( $is_encrypted ) {
+			$display_key = substr( $api_key, 0, 4 ) . '...' . substr( $api_key, -4 );
+		} else {
+			// Show full key for new input (not yet saved)
+			$display_key = $api_key;
+		}
 		?>
 		<div class="meowseo-profile-item">
 			<div class="meowseo-profile-header">
-				<input type="text" name="ai_profiles[<?php echo esc_attr( $index ); ?>][label]" value="<?php echo esc_attr( $profile['label'] ); ?>" placeholder="<?php esc_attr_e( 'Profile Label (e.g., Gemini Free)', 'meowseo' ); ?>" class="regular-text" required>
+				<input type="text" name="ai_profiles[<?php echo esc_attr( $index ); ?>][label]" value="<?php echo esc_attr( $profile['label'] ?? '' ); ?>" placeholder="<?php esc_attr_e( 'Profile Label (e.g., gemini free)', 'meowseo' ); ?>" class="regular-text" required>
 				<input type="hidden" name="ai_profiles[<?php echo esc_attr( $index ); ?>][id]" value="<?php echo esc_attr( $id ); ?>">
 				<div class="meowseo-profile-actions">
 					<label>
@@ -604,25 +680,29 @@ class AI_Settings {
 			<div class="meowseo-profile-grid">
 				<div class="meowseo-profile-field">
 					<label><?php esc_html_e( 'AI Provider', 'meowseo' ); ?></label>
-					<select name="ai_profiles[<?php echo esc_attr( $index ); ?>][provider]" class="meowseo-provider-select">
+					<select name="ai_profiles[<?php echo esc_attr( $index ); ?>][provider]" class="meowseo-provider-select" data-index="<?php echo esc_attr( $index ); ?>">
 						<?php foreach ( $available_providers as $slug => $label ) : ?>
-							<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $profile['provider'] ?? '', $slug ); ?>><?php echo esc_html( $label ); ?></option>
+							<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $provider, $slug ); ?> data-default-model="<?php echo esc_attr( $default_models[ $slug ] ?? '' ); ?>"><?php echo esc_html( $label ); ?></option>
 						<?php endforeach; ?>
 					</select>
 				</div>
 				<div class="meowseo-profile-field">
 					<label><?php esc_html_e( 'API Key', 'meowseo' ); ?></label>
-					<?php
-					$display_key = $profile['api_key'] ?? '';
-					if ( ! empty( $display_key ) && strpos( $display_key, '...' ) === false ) {
-						$display_key = substr( $display_key, 0, 4 ) . '...' . substr( $display_key, -4 );
-					}
-					?>
-					<input type="password" name="ai_profiles[<?php echo esc_attr( $index ); ?>][api_key]" value="<?php echo esc_attr( $display_key ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Enter API Key', 'meowseo' ); ?>">
+					<input type="text" name="ai_profiles[<?php echo esc_attr( $index ); ?>][api_key]" value="<?php echo esc_attr( $display_key ); ?>" class="regular-text meowseo-api-key-input" placeholder="<?php esc_attr_e( 'Enter API Key', 'meowseo' ); ?>" data-is-encrypted="<?php echo $is_encrypted ? '1' : '0'; ?>">
+					<p class="description" style="margin-top: 5px; font-size: 11px; color: #666;">
+						<?php if ( $is_encrypted ) : ?>
+							<?php esc_html_e( 'Key tersimpan. Masukkan key baru untuk mengubah.', 'meowseo' ); ?>
+						<?php else : ?>
+							<?php esc_html_e( 'Key akan disembunyikan setelah disimpan.', 'meowseo' ); ?>
+						<?php endif; ?>
+					</p>
 				</div>
 				<div class="meowseo-profile-field">
 					<label><?php esc_html_e( 'Model Version', 'meowseo' ); ?></label>
-					<input type="text" name="ai_profiles[<?php echo esc_attr( $index ); ?>][model]" value="<?php echo esc_attr( $profile['model'] ?? '' ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g., gemini-2.0-flash', 'meowseo' ); ?>">
+					<input type="text" name="ai_profiles[<?php echo esc_attr( $index ); ?>][model]" value="<?php echo esc_attr( $current_model ); ?>" class="regular-text meowseo-model-input" placeholder="<?php echo esc_attr( $default_model ); ?>" data-index="<?php echo esc_attr( $index ); ?>">
+					<p class="description" style="margin-top: 5px; font-size: 11px; color: #666;">
+						<?php esc_html_e( 'Default:', 'meowseo' ); ?> <code><?php echo esc_html( $default_model ); ?></code>
+					</p>
 				</div>
 				<div class="meowseo-profile-field">
 					<button type="button" class="button meowseo-test-connection-btn" data-profile-id="<?php echo esc_attr( $id ); ?>">

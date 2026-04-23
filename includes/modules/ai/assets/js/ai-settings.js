@@ -206,38 +206,46 @@
 			const selectedProvider = profileItem ? profileItem.querySelector('select[name*="[provider]"]').value : provider;
 
 			// Show loading state
-			this.state.isTestingProvider[provider] = true;
+			this.state.isTestingProvider[profileId || provider] = true;
 			button.disabled = true;
 			button.classList.add('meowseo-loading');
 			const originalText = button.textContent;
 			button.textContent = 'Testing...';
 
-			// Make AJAX request
+			// Make AJAX request with proper nonce
 			fetch(this.config.testConnectionEndpoint, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					'X-WP-Nonce': this.state.nonce,
 				},
+				credentials: 'same-origin', // Important for cookie-based auth
 				body: JSON.stringify({
 					profile_id: profileId,
 					provider: selectedProvider,
 					api_key: apiKey,
 				}),
 			})
-				.then((response) => response.json())
+				.then((response) => {
+					if (!response.ok) {
+						throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+					}
+					return response.json();
+				})
 				.then((data) => {
 					if (data.success && data.data && data.data.valid) {
 						this.showTestStatus(profileId || provider, 'success', data.data.message || 'Connection successful');
+						this.updateStatusIndicator(selectedProvider, 'success');
 					} else {
 						const errorMsg = data.data?.message || data.message || 'Connection failed';
 						this.showTestStatus(profileId || provider, 'error', errorMsg);
+						this.updateStatusIndicator(selectedProvider, 'error');
 					}
 				})
 				.catch((error) => {
 					console.error('Test connection error:', error);
-					this.showTestStatus(provider, 'error', 'Request failed');
-					this.updateStatusIndicator(provider, 'error');
+					this.showTestStatus(profileId || provider, 'error', 'Request failed: ' + error.message);
+					this.updateStatusIndicator(selectedProvider, 'error');
 				})
 				.finally(() => {
 					// Restore button state
@@ -462,23 +470,29 @@
 		 * @return {string} Nonce value
 		 */
 		getNonce: function() {
+			// Try to get from wp_localize_script (highest priority)
+			if (typeof meowseoAISettings !== 'undefined' && meowseoAISettings.nonce) {
+				return meowseoAISettings.nonce;
+			}
+
 			// Try to get from wp_nonce_field
 			let nonce = document.querySelector('input[name="_wpnonce"]');
 			if (nonce) {
 				return nonce.value;
 			}
 
-			// Try to get from wp_localize_script
-			if (typeof meowseoAISettings !== 'undefined' && meowseoAISettings.nonce) {
-				return meowseoAISettings.nonce;
-			}
-
-			// Try to get from REST API nonce
+			// Try to get from REST API nonce meta tag
 			const restNonce = document.querySelector('meta[name="wp-nonce"]');
 			if (restNonce) {
 				return restNonce.getAttribute('content');
 			}
 
+			// Try to get from wpApiSettings (WordPress REST API)
+			if (typeof wpApiSettings !== 'undefined' && wpApiSettings.nonce) {
+				return wpApiSettings.nonce;
+			}
+
+			console.warn('MeowSEO AI Settings: No nonce found! Test connection may fail.');
 			return '';
 		},
 
