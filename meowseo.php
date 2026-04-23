@@ -69,6 +69,14 @@ spl_autoload_register( function ( $class ) {
 register_activation_hook( __FILE__, array( 'MeowSEO\Installer', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'MeowSEO\Installer', 'deactivate' ) );
 
+// Initialize GitHub updater early (before WordPress checks for updates).
+add_action( 'plugins_loaded', function() {
+	if ( class_exists( 'MeowSEO\Updater\GitHub_Updater' ) ) {
+		$updater = new \MeowSEO\Updater\GitHub_Updater();
+		$GLOBALS['meowseo_updater'] = $updater;
+	}
+}, 5 );
+
 
 // Load plugin textdomain at init hook.
 // Requirement: WordPress 6.7+ compatibility (avoid early translation loading notice).
