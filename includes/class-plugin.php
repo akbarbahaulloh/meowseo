@@ -104,6 +104,12 @@ class Plugin {
 			// Initialize Logger singleton early to register error handlers (Requirements 1.1, 3.1).
 			Logger::get_instance();
 
+			// Initialize GitHub Update System EARLY (before admin_init).
+			// This ensures the updater hooks are registered before WordPress checks for updates.
+			// WordPress can check for updates at various times (cron, manual check, etc.)
+			// so we need to initialize the updater as early as possible.
+			$this->initialize_updater();
+
 			// Initialize Module_Manager.
 			$this->module_manager = new Module_Manager( $this->options );
 
@@ -133,9 +139,9 @@ class Plugin {
 					$this->admin = new Admin( $this->options, $this->module_manager );
 					$this->admin->boot();
 
-					// Initialize GitHub Update System (only if user can update plugins).
-					if ( current_user_can( 'update_plugins' ) ) {
-						add_action( 'admin_init', array( $this, 'initialize_updater' ) );
+					// Get updater from global if it was initialized early.
+					if ( isset( $GLOBALS['meowseo_updater_checker'] ) ) {
+						$this->updater_checker = $GLOBALS['meowseo_updater_checker'];
 					}
 				} catch ( \Exception $e ) {
 					// Log admin initialization error but don't break the plugin.
@@ -151,40 +157,21 @@ class Plugin {
 	}
 
 	/**
-	 * Initialize the GitHub update system
+	 * Initialize the GitHub update system (DEPRECATED)
 	 *
-	 * Sets up the GitHub auto-update checker and settings page.
-	 * This is called on the admin_init hook to ensure all dependencies are loaded.
+	 * This method is now deprecated. The updater is initialized early on plugins_loaded hook
+	 * in meowseo.php to ensure hooks are registered before WordPress checks for updates.
 	 *
+	 * @deprecated 1.0.1 Updater now initialized on plugins_loaded hook
 	 * @return void
 	 */
 	public function initialize_updater(): void {
-		// Only initialize if user has update_plugins capability.
-		if ( ! current_user_can( 'update_plugins' ) ) {
-			return;
-		}
-
-		try {
-			// Create configuration instance.
-			$config = new \MeowSEO\Updater\Update_Config();
-
-			// Create logger instance.
-			$logger = new \MeowSEO\Updater\Update_Logger();
-
-			// Create update checker instance.
-			$this->updater_checker = new \MeowSEO\Updater\GitHub_Update_Checker( MEOWSEO_FILE, $config, $logger );
-
-			// Initialize the checker (register hooks).
-			$this->updater_checker->init();
-
-			// Create and register settings page.
-			$settings_page = new \MeowSEO\Updater\Update_Settings_Page( $config, $this->updater_checker, $logger );
-			$settings_page->register();
-		} catch ( \Exception $e ) {
-			// Log updater initialization error but don't break the plugin.
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'MeowSEO: Failed to initialize GitHub updater: ' . $e->getMessage() );
-			}
+		// This method is kept for backward compatibility but does nothing.
+		// The updater is now initialized in meowseo.php on plugins_loaded hook.
+		
+		// Get updater from global if available.
+		if ( isset( $GLOBALS['meowseo_updater_checker'] ) ) {
+			$this->updater_checker = $GLOBALS['meowseo_updater_checker'];
 		}
 	}
 
