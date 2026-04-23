@@ -57,11 +57,35 @@
 			// Initialize test connection (34.2)
 			this.initTestConnection();
 
+			// Initialize API key input handlers
+			this.initAPIKeyInputHandlers();
+
 			// Initialize status auto-refresh (34.3)
 			this.initStatusAutoRefresh();
 
 			// Initialize character counter (34.4)
 			this.initCharacterCounter();
+		},
+
+		/**
+		 * Initialize API key input handlers
+		 *
+		 * Clears masked API key when user focuses on the input for editing.
+		 */
+		initAPIKeyInputHandlers: function() {
+			document.addEventListener('focus', (e) => {
+				const input = e.target;
+				if (!input.matches('input[name*="[api_key]"]')) {
+					return;
+				}
+
+				// Check if the value is masked (contains ...)
+				if (input.value.includes('...')) {
+					// Clear the masked value so user can enter a new one
+					input.value = '';
+					input.setAttribute('data-is-encrypted', '0');
+				}
+			}, true); // Use capture phase to catch focus events
 		},
 
 		/**
@@ -197,13 +221,29 @@
 			const profileItem = button.closest('.meowseo-profile-item');
 			const apiKeyInput = profileItem ? profileItem.querySelector('input[name*="[api_key]"]') : null;
 			
-			if (apiKeyInput && !apiKeyInput.value.trim() && !profileId) {
-				this.showTestStatus(profileId || provider, 'error', 'Please enter an API key');
+			let apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+			const selectedProvider = profileItem ? profileItem.querySelector('select[name*="[provider]"]').value : provider;
+
+			// Check if API key is masked (contains ...)
+			const isMasked = apiKey.includes('...');
+
+			// If API key is masked and we have a profile ID, don't send the key
+			// The backend will fetch it from the saved profile
+			if (isMasked && profileId) {
+				apiKey = ''; // Let backend fetch from profile
+			}
+
+			// If API key is masked but no profile ID, show error
+			if (isMasked && !profileId) {
+				this.showTestStatus(profileId || provider, 'error', 'Please enter a new API key or save the profile first');
 				return;
 			}
 
-			const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
-			const selectedProvider = profileItem ? profileItem.querySelector('select[name*="[provider]"]').value : provider;
+			// If no API key and no profile ID, show error
+			if (!apiKey && !profileId) {
+				this.showTestStatus(profileId || provider, 'error', 'Please enter an API key');
+				return;
+			}
 
 			// Show loading state
 			this.state.isTestingProvider[profileId || provider] = true;

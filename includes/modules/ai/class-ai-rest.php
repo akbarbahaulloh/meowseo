@@ -685,6 +685,11 @@ class AI_REST {
 		$api_key    = $request->get_param( 'api_key' );
 		$profile_id = $request->get_param( 'profile_id' );
 
+		// Debug logging
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'MeowSEO: test_provider called - provider: ' . $provider . ', has_api_key: ' . ( ! empty( $api_key ) ? 'yes' : 'no' ) . ', profile_id: ' . ( $profile_id ?: 'none' ) );
+		}
+
 		// Validate provider against whitelist (Requirement 2.4, 2.5).
 		if ( ! in_array( $provider, $this->valid_providers, true ) ) {
 			return new WP_Error(
@@ -694,25 +699,35 @@ class AI_REST {
 			);
 		}
 
-		// Validate API key is not empty (if not using saved profile).
-		if ( empty( $api_key ) && empty( $profile_id ) ) {
-			return new WP_Error(
-				'empty_api_key',
-				__( 'API key is required.', 'meowseo' ),
-				array( 'status' => 400 )
-			);
-		}
-
 		// Handle masked key for existing profile.
 		if ( ! empty( $profile_id ) && ( empty( $api_key ) || strpos( $api_key, '...' ) !== false ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'MeowSEO: Fetching API key from saved profile: ' . $profile_id );
+			}
+			
 			$profiles = $this->provider_manager->get_options()->get( 'ai_profiles', array() );
 			foreach ( $profiles as $profile ) {
 				if ( $profile['id'] === $profile_id ) {
 					$api_key = $this->provider_manager->get_decrypted_profile_key( $profile );
 					$provider = $profile['provider'];
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'MeowSEO: API key retrieved from profile, provider: ' . $provider );
+					}
 					break;
 				}
 			}
+		}
+
+		// Validate API key is not empty (after trying to fetch from profile).
+		if ( empty( $api_key ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'MeowSEO: API key is empty after all attempts' );
+			}
+			return new WP_Error(
+				'empty_api_key',
+				__( 'API key is required. Please enter an API key or save the profile first.', 'meowseo' ),
+				array( 'status' => 400 )
+			);
 		}
 
 		try {
@@ -720,6 +735,9 @@ class AI_REST {
 			$provider_instance = $this->get_provider_instance( $provider, $api_key );
 
 			if ( ! $provider_instance ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'MeowSEO: Provider instance not found for: ' . $provider );
+				}
 				return new WP_Error(
 					'provider_not_found',
 					__( 'Provider not found.', 'meowseo' ),
@@ -738,6 +756,10 @@ class AI_REST {
 						'provider' => $provider,
 					)
 				);
+
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'MeowSEO: Provider test successful for: ' . $provider );
+				}
 
 				// Return connection status (Requirement 2.6).
 				return new WP_REST_Response(
@@ -763,6 +785,10 @@ class AI_REST {
 					)
 				);
 
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'MeowSEO: Provider test failed for ' . $provider . ': ' . $error );
+				}
+
 				// Return error status (Requirement 2.7).
 				return new WP_REST_Response(
 					array(
@@ -785,6 +811,10 @@ class AI_REST {
 					'error'    => $e->getMessage(),
 				)
 			);
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'MeowSEO: Provider test exception for ' . $provider . ': ' . $e->getMessage() );
+			}
 
 			return new WP_Error(
 				'test_exception',
@@ -964,19 +994,56 @@ class AI_REST {
 	public function check_permission_and_nonce_for_settings( WP_REST_Request $request ) {
 		// Check capability (Requirement 25.2, 25.5).
 		if ( ! current_user_can( 'manage_options' ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'MeowSEO: Permission denied - user does not have manage_options capability' );
+			}
 			return new WP_Error(
 				'rest_forbidden',
-				__( 'You do not have permission to perform this action.', 'meowseo' ),
+				__( 'You do not have permission to perform this action. Required capability: manage_options', 'meowseo' ),
 				array( 'status' => 403 )
 			);
 		}
 
-		// Verify nonce (Requirement 25.3, 25.4).
+		// Try to get nonce from multiple sources (Requirement 25.3, 25.4).
+		$nonce = null;
+		
+		// 1. Try X-WP-Nonce header (most common for REST API)
 		$nonce = $request->get_header( 'X-WP-Nonce' );
-		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+		
+		// 2. Try _wpnonce query parameter
+		if ( ! $nonce ) {
+			$nonce = $request->get_param( '_wpnonce' );
+		}
+		
+		// 3. Try _wp_http_referer for cookie-based nonce
+		if ( ! $nonce && isset( $_COOKIE['wordpress_logged_in_' . COOKIEHASH] ) ) {
+			// For logged-in users, WordPress REST API should provide nonce
+			// Check if wpApiSettings is available
+			$nonce = $request->get_header( 'X-WP-Nonce' );
+		}
+
+		// Debug logging when WP_DEBUG is enabled
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'MeowSEO: Nonce check - Nonce value: ' . ( $nonce ? 'present' : 'missing' ) );
+			error_log( 'MeowSEO: Nonce check - Headers: ' . print_r( $request->get_headers(), true ) );
+		}
+
+		// Verify nonce
+		if ( ! $nonce ) {
+			return new WP_Error(
+				'rest_missing_nonce',
+				__( 'Nonce is missing. Please refresh the page and try again.', 'meowseo' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'MeowSEO: Nonce verification failed for value: ' . substr( $nonce, 0, 10 ) . '...' );
+			}
 			return new WP_Error(
 				'rest_invalid_nonce',
-				__( 'Nonce verification failed.', 'meowseo' ),
+				__( 'Nonce verification failed. Please refresh the page and try again.', 'meowseo' ),
 				array( 'status' => 403 )
 			);
 		}
