@@ -394,27 +394,10 @@
 		escapeHtml: function(text) {
 			const div = document.createElement('div');
 			div.textContent = text;
-			return div.innerHTML;
-		},
-						this.showTestStatus(profileId || provider, 'error', errorMsg);
-						this.updateStatusIndicator(selectedProvider, 'error');
-					}
-				})
-				.catch((error) => {
-					console.error('Test connection error:', error);
-					this.showTestStatus(profileId || provider, 'error', 'Request failed: ' + error.message);
-					this.updateStatusIndicator(selectedProvider, 'error');
-				})
-				.finally(() => {
-					// Restore button state
-					this.state.isTestingProvider[profileId || provider] = false;
-					button.disabled = false;
-					button.classList.remove('meowseo-loading');
-					button.textContent = originalText;
-				});
 		},
 
 		/**
+
 		 * Show test status message
 		 *
 		 * @param {string} provider - Provider slug
