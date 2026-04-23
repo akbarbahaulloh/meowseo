@@ -252,6 +252,9 @@
 			const originalText = button.textContent;
 			button.textContent = 'Testing...';
 
+			// Clear previous status
+			this.showTestStatus(profileId || provider, 'loading', 'Connecting to ' + selectedProvider + '...');
+
 			// Make AJAX request with proper nonce
 			fetch(this.config.testConnectionEndpoint, {
 				method: 'POST',
@@ -273,11 +276,110 @@
 					return response.json();
 				})
 				.then((data) => {
+					// Display debug log if available
+					if (data.data && data.data.debug_log) {
+						this.showDebugLog(profileId || provider, data.data.debug_log);
+					}
+
 					if (data.success && data.data && data.data.valid) {
 						this.showTestStatus(profileId || provider, 'success', data.data.message || 'Connection successful');
 						this.updateStatusIndicator(selectedProvider, 'success');
 					} else {
 						const errorMsg = data.data?.message || data.message || 'Connection failed';
+						this.showTestStatus(profileId || provider, 'error', errorMsg);
+						this.updateStatusIndicator(selectedProvider, 'error');
+					}
+				})
+				.catch((error) => {
+					console.error('Test connection error:', error);
+					this.showTestStatus(profileId || provider, 'error', 'Request failed: ' + error.message);
+					this.updateStatusIndicator(selectedProvider, 'error');
+				})
+				.finally(() => {
+					// Restore button state
+					this.state.isTestingProvider[profileId || provider] = false;
+					button.disabled = false;
+					button.classList.remove('meowseo-loading');
+					button.textContent = originalText;
+				});
+		},
+
+		/**
+		 * Show debug log in a modal or expandable section
+		 *
+		 * @param {string} provider - Provider slug
+		 * @param {array} debugLog - Array of debug log lines
+		 */
+		showDebugLog: function(provider, debugLog) {
+			if (!debugLog || !Array.isArray(debugLog)) {
+				return;
+			}
+
+			// Find or create debug log container
+			let debugContainer = document.querySelector(`#debug-log-${provider}`);
+			if (!debugContainer) {
+				const statusElement = document.querySelector(`#test-status-${provider}`);
+				if (!statusElement) {
+					return;
+				}
+
+				debugContainer = document.createElement('div');
+				debugContainer.id = `debug-log-${provider}`;
+				debugContainer.className = 'meowseo-debug-log';
+				debugContainer.style.cssText = 'margin-top: 10px; padding: 10px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 3px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 400px; overflow-y: auto;';
+				
+				// Add toggle button
+				const toggleButton = document.createElement('button');
+				toggleButton.type = 'button';
+				toggleButton.className = 'button button-small';
+				toggleButton.textContent = 'Show Debug Log';
+				toggleButton.style.cssText = 'margin-top: 5px;';
+				toggleButton.onclick = function() {
+					if (debugContainer.style.display === 'none') {
+						debugContainer.style.display = 'block';
+						toggleButton.textContent = 'Hide Debug Log';
+					} else {
+						debugContainer.style.display = 'none';
+						toggleButton.textContent = 'Show Debug Log';
+					}
+				};
+
+				statusElement.parentNode.insertBefore(toggleButton, statusElement.nextSibling);
+				statusElement.parentNode.insertBefore(debugContainer, toggleButton.nextSibling);
+				debugContainer.style.display = 'none'; // Hidden by default
+			}
+
+			// Format debug log with colors
+			const formattedLog = debugLog.map(line => {
+				if (line.startsWith('✅') || line.startsWith('✓')) {
+					return `<span style="color: #46b450;">${this.escapeHtml(line)}</span>`;
+				} else if (line.startsWith('❌')) {
+					return `<span style="color: #dc3232; font-weight: bold;">${this.escapeHtml(line)}</span>`;
+				} else if (line.startsWith('⚠️')) {
+					return `<span style="color: #f56e28;">${this.escapeHtml(line)}</span>`;
+				} else if (line.startsWith('→')) {
+					return `<span style="color: #0073aa;">${this.escapeHtml(line)}</span>`;
+				} else if (line.startsWith('===')) {
+					return `<span style="font-weight: bold;">${this.escapeHtml(line)}</span>`;
+				} else {
+					return this.escapeHtml(line);
+				}
+			}).join('\n');
+
+			debugContainer.innerHTML = formattedLog;
+		},
+
+		/**
+		 * Escape HTML to prevent XSS
+		 *
+		 * @param {string} text - Text to escape
+		 * @return {string} Escaped text
+		 */
+		escapeHtml: function(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		},
 						this.showTestStatus(profileId || provider, 'error', errorMsg);
 						this.updateStatusIndicator(selectedProvider, 'error');
 					}

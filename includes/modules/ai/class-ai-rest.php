@@ -685,70 +685,117 @@ class AI_REST {
 		$api_key    = $request->get_param( 'api_key' );
 		$profile_id = $request->get_param( 'profile_id' );
 
-		// Debug logging
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'MeowSEO: test_provider called - provider: ' . $provider . ', has_api_key: ' . ( ! empty( $api_key ) ? 'yes' : 'no' ) . ', profile_id: ' . ( $profile_id ?: 'none' ) );
-		}
+		// Initialize debug log array
+		$debug_log = array();
+		$debug_log[] = '=== MeowSEO API Connection Test ===';
+		$debug_log[] = 'Time: ' . current_time( 'Y-m-d H:i:s' );
+		$debug_log[] = 'Provider: ' . $provider;
+		$debug_log[] = 'Profile ID: ' . ( $profile_id ?: 'none' );
+		$debug_log[] = 'API Key provided: ' . ( ! empty( $api_key ) ? 'yes (' . strlen( $api_key ) . ' chars)' : 'no' );
+		$debug_log[] = '';
 
 		// Validate provider against whitelist (Requirement 2.4, 2.5).
 		if ( ! in_array( $provider, $this->valid_providers, true ) ) {
-			return new WP_Error(
-				'invalid_provider',
-				__( 'Invalid provider.', 'meowseo' ),
-				array( 'status' => 400 )
+			$debug_log[] = '❌ ERROR: Invalid provider';
+			$debug_log[] = 'Valid providers: ' . implode( ', ', $this->valid_providers );
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'data'    => array(
+						'valid'   => false,
+						'status'  => 'error',
+						'message' => __( 'Invalid provider.', 'meowseo' ),
+						'debug_log' => $debug_log,
+					),
+				),
+				200
 			);
 		}
+		$debug_log[] = '✓ Provider validation passed';
 
 		// Handle masked key for existing profile.
 		if ( ! empty( $profile_id ) && ( empty( $api_key ) || strpos( $api_key, '...' ) !== false ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'MeowSEO: Fetching API key from saved profile: ' . $profile_id );
-			}
+			$debug_log[] = '';
+			$debug_log[] = '→ Fetching API key from saved profile...';
 			
 			$profiles = $this->provider_manager->get_options()->get( 'ai_profiles', array() );
+			$profile_found = false;
+			
 			foreach ( $profiles as $profile ) {
 				if ( $profile['id'] === $profile_id ) {
 					$api_key = $this->provider_manager->get_decrypted_profile_key( $profile );
 					$provider = $profile['provider'];
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-						error_log( 'MeowSEO: API key retrieved from profile, provider: ' . $provider );
-					}
+					$profile_found = true;
+					$debug_log[] = '✓ Profile found and API key retrieved';
+					$debug_log[] = 'Provider from profile: ' . $provider;
+					$debug_log[] = 'API key length: ' . strlen( $api_key ) . ' chars';
 					break;
 				}
+			}
+			
+			if ( ! $profile_found ) {
+				$debug_log[] = '❌ ERROR: Profile not found in database';
+				$debug_log[] = 'Available profiles: ' . count( $profiles );
 			}
 		}
 
 		// Validate API key is not empty (after trying to fetch from profile).
 		if ( empty( $api_key ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'MeowSEO: API key is empty after all attempts' );
-			}
-			return new WP_Error(
-				'empty_api_key',
-				__( 'API key is required. Please enter an API key or save the profile first.', 'meowseo' ),
-				array( 'status' => 400 )
+			$debug_log[] = '';
+			$debug_log[] = '❌ ERROR: API key is empty after all attempts';
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'data'    => array(
+						'valid'   => false,
+						'status'  => 'error',
+						'message' => __( 'API key is required. Please enter an API key or save the profile first.', 'meowseo' ),
+						'debug_log' => $debug_log,
+					),
+				),
+				200
 			);
 		}
+		$debug_log[] = '✓ API key validation passed';
 
 		try {
+			$debug_log[] = '';
+			$debug_log[] = '→ Getting provider instance...';
+			
 			// Get provider instance.
 			$provider_instance = $this->get_provider_instance( $provider, $api_key );
 
 			if ( ! $provider_instance ) {
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'MeowSEO: Provider instance not found for: ' . $provider );
-				}
-				return new WP_Error(
-					'provider_not_found',
-					__( 'Provider not found.', 'meowseo' ),
-					array( 'status' => 400 )
+				$debug_log[] = '❌ ERROR: Provider instance not found';
+				$debug_log[] = 'Provider class may not exist or failed to instantiate';
+				return new WP_REST_Response(
+					array(
+						'success' => false,
+						'data'    => array(
+							'valid'   => false,
+							'status'  => 'error',
+							'message' => __( 'Provider not found.', 'meowseo' ),
+							'debug_log' => $debug_log,
+						),
+					),
+					200
 				);
 			}
+			$debug_log[] = '✓ Provider instance created: ' . get_class( $provider_instance );
 
+			$debug_log[] = '';
+			$debug_log[] = '→ Testing API connection to ' . $provider . '...';
+			$debug_log[] = 'Calling validate_api_key() method...';
+			
 			// Call provider's validate_api_key method (Requirement 2.6, 2.7).
 			$is_valid = $provider_instance->validate_api_key( $api_key );
 
 			if ( $is_valid ) {
+				$debug_log[] = '';
+				$debug_log[] = '✅ SUCCESS: Connection test passed!';
+				$debug_log[] = 'Provider: ' . $provider;
+				$debug_log[] = 'Status: Connected';
+				
 				Logger::info(
 					'AI provider test successful',
 					array(
@@ -756,10 +803,6 @@ class AI_REST {
 						'provider' => $provider,
 					)
 				);
-
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'MeowSEO: Provider test successful for: ' . $provider );
-				}
 
 				// Return connection status (Requirement 2.6).
 				return new WP_REST_Response(
@@ -769,12 +812,39 @@ class AI_REST {
 							'valid'   => true,
 							'status'  => 'connected',
 							'message' => __( 'Connection successful.', 'meowseo' ),
+							'debug_log' => $debug_log,
 						),
 					),
 					200
 				);
 			} else {
 				$error = $provider_instance->get_last_error();
+				
+				$debug_log[] = '';
+				$debug_log[] = '❌ FAILED: Connection test failed';
+				$debug_log[] = 'Error from provider: ' . ( $error ?: 'Unknown error' );
+				
+				// Try to get more details from the provider
+				if ( method_exists( $provider_instance, 'get_last_response_code' ) ) {
+					$response_code = $provider_instance->get_last_response_code();
+					$debug_log[] = 'HTTP Response Code: ' . $response_code;
+					
+					if ( $response_code === 403 ) {
+						$debug_log[] = '';
+						$debug_log[] = '⚠️  HTTP 403 Forbidden - Possible causes:';
+						$debug_log[] = '  1. API key is invalid or expired';
+						$debug_log[] = '  2. API key does not have required permissions';
+						$debug_log[] = '  3. IP address is blocked by provider';
+						$debug_log[] = '  4. Rate limit exceeded';
+						$debug_log[] = '  5. Firewall blocking the request';
+					} elseif ( $response_code === 401 ) {
+						$debug_log[] = '';
+						$debug_log[] = '⚠️  HTTP 401 Unauthorized - API key is invalid';
+					} elseif ( $response_code === 429 ) {
+						$debug_log[] = '';
+						$debug_log[] = '⚠️  HTTP 429 Too Many Requests - Rate limit exceeded';
+					}
+				}
 
 				Logger::warning(
 					'AI provider test failed',
@@ -785,10 +855,6 @@ class AI_REST {
 					)
 				);
 
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'MeowSEO: Provider test failed for ' . $provider . ': ' . $error );
-				}
-
 				// Return error status (Requirement 2.7).
 				return new WP_REST_Response(
 					array(
@@ -797,12 +863,18 @@ class AI_REST {
 							'valid'   => false,
 							'status'  => 'error',
 							'message' => $error ?: __( 'Connection failed.', 'meowseo' ),
+							'debug_log' => $debug_log,
 						),
 					),
 					200
 				);
 			}
 		} catch ( \Exception $e ) {
+			$debug_log[] = '';
+			$debug_log[] = '❌ EXCEPTION: ' . $e->getMessage();
+			$debug_log[] = 'File: ' . $e->getFile();
+			$debug_log[] = 'Line: ' . $e->getLine();
+			
 			Logger::error(
 				'AI provider test exception',
 				array(
@@ -812,14 +884,17 @@ class AI_REST {
 				)
 			);
 
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'MeowSEO: Provider test exception for ' . $provider . ': ' . $e->getMessage() );
-			}
-
-			return new WP_Error(
-				'test_exception',
-				__( 'An error occurred during provider test.', 'meowseo' ),
-				array( 'status' => 500 )
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'data'    => array(
+						'valid'   => false,
+						'status'  => 'error',
+						'message' => __( 'An error occurred during provider test.', 'meowseo' ),
+						'debug_log' => $debug_log,
+					),
+				),
+				200
 			);
 		}
 	}
