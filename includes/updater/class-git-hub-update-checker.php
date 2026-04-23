@@ -115,6 +115,16 @@ class GitHub_Update_Checker {
 		
 		// Hook into upgrader completion to save the new commit ID.
 		add_action( 'upgrader_process_complete', array( $this, 'update_installed_commit' ), 10, 2 );
+
+		// Add "Check for Update" link to plugin action links.
+		$plugin_basename = plugin_basename( $this->plugin_file );
+		add_filter( 'plugin_action_links_' . $plugin_basename, array( $this, 'add_manual_check_link' ) );
+
+		// Handle manual update check from URL.
+		add_action( 'admin_init', array( $this, 'handle_manual_check' ) );
+
+		// Display update notice.
+		add_action( 'admin_notices', array( $this, 'display_update_notice' ) );
 	}
 
 	/**
@@ -143,7 +153,7 @@ class GitHub_Update_Checker {
 		}
 
 		try {
-			// Get current installed commit ID.
+			// Get current installed commit ID (full SHA).
 			$current_commit = $this->get_current_commit_id();
 
 			// Get latest commit from GitHub.
@@ -155,8 +165,8 @@ class GitHub_Update_Checker {
 				return $transient;
 			}
 
-			// Extract latest commit ID.
-			$latest_commit = $latest_commit_data['short_sha'] ?? '';
+			// Extract latest commit ID (full SHA).
+			$latest_commit = $latest_commit_data['sha'] ?? '';
 
 			// Check if update is available.
 			if ( ! $this->is_update_available( $current_commit, $latest_commit ) ) {
@@ -171,6 +181,7 @@ class GitHub_Update_Checker {
 			$owner           = $this->config->get_repo_owner();
 			$repo            = $this->config->get_repo_name();
 			$full_commit_sha = $latest_commit_data['sha'] ?? '';
+			$short_commit_sha = $latest_commit_data['short_sha'] ?? '';
 
 			// Build the package URL (GitHub archive endpoint).
 			$package_url = sprintf(
@@ -188,7 +199,7 @@ class GitHub_Update_Checker {
 			if ( strpos( $base_version, '-' ) !== false ) {
 				$base_version = explode( '-', $base_version )[0];
 			}
-			$display_version = $base_version . '.' . $latest_commit;
+			$display_version = $base_version . '.' . $short_commit_sha;
 			
 			$update_object = (object) array(
 				'id'          => $plugin_basename,
@@ -761,16 +772,16 @@ class GitHub_Update_Checker {
 	/**
 	 * Get current installed commit ID
 	 *
-	 * Extracts the commit ID from the current plugin version string.
+	 * Extracts the commit ID from the current plugin version string or database.
 	 * The version format is expected to be: {semantic_version}-{commit_id}
-	 * Example: "1.0.0-abc1234"
+	 * Example: "1.0.0-abc1234" or "1.0.0-abc1234567890abcdef1234567890abcdef1234"
 	 *
 	 * @since 1.0.0
 	 *
-	 * @return string Commit ID if found, empty string otherwise.
+	 * @return string Commit ID (full SHA) if found, empty string otherwise.
 	 */
 	private function get_current_commit_id(): string {
-		// First try to get it from the database option.
+		// First try to get full SHA from the database option.
 		$installed_commit = get_option( 'meowseo_installed_commit', '' );
 		if ( ! empty( $installed_commit ) ) {
 			return $installed_commit;
@@ -790,6 +801,7 @@ class GitHub_Update_Checker {
 		$commit_id = $this->extract_commit_id( $version );
 		
 		if ( ! empty( $commit_id ) ) {
+			// Store the full SHA in database for future comparisons
 			update_option( 'meowseo_installed_commit', $commit_id );
 			return $commit_id;
 		}
@@ -797,34 +809,7 @@ class GitHub_Update_Checker {
 		return '';
 	}
 
-	/**
-	 * Logic fired after processing a plugin update.
-	 * Saves the new SHA to the database to stop the update loop and properly reflect the current version.
-	 *
-	 * @param \WP_Upgrader $upgrader_object WP_Upgrader instance.
-	 * @param array        $options         Array of bulk item update data.
-	 */
-	public function update_installed_commit( $upgrader_object, $options ) {
-		$plugin_basename = plugin_basename( $this->plugin_file );
-		if ( 'update' === $options['action'] && 'plugin' === $options['type'] && ! empty( $options['plugins'] ) ) {
-			if ( in_array( $plugin_basename, $options['plugins'], true ) ) {
-				// Clear the cache to force a fresh fetch on next check.
-				$this->clear_cache();
 
-				// Fetch the absolute newest commit (which we just installed via the main branch zip).
-				// We force bypassing the cache.
-				$cache_key   = 'meowseo_github_update_info';
-				delete_transient( $cache_key );
-				
-				$latest = $this->get_latest_commit();
-
-				if ( $latest && ! empty( $latest['short_sha'] ) ) {
-					// Save to database so we know what is currently installed.
-					update_option( 'meowseo_installed_commit', sanitize_text_field( $latest['short_sha'] ) );
-				}
-			}
-		}
-	}
 
 	/**
 	 * Extract commit ID from version string
@@ -1364,4 +1349,81 @@ class GitHub_Update_Checker {
 
 		return true;
 	}
+
+	/**
+	 * Logic fired after processing a plugin update.
+	 * Saves the new SHA to the database to stop the update loop and properly reflect the current version.
+	 *
+	 * @param \WP_Upgrader $upgrader_object WP_Upgrader instance.
+	 * @param array        $options         Array of bulk item update data.
+	 */
+	public function update_installed_commit( $upgrader_object, $options ) {
+		$plugin_basename = plugin_basename( $this->plugin_file );
+		if ( 'update' === $options['action'] && 'plugin' === $options['type'] && ! empty( $options['plugins'] ) ) {
+			if ( in_array( $plugin_basename, $options['plugins'], true ) ) {
+				// Clear the cache to force a fresh fetch on next check.
+				delete_transient( 'meowseo_github_update_info' );
+				delete_transient( 'meowseo_github_changelog' );
+
+				// Fetch the absolute newest commit (which we just installed via the main branch zip).
+				// We force bypassing the cache.
+				$latest = $this->get_latest_commit();
+
+				if ( $latest && ! empty( $latest['sha'] ) ) {
+					// Save full SHA to database so we know what is currently installed.
+					update_option( 'meowseo_installed_commit', sanitize_text_field( $latest['sha'] ) );
+					$this->logger->log_check( true, 'Updated installed commit to: ' . substr( $latest['sha'], 0, 7 ) );
+				}
+			}
+		}
+	}
+
+	/**
+	 * Add "Check for Update" link to plugin action links.
+	 *
+	 * @param array $links Plugin action links.
+	 * @return array Modified plugin action links.
+	 */
+	public function add_manual_check_link( $links ) {
+		$check_link = array(
+			'<a href="' . esc_url( admin_url( 'plugins.php?meowseo_check_update=1' ) ) . '">' . __( 'Cek Pembaruan', 'meowseo' ) . '</a>',
+		);
+		return array_merge( $check_link, $links );
+	}
+
+	/**
+	 * Handle manual update check from URL.
+	 *
+	 * @return void
+	 */
+	public function handle_manual_check() {
+		if ( ! is_admin() || ! isset( $_GET['meowseo_check_update'] ) ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// Clear the cache.
+		delete_transient( 'meowseo_github_update_info' );
+		delete_transient( 'meowseo_github_changelog' );
+		delete_site_transient( 'update_plugins' ); // Force WP to re-check all plugins.
+
+		// Redirect back with a notice flag.
+		wp_safe_redirect( admin_url( 'plugins.php?meowseo_update_checked=1' ) );
+		exit;
+	}
+
+	/**
+	 * Display a notice after checking for updates manually.
+	 *
+	 * @return void
+	 */
+	public function display_update_notice() {
+		if ( isset( $_GET['meowseo_update_checked'] ) ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'MeowSEO berhasil memeriksa pembaruan di GitHub. Jika ada versi baru, tombol "Update Now" akan muncul di bawah deskripsi plugin.', 'meowseo' ) . '</p></div>';
+		}
+	}
 }
+
