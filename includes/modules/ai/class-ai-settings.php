@@ -634,8 +634,6 @@ class AI_Settings {
 		</div>
 		<?php
 	}
-		<?php
-	}
 
 	/**
 	 * Render provider status section.

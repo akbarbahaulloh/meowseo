@@ -82,31 +82,39 @@ class Meta_Resolver {
 		}
 
 		// Check postmeta first.
-		$custom_title = $this->get_postmeta( $post_id, '_meowseo_title' );
-		if ( ! empty( $custom_title ) ) {
-			return $custom_title;
-		}
-
-		// Get post object.
-		$post = get_post( $post_id );
-		if ( ! $post ) {
-			return \get_bloginfo( 'name' );
-		}
-
-		// Apply title pattern for post type.
-		$pattern = $this->patterns->get_pattern_for_post_type( $post->post_type );
-		$context = array(
-			'title'       => $post->post_title,
-			'page_number' => get_query_var( 'page', 0 ),
-		);
-
-		$resolved = $this->patterns->resolve( $pattern, $context );
-
-		// If pattern resolution failed or empty, use fallback.
+		$resolved = $this->get_postmeta( $post_id, '_meowseo_title' );
+		
 		if ( empty( $resolved ) ) {
-			$separator = $this->options->get_separator();
-			$site_name = \get_bloginfo( 'name' );
-			return $post->post_title . ' ' . $separator . ' ' . $site_name;
+			// Get post object.
+			$post = get_post( $post_id );
+			if ( ! $post ) {
+				return \get_bloginfo( 'name' );
+			}
+
+			// Apply title pattern for post type.
+			$pattern = $this->patterns->get_pattern_for_post_type( $post->post_type );
+			$context = array(
+				'title'       => $post->post_title,
+				'page_number' => get_query_var( 'page', 0 ),
+			);
+
+			$resolved = $this->patterns->resolve( $pattern, $context );
+
+			// If pattern resolution failed or empty, use fallback.
+			if ( empty( $resolved ) ) {
+				$separator = $this->options->get_separator();
+				$site_name = \get_bloginfo( 'name' );
+				$resolved = $post->post_title . ' ' . $separator . ' ' . $site_name;
+			}
+		}
+
+		// Handle Content Type specific logic (Requirement: Promotion must have phone number).
+		$content_type = $this->get_postmeta( $post_id, '_meowseo_content_type' );
+		if ( 'promotion' === $content_type ) {
+			$phone = $this->get_postmeta( $post_id, '_meowseo_phone_number' );
+			if ( ! empty( $phone ) && false === strpos( $resolved, $phone ) ) {
+				$resolved .= ' - ' . $phone;
+			}
 		}
 
 		return $resolved;

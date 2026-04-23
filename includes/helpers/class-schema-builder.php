@@ -136,12 +136,25 @@ class Schema_Builder {
 		$nodes[] = $this->build_breadcrumb( $this->post );
 
 		// Conditional nodes based on post type and schema type.
+		$content_type = get_post_meta( $this->post_id, '_meowseo_content_type', true );
 		if ( $this->should_include_article() ) {
-			$nodes[] = $this->build_article( $this->post );
+			$article_type = 'Article';
+			if ( 'news' === $content_type ) {
+				$article_type = 'NewsArticle';
+			} elseif ( 'journal' === $content_type ) {
+				$article_type = 'ScholarlyArticle';
+			} elseif ( 'education' === $content_type ) {
+				$article_type = 'EducationalResource';
+			}
+			$nodes[] = $this->build_article( $this->post, $article_type );
 		}
 
 		if ( $this->should_include_product() ) {
 			$nodes[] = $this->build_product( $this->post );
+		}
+
+		if ( 'review' === $content_type ) {
+			$nodes[] = $this->build_manual_review_schema( $this->post );
 		}
 
 		if ( $this->should_include_faq() ) {
@@ -578,15 +591,16 @@ class Schema_Builder {
 	 * Build Article schema.
 	 *
 	 * @param \WP_Post $post Post object.
+	 * @param string   $type Article type (e.g. Article, NewsArticle, ScholarlyArticle).
 	 * @return array Article schema array.
 	 */
-	public function build_article( \WP_Post $post ): array {
+	public function build_article( \WP_Post $post, string $type = 'Article' ): array {
 		$permalink = get_permalink( $post );
 		$title = get_the_title( $post );
 		$site_url = get_site_url();
 
 		$schema = array(
-			'@type'            => 'Article',
+			'@type'            => $type,
 			'@id'              => $permalink . '#article',
 			'isPartOf'         => array(
 				'@id' => $permalink . '#webpage',
@@ -798,7 +812,54 @@ class Schema_Builder {
 			$schema['aggregateRating'] = array(
 				'@type'       => 'AggregateRating',
 				'ratingValue' => $product->get_average_rating(),
-				'reviewCount' => $rating_count,
+				'reviewCount' => $product->get_review_count(),
+			);
+		}
+
+		return $schema;
+	}
+
+	/**
+	 * Build manual Review schema for non-WooCommerce posts.
+	 *
+	 * @param \WP_Post $post Post object.
+	 * @return array Review/Product schema array.
+	 */
+	public function build_manual_review_schema( \WP_Post $post ): array {
+		$rating = get_post_meta( $post->ID, '_meowseo_review_rating', true );
+		$price  = get_post_meta( $post->ID, '_meowseo_product_price', true );
+
+		if ( ! $rating && ! $price ) {
+			return array();
+		}
+
+		$permalink = get_permalink( $post );
+
+		$schema = array(
+			'@type'       => 'Product',
+			'@id'         => $permalink . '#product',
+			'name'        => get_the_title( $post ),
+			'url'         => $permalink,
+			'description' => wp_strip_all_tags( get_the_excerpt( $post ) ),
+		);
+
+		if ( $rating ) {
+			$schema['aggregateRating'] = array(
+				'@type'       => 'AggregateRating',
+				'ratingValue' => $rating,
+				'bestRating'  => '5',
+				'worstRating' => '1',
+				'ratingCount' => '1', // Default to 1 for manual reviews
+			);
+		}
+
+		if ( $price ) {
+			$schema['offers'] = array(
+				'@type'         => 'Offer',
+				'url'           => $permalink,
+				'price'         => $price,
+				'priceCurrency' => $this->options->get( 'currency', 'USD' ),
+				'availability'  => 'https://schema.org/InStock',
 			);
 		}
 

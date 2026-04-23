@@ -119,6 +119,11 @@ class Classic_Editor {
 		$schema_config       = $schema_config_raw ? json_decode( $schema_config_raw, true ) : array();
 		$gsc_last_submit     = (int) get_post_meta( $post->ID, '_meowseo_gsc_last_submit', true );
 
+		$content_type        = (string) get_post_meta( $post->ID, '_meowseo_content_type', true ) ?: 'article';
+		$phone_number        = (string) get_post_meta( $post->ID, '_meowseo_phone_number', true );
+		$review_rating       = (string) get_post_meta( $post->ID, '_meowseo_review_rating', true );
+		$product_price       = (string) get_post_meta( $post->ID, '_meowseo_product_price', true );
+
 		$og_image_url     = $og_image_id ? wp_get_attachment_image_url( $og_image_id, 'thumbnail' ) : '';
 		$twitter_image_url = $twitter_image_id ? wp_get_attachment_image_url( $twitter_image_id, 'thumbnail' ) : '';
 		$gsc_date         = $gsc_last_submit ? gmdate( 'Y-m-d H:i', $gsc_last_submit ) : '';
@@ -209,6 +214,39 @@ class Classic_Editor {
 					<div class="serp-url"><span><?php echo esc_html( $display_url ); ?></span></div>
 					<div class="serp-title" id="meowseo-serp-title"><?php echo esc_html( $title ?: get_the_title( $post ) ); ?></div>
 					<div class="serp-desc"  id="meowseo-serp-desc"><?php echo esc_html( $description ?: get_the_excerpt( $post ) ); ?></div>
+				</div>
+
+				<!-- Content Type -->
+				<div class="meowseo-field">
+					<label for="meowseo_content_type"><?php esc_html_e( 'Content Type', 'meowseo' ); ?></label>
+					<select id="meowseo_content_type" name="meowseo_content_type" style="width:100%">
+						<option value="article" <?php selected( $content_type, 'article' ); ?>><?php esc_html_e( 'Article', 'meowseo' ); ?></option>
+						<option value="promotion" <?php selected( $content_type, 'promotion' ); ?>><?php esc_html_e( 'Promotion', 'meowseo' ); ?></option>
+						<option value="review" <?php selected( $content_type, 'review' ); ?>><?php esc_html_e( 'Review', 'meowseo' ); ?></option>
+						<option value="news" <?php selected( $content_type, 'news' ); ?>><?php esc_html_e( 'News', 'meowseo' ); ?></option>
+						<option value="journal" <?php selected( $content_type, 'journal' ); ?>><?php esc_html_e( 'Journal', 'meowseo' ); ?></option>
+						<option value="education" <?php selected( $content_type, 'education' ); ?>><?php esc_html_e( 'Education', 'meowseo' ); ?></option>
+					</select>
+				</div>
+
+				<!-- Promotion: Phone Number -->
+				<div class="meowseo-field meowseo-ct-field" data-ct="promotion" style="display:none">
+					<label for="meowseo_phone_number"><?php esc_html_e( 'Phone Number (Will be added to Title)', 'meowseo' ); ?></label>
+					<input type="text" id="meowseo_phone_number" name="meowseo_phone_number" value="<?php echo esc_attr( $phone_number ); ?>" placeholder="e.g. 08123456789" />
+				</div>
+
+				<!-- Review: Rating & Price -->
+				<div class="meowseo-field meowseo-ct-field" data-ct="review" style="display:none">
+					<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px">
+						<div>
+							<label for="meowseo_review_rating"><?php esc_html_e( 'Rating (1-5)', 'meowseo' ); ?></label>
+							<input type="number" id="meowseo_review_rating" name="meowseo_review_rating" value="<?php echo esc_attr( $review_rating ); ?>" min="1" max="5" step="0.1" />
+						</div>
+						<div>
+							<label for="meowseo_product_price"><?php esc_html_e( 'Product Price', 'meowseo' ); ?></label>
+							<input type="text" id="meowseo_product_price" name="meowseo_product_price" value="<?php echo esc_attr( $product_price ); ?>" placeholder="e.g. 50000" />
+						</div>
+					</div>
 				</div>
 
 				<!-- SEO Title -->
@@ -622,6 +660,13 @@ class Classic_Editor {
 					}
 				});
 			});
+
+			// Content Type fields toggle
+			$('#meowseo_content_type').on('change', function(){
+				var val = $(this).val();
+				$('.meowseo-ct-field').hide();
+				$('.meowseo-ct-field[data-ct="' + val + '"]').show();
+			}).trigger('change');
 		})(jQuery);
 		</script>
 		<?php
@@ -656,6 +701,18 @@ class Classic_Editor {
 		);
 
 		foreach ( $text_fields as $post_key => $meta_key ) {
+			$value = isset( $_POST[ $post_key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $post_key ] ) ) : '';
+			update_post_meta( $post_id, $meta_key, $value );
+		}
+
+		// New Content Type fields
+		$ct_fields = array(
+			'meowseo_content_type'  => '_meowseo_content_type',
+			'meowseo_phone_number'  => '_meowseo_phone_number',
+			'meowseo_review_rating' => '_meowseo_review_rating',
+			'meowseo_product_price' => '_meowseo_product_price',
+		);
+		foreach ( $ct_fields as $post_key => $meta_key ) {
 			$value = isset( $_POST[ $post_key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $post_key ] ) ) : '';
 			update_post_meta( $post_id, $meta_key, $value );
 		}
