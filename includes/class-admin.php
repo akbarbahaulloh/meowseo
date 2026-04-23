@@ -156,11 +156,7 @@ class Admin {
 		// Plugin action links (Requirements: matched MeowPack aesthetic).
 		add_filter( 'plugin_action_links_' . plugin_basename( \MEOWSEO_FILE ), array( $this, 'add_plugin_action_links' ) );
 
-		// Handle manual update check from plugin action links.
-		add_action( 'admin_init', array( $this, 'handle_manual_update_check' ) );
 
-		// Display admin notices.
-		add_action( 'admin_notices', array( $this, 'display_admin_notices' ) );
 
 		// Reorder submenus (Requirement: Logical flow).
 		add_action( 'admin_menu', array( $this, 'reorder_submenus' ), 999 );
@@ -842,86 +838,13 @@ class Admin {
 	 */
 	public function add_plugin_action_links( array $links ): array {
 		$settings_url = admin_url( 'admin.php?page=meowseo-settings' );
-		$update_url   = wp_nonce_url(
-			add_query_arg(
-				array(
-					'meowseo_action' => 'check_update',
-				),
-				admin_url( 'plugins.php' )
-			),
-			'meowseo_check_update'
-		);
-
 		$custom_links = array(
 			'settings' => sprintf( '<a href="%s">%s</a>', esc_url( $settings_url ), esc_html__( 'Pengaturan', 'meowseo' ) ),
-			'update'   => sprintf( '<a href="%s">%s</a>', esc_url( $update_url ), esc_html__( 'Cek Pembaruan', 'meowseo' ) ),
 		);
 
 		return array_merge( $custom_links, $links );
 	}
 
-	/**
-	 * Handle manual update check from plugin action links
-	 *
-	 * Processes the "Cek Pembaruan" request, clears caches, and triggers
-	 * an update check.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public function handle_manual_update_check(): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( ! isset( $_GET['meowseo_action'] ) || 'check_update' !== $_GET['meowseo_action'] ) {
-			return;
-		}
-
-		// Verify nonce.
-		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( $_GET['_wpnonce'] ), 'meowseo_check_update' ) ) {
-			wp_die( esc_html__( 'Security check failed.', 'meowseo' ) );
-		}
-
-		// Verify capability.
-		if ( ! current_user_can( 'update_plugins' ) ) {
-			wp_die( esc_html__( 'You do not have sufficient permissions to check for updates.', 'meowseo' ) );
-		}
-
-		$plugin  = Plugin::instance();
-		$checker = $plugin->get_updater_checker();
-
-		if ( $checker ) {
-			// Clear all update caches.
-			$checker->clear_cache();
-			delete_site_transient( 'update_plugins' ); // Force WP to re-check all plugins natively.
-
-			$message = __( 'MeowSEO berhasil memeriksa pembaruan di GitHub. Jika ada versi baru, tombol "Update Now" akan muncul di bawah deskripsi plugin.', 'meowseo' );
-			$type    = 'success';
-
-			// Store message in transient for display after redirect.
-			set_transient( 'meowseo_update_notice', array( 'message' => $message, 'type' => $type ), 30 );
-		}
-
-		// Redirect back to plugins page.
-		wp_safe_redirect( admin_url( 'plugins.php' ) );
-		exit;
-	}
-
-	/**
-	 * Display admin notices for update results
-	 *
-	 * Shows a success or info notice after a manual update check.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public function display_admin_notices(): void {
-		$notice = get_transient( 'meowseo_update_notice' );
-
-		if ( $notice ) {
-			delete_transient( 'meowseo_update_notice' );
-			$class = 'notice notice-' . ( $notice['type'] ?? 'info' ) . ' is-dismissible';
-			printf( '<div class="%s"><p>%s</p></div>', esc_attr( $class ), esc_html( $notice['message'] ) );
-		}
-	}
 
 	/**
 	 * Reorder MeowSEO submenus

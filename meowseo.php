@@ -69,39 +69,6 @@ spl_autoload_register( function ( $class ) {
 register_activation_hook( __FILE__, array( 'MeowSEO\Installer', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'MeowSEO\Installer', 'deactivate' ) );
 
-// Initialize GitHub updater early (before WordPress checks for updates).
-// This must run on plugins_loaded to ensure hooks are registered before update checks.
-add_action( 'plugins_loaded', function() {
-	// Only initialize if updater classes exist.
-	if ( ! class_exists( 'MeowSEO\Updater\GitHub_Update_Checker' ) ) {
-		return;
-	}
-
-	try {
-		$config = new \MeowSEO\Updater\Update_Config();
-		$logger = new \MeowSEO\Updater\Update_Logger();
-		$checker = new \MeowSEO\Updater\GitHub_Update_Checker( MEOWSEO_FILE, $config, $logger );
-		$checker->init();
-		
-		// Store in global for access by Plugin class and admin.
-		$GLOBALS['meowseo_updater_checker'] = $checker;
-		$GLOBALS['meowseo_updater_config'] = $config;
-		$GLOBALS['meowseo_updater_logger'] = $logger;
-		
-		// Register settings page if in admin and user can manage options.
-		if ( is_admin() && current_user_can( 'update_plugins' ) ) {
-			add_action( 'admin_menu', function() use ( $config, $checker, $logger ) {
-				$settings_page = new \MeowSEO\Updater\Update_Settings_Page( $config, $checker, $logger );
-				$settings_page->register();
-			}, 20 ); // Priority 20 to run after main admin menu
-		}
-	} catch ( \Exception $e ) {
-		// Log updater initialization error but don't break the plugin.
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'MeowSEO: Failed to initialize GitHub updater: ' . $e->getMessage() );
-		}
-	}
-}, 5 ); // Priority 5 to run early, before most plugins
 
 // Load plugin textdomain at init hook.
 // Requirement: WordPress 6.7+ compatibility (avoid early translation loading notice).

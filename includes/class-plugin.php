@@ -63,12 +63,6 @@ class Plugin {
 	 */
 	private ?Admin $admin = null;
 
-	/**
-	 * GitHub Update Checker instance.
-	 *
-	 * @var \MeowSEO\Updater\GitHub_Update_Checker|null
-	 */
-	private ?\MeowSEO\Updater\GitHub_Update_Checker $updater_checker = null;
 
 	/**
 	 * Private constructor to prevent direct instantiation.
@@ -104,11 +98,6 @@ class Plugin {
 			// Initialize Logger singleton early to register error handlers (Requirements 1.1, 3.1).
 			Logger::get_instance();
 
-			// Initialize GitHub Update System EARLY (before admin_init).
-			// This ensures the updater hooks are registered before WordPress checks for updates.
-			// WordPress can check for updates at various times (cron, manual check, etc.)
-			// so we need to initialize the updater as early as possible.
-			$this->initialize_updater();
 
 			// Initialize Module_Manager.
 			$this->module_manager = new Module_Manager( $this->options );
@@ -139,10 +128,6 @@ class Plugin {
 					$this->admin = new Admin( $this->options, $this->module_manager );
 					$this->admin->boot();
 
-					// Get updater from global if it was initialized early.
-					if ( isset( $GLOBALS['meowseo_updater_checker'] ) ) {
-						$this->updater_checker = $GLOBALS['meowseo_updater_checker'];
-					}
 				} catch ( \Exception $e ) {
 					// Log admin initialization error but don't break the plugin.
 					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
@@ -156,33 +141,6 @@ class Plugin {
 		}
 	}
 
-	/**
-	 * Initialize the GitHub update system (DEPRECATED)
-	 *
-	 * This method is now deprecated. The updater is initialized early on plugins_loaded hook
-	 * in meowseo.php to ensure hooks are registered before WordPress checks for updates.
-	 *
-	 * @deprecated 1.0.1 Updater now initialized on plugins_loaded hook
-	 * @return void
-	 */
-	public function initialize_updater(): void {
-		// This method is kept for backward compatibility but does nothing.
-		// The updater is now initialized in meowseo.php on plugins_loaded hook.
-		
-		// Get updater from global if available.
-		if ( isset( $GLOBALS['meowseo_updater_checker'] ) ) {
-			$this->updater_checker = $GLOBALS['meowseo_updater_checker'];
-		}
-	}
-
-	/**
-	 * Get GitHub Update Checker instance.
-	 *
-	 * @return \MeowSEO\Updater\GitHub_Update_Checker|null
-	 */
-	public function get_updater_checker(): ?\MeowSEO\Updater\GitHub_Update_Checker {
-		return $this->updater_checker;
-	}
 
 	/**
 	 * Get Module_Manager instance.
