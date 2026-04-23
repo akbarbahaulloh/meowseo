@@ -201,6 +201,84 @@ class AI_REST {
 			)
 		);
 
+		// POST /meowseo/v1/ai/write/simple
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/write/simple',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'write_simple' ),
+				'permission_callback' => array( $this, 'check_permission_and_nonce' ),
+				'args'                => array(
+					'topic'    => array( 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_textarea_field' ),
+					'style_id' => array( 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_key' ),
+				),
+			)
+		);
+
+		// POST /meowseo/v1/ai/write/outline
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/write/outline',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'write_outline' ),
+				'permission_callback' => array( $this, 'check_permission_and_nonce' ),
+				'args'                => array(
+					'topic'    => array( 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_textarea_field' ),
+					'style_id' => array( 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_key' ),
+				),
+			)
+		);
+
+		// POST /meowseo/v1/ai/write/intro
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/write/intro',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'write_intro' ),
+				'permission_callback' => array( $this, 'check_permission_and_nonce' ),
+				'args'                => array(
+					'topic'    => array( 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_textarea_field' ),
+					'outline'  => array( 'type' => 'array', 'required' => true ),
+					'style_id' => array( 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_key' ),
+				),
+			)
+		);
+
+		// POST /meowseo/v1/ai/write/section
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/write/section',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'write_section' ),
+				'permission_callback' => array( $this, 'check_permission_and_nonce' ),
+				'args'                => array(
+					'topic'    => array( 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_textarea_field' ),
+					'section'  => array( 'type' => 'object', 'required' => true ),
+					'style_id' => array( 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_key' ),
+				),
+			)
+		);
+
+		// POST /meowseo/v1/ai/write/conclusion
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/write/conclusion',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'write_conclusion' ),
+				'permission_callback' => array( $this, 'check_permission_and_nonce' ),
+				'args'                => array(
+					'topic'    => array( 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_textarea_field' ),
+					'outline'  => array( 'type' => 'array', 'required' => true ),
+					'style_id' => array( 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_key' ),
+				),
+			)
+		);
+
 		// GET /meowseo/v1/ai/provider-status - Get provider statuses (Requirement 3.1, 3.2, 3.3, 3.4, 3.5, 3.6).
 		register_rest_route(
 			self::NAMESPACE,
@@ -1153,6 +1231,89 @@ class AI_REST {
 		}
 
 		return $sanitized;
+	}
+
+	/**
+	 * Callback for AI Writer Simple mode.
+	 */
+	public function write_simple( WP_REST_Request $request ) {
+		$topic    = $request->get_param( 'topic' );
+		$style_id = $request->get_param( 'style_id' );
+
+		$result = $this->generator->generate_article_simple( $topic, $style_id ?: '' );
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error( $result->get_error_code(), $result->get_error_message(), array( 'status' => 500 ) );
+		}
+
+		return new WP_REST_Response( array( 'success' => true, 'data' => $result ), 200 );
+	}
+
+	/**
+	 * Callback for AI Writer Outline.
+	 */
+	public function write_outline( WP_REST_Request $request ) {
+		$topic    = $request->get_param( 'topic' );
+		$style_id = $request->get_param( 'style_id' );
+
+		$result = $this->generator->generate_outline( $topic, $style_id ?: '' );
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error( $result->get_error_code(), $result->get_error_message(), array( 'status' => 500 ) );
+		}
+
+		return new WP_REST_Response( array( 'success' => true, 'data' => $result ), 200 );
+	}
+
+	/**
+	 * Callback for AI Writer Intro.
+	 */
+	public function write_intro( WP_REST_Request $request ) {
+		$topic    = $request->get_param( 'topic' );
+		$outline  = $request->get_param( 'outline' );
+		$style_id = $request->get_param( 'style_id' );
+
+		$result = $this->generator->generate_intro( $topic, $outline, $style_id ?: '' );
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error( $result->get_error_code(), $result->get_error_message(), array( 'status' => 500 ) );
+		}
+
+		return new WP_REST_Response( array( 'success' => true, 'data' => $result ), 200 );
+	}
+
+	/**
+	 * Callback for AI Writer Section.
+	 */
+	public function write_section( WP_REST_Request $request ) {
+		$topic    = $request->get_param( 'topic' );
+		$section  = $request->get_param( 'section' );
+		$style_id = $request->get_param( 'style_id' );
+
+		$result = $this->generator->generate_body_section( $topic, (array) $section, $style_id ?: '' );
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error( $result->get_error_code(), $result->get_error_message(), array( 'status' => 500 ) );
+		}
+
+		return new WP_REST_Response( array( 'success' => true, 'data' => $result ), 200 );
+	}
+
+	/**
+	 * Callback for AI Writer Conclusion.
+	 */
+	public function write_conclusion( WP_REST_Request $request ) {
+		$topic    = $request->get_param( 'topic' );
+		$outline  = $request->get_param( 'outline' );
+		$style_id = $request->get_param( 'style_id' );
+
+		$result = $this->generator->generate_conclusion( $topic, $outline, $style_id ?: '' );
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error( $result->get_error_code(), $result->get_error_message(), array( 'status' => 500 ) );
+		}
+
+		return new WP_REST_Response( array( 'success' => true, 'data' => $result ), 200 );
 	}
 
 	/**

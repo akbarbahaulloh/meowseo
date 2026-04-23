@@ -561,6 +561,146 @@
 	}
 
 	// -------------------------------------------------------------------------
+	// AI Writer
+	// -------------------------------------------------------------------------
+	function initAiWriter() {
+		var $logArea = $( '#meowseo-writer-log' );
+
+		function addLog( message, color ) {
+			var timestamp = new Date().toLocaleTimeString();
+			var $log = $( '<div>' ).css( 'margin-bottom', '2px' );
+			if ( color ) $log.css( 'color', color );
+			$log.html( '<span style="color:#888">[' + timestamp + ']</span> ' + message );
+			$logArea.append( $log ).show();
+			$logArea.scrollTop( $logArea[ 0 ].scrollHeight );
+		}
+
+		$( '#meowseo-writer-btn' ).on( 'click', async function () {
+			var $btn = $( this );
+			var styleId = $( '#meowseo_writer_style' ).val();
+			var mode = $( '#meowseo_writer_style option:selected' ).data( 'mode' ) || 'advance';
+			var topic = $( '#meowseo_writer_topic' ).val().trim();
+			var origText = $btn.html();
+
+			if ( ! topic ) {
+				alert( 'Please enter a topic or prompt first.' );
+				return;
+			}
+
+			if ( typeof tinyMCE === 'undefined' || ! tinyMCE.activeEditor || tinyMCE.activeEditor.isHidden() ) {
+				alert( 'TinyMCE editor is not active. Please ensure you are in the Visual editor mode.' );
+				return;
+			}
+
+			$logArea.empty().append( '<div style="color:#6a9955">// MeowSEO AI Writer Log (' + mode.toUpperCase() + ' Mode)</div>' );
+			$btn.prop( 'disabled', true ).html( '&#10024; Writing…' );
+
+			addLog( 'Initializing AI Writer for topic: ' + topic, '#569cd6' );
+
+			try {
+				if ( mode === 'simple' ) {
+					addLog( 'Sending prompt for single-pass generation...', '#dcdcaa' );
+					
+					const res = await $.ajax( {
+						url: meowseoClassic.restUrl + '/ai/write/simple',
+						method: 'POST',
+						beforeSend: function ( xhr ) {
+							xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
+							xhr.setRequestHeader( 'Content-Type', 'application/json' );
+						},
+						data: JSON.stringify( { topic: topic, style_id: styleId } )
+					} );
+
+					if ( res && res.success && res.data && res.data.content ) {
+						addLog( '✓ Article generated successfully.', '#b5cea8' );
+						tinyMCE.activeEditor.setContent( res.data.content );
+						addLog( '✓ Content inserted into editor.', '#b5cea8' );
+					} else {
+						throw new Error( 'Invalid response from server.' );
+					}
+				} else {
+					// Advance Mode
+					addLog( '[Phase 1/4] Requesting structured outline...', '#dcdcaa' );
+					const outlineRes = await $.ajax( {
+						url: meowseoClassic.restUrl + '/ai/write/outline',
+						method: 'POST',
+						beforeSend: function ( xhr ) { xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce ); xhr.setRequestHeader( 'Content-Type', 'application/json' ); },
+						data: JSON.stringify( { topic: topic, style_id: styleId } )
+					} );
+
+					if ( ! outlineRes || ! outlineRes.success || ! outlineRes.data || ! outlineRes.data.outline ) {
+						throw new Error( 'Failed to generate outline.' );
+					}
+
+					var outline = outlineRes.data.outline;
+					addLog( '✓ Outline generated with ' + outline.length + ' main sections.', '#b5cea8' );
+
+					addLog( '[Phase 2/4] Writing introduction and hook...', '#dcdcaa' );
+					const introRes = await $.ajax( {
+						url: meowseoClassic.restUrl + '/ai/write/intro',
+						method: 'POST',
+						beforeSend: function ( xhr ) { xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce ); xhr.setRequestHeader( 'Content-Type', 'application/json' ); },
+						data: JSON.stringify( { topic: topic, outline: outline, style_id: styleId } )
+					} );
+
+					var fullContent = introRes.data.content + '\n\n';
+					addLog( '✓ Introduction written.', '#b5cea8' );
+
+					addLog( '[Phase 3/4] Writing body sections (processing chunks)...', '#dcdcaa' );
+					
+					// Process in chunks of 2 to balance speed and timeout risk
+					var chunkSize = 2;
+					for ( var i = 0; i < outline.length; i += chunkSize ) {
+						var chunk = outline.slice( i, i + chunkSize );
+						addLog( '→ Processing sections ' + (i + 1) + ' to ' + Math.min(i + chunkSize, outline.length) + '...', '#ce9178' );
+						
+						// We process them sequentially in JS to avoid overwhelming the server or hitting limits
+						for ( var j = 0; j < chunk.length; j++ ) {
+							const sectionRes = await $.ajax( {
+								url: meowseoClassic.restUrl + '/ai/write/section',
+								method: 'POST',
+								beforeSend: function ( xhr ) { xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce ); xhr.setRequestHeader( 'Content-Type', 'application/json' ); },
+								data: JSON.stringify( { topic: topic, section: chunk[j], style_id: styleId } )
+							} );
+							
+							fullContent += sectionRes.data.content + '\n\n';
+							addLog( '  ✓ Section completed: ' + chunk[j].heading, '#b5cea8' );
+						}
+					}
+
+					addLog( '[Phase 4/4] Writing conclusion...', '#dcdcaa' );
+					const concRes = await $.ajax( {
+						url: meowseoClassic.restUrl + '/ai/write/conclusion',
+						method: 'POST',
+						beforeSend: function ( xhr ) { xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce ); xhr.setRequestHeader( 'Content-Type', 'application/json' ); },
+						data: JSON.stringify( { topic: topic, outline: outline, style_id: styleId } )
+					} );
+
+					fullContent += concRes.data.content + '\n\n';
+					addLog( '✓ Conclusion written.', '#b5cea8' );
+
+					addLog( 'Inserting full article into editor...', '#dcdcaa' );
+					tinyMCE.activeEditor.setContent( fullContent );
+					addLog( 'Success! Article is ready.', '#4ec9b0' );
+				}
+			} catch ( error ) {
+				var errorMsg = 'An error occurred.';
+				if ( error.responseJSON && error.responseJSON.message ) {
+					errorMsg = error.responseJSON.message;
+				} else if ( error.statusText ) {
+					errorMsg = error.statusText;
+				} else if ( error.message ) {
+					errorMsg = error.message;
+				}
+				addLog( 'FATAL ERROR: ' + errorMsg, '#f44747' );
+			} finally {
+				$btn.prop( 'disabled', false ).html( origText );
+				addLog( 'Process finished.', '#569cd6' );
+			}
+		} );
+	}
+
+	// -------------------------------------------------------------------------
 	// Boot
 	// -------------------------------------------------------------------------
 	$( function () {
@@ -616,6 +756,12 @@
 			initGscSubmit();
 		} catch ( e ) {
 			console.error( 'MeowSEO GSC Submit Initialization Error:', e );
+		}
+
+		try {
+			initAiWriter();
+		} catch ( e ) {
+			console.error( 'MeowSEO AI Writer Initialization Error:', e );
 		}
 	} );
 

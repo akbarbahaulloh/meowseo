@@ -1987,6 +1987,7 @@ class Settings_Manager {
 				$validated['writing_styles'][] = array(
 					'id'               => sanitize_key( $style['id'] ?? 'style_' . uniqid() ),
 					'label'            => sanitize_text_field( $style['label'] ),
+					'mode'             => in_array( $style['mode'] ?? 'advance', array( 'simple', 'advance' ), true ) ? $style['mode'] : 'advance',
 					'persona'          => sanitize_textarea_field( $style['persona'] ?? '' ),
 					'tone'             => sanitize_textarea_field( $style['tone'] ?? '' ),
 					'linguistic_rules' => sanitize_textarea_field( $style['linguistic_rules'] ?? '' ),
@@ -2426,6 +2427,16 @@ class Settings_Manager {
 								<td><input type="text" name="writing_styles[<?php echo esc_attr( $index ); ?>][label]" value="<?php echo esc_attr( $style['label'] ); ?>" class="regular-text style-label-input"></td>
 							</tr>
 							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Generation Mode', 'meowseo' ); ?></label></th>
+								<td>
+									<select name="writing_styles[<?php echo esc_attr( $index ); ?>][mode]">
+										<option value="advance" <?php selected( $style['mode'] ?? 'advance', 'advance' ); ?>><?php esc_html_e( 'Advance (Multi-step, Long form)', 'meowseo' ); ?></option>
+										<option value="simple" <?php selected( $style['mode'] ?? 'advance', 'simple' ); ?>><?php esc_html_e( 'Simple (Single prompt, Quick)', 'meowseo' ); ?></option>
+									</select>
+									<p class="description"><?php esc_html_e( 'Advance mode generates outline, intro, body, and conclusion. Simple mode uses a single prompt.', 'meowseo' ); ?></p>
+								</td>
+							</tr>
+							<tr>
 								<th scope="row"><label><?php esc_html_e( 'Persona', 'meowseo' ); ?></label></th>
 								<td>
 									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][persona]" rows="3" class="large-text"><?php echo esc_textarea( $style['persona'] ?? '' ); ?></textarea>
@@ -2579,6 +2590,16 @@ class Settings_Manager {
 										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Style Label', 'meowseo' ); ?></label></th>
 											<td><input type="text" name="writing_styles[${index}][label]" value="" class="regular-text style-label-input"></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Generation Mode', 'meowseo' ); ?></label></th>
+											<td>
+												<select name="writing_styles[${index}][mode]">
+													<option value="advance"><?php esc_html_e( 'Advance (Multi-step, Long form)', 'meowseo' ); ?></option>
+													<option value="simple"><?php esc_html_e( 'Simple (Single prompt, Quick)', 'meowseo' ); ?></option>
+												</select>
+												<p class="description"><?php esc_html_e( 'Advance mode generates outline, intro, body, and conclusion. Simple mode uses a single prompt.', 'meowseo' ); ?></p>
+											</td>
 										</tr>
 										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Persona', 'meowseo' ); ?></label></th>

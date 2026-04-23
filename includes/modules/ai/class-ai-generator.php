@@ -1062,6 +1062,243 @@ class AI_Generator {
 	}
 
 	/**
+	 * Build base writing style prompt instructions.
+	 *
+	 * @param string $style_id Writing style ID.
+	 * @return string Style instructions prompt.
+	 */
+	private function build_style_instructions( string $style_id ): string {
+		if ( empty( $style_id ) ) {
+			return '';
+		}
+		
+		$writing_styles = $this->options->get( 'writing_styles', array() );
+		$selected_style = null;
+		foreach ( $writing_styles as $style ) {
+			if ( $style['id'] === $style_id ) {
+				$selected_style = $style;
+				break;
+			}
+		}
+
+		if ( ! $selected_style ) {
+			return '';
+		}
+
+		$prompt = "You are an AI assistant configured with a specific Writing Style.\n";
+		if ( ! empty( $selected_style['persona'] ) ) {
+			$prompt .= "PERSONA: {$selected_style['persona']}\n";
+		}
+		if ( ! empty( $selected_style['tone'] ) ) {
+			$prompt .= "TONE: {$selected_style['tone']}\n";
+		}
+		if ( ! empty( $selected_style['linguistic_rules'] ) ) {
+			$prompt .= "LINGUISTIC RULES: {$selected_style['linguistic_rules']}\n";
+		}
+		return $prompt;
+	}
+
+	/**
+	 * Generate outline for an article.
+	 *
+	 * @param string $topic    Topic or brief.
+	 * @param string $style_id Writing style ID.
+	 * @param array  $options  Additional options.
+	 * @return array|WP_Error Generated outline or error.
+	 */
+	public function generate_outline( string $topic, string $style_id = '', array $options = [] ) {
+		$prompt = "Generate a comprehensive outline for an article about the following topic or brief:\n\n";
+		$prompt .= "Topic/Brief: {$topic}\n\n";
+		
+		$style_prompt = $this->build_style_instructions( $style_id );
+		if ( $style_prompt ) {
+			$prompt .= $style_prompt . "\n";
+			$prompt .= "Ensure the outline fits the persona and tone described above.\n";
+		}
+
+		$prompt .= "\nReturn ONLY a JSON array of objects representing the outline sections. Each object must have a 'heading' (the H2 title) and 'subpoints' (array of strings representing key points to cover in that section).\n";
+		$prompt .= "Example format:\n";
+		$prompt .= "[\n  {\n    \"heading\": \"Introduction to the Topic\",\n    \"subpoints\": [\"Definition\", \"Why it matters\"]\n  }\n]\n";
+		
+		$result = $this->provider_manager->generate_text( $prompt, $options );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		$content = preg_replace( '/^```json\s*/m', '', $result['content'] );
+		$content = preg_replace( '/^```\s*/m', '', $content );
+		$parsed = json_decode( trim( $content ), true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE || ! is_array( $parsed ) ) {
+			return new WP_Error( 'json_parse_error', __( 'Failed to parse AI outline response.', 'meowseo' ) );
+		}
+
+		return [ 'outline' => $parsed ];
+	}
+
+	/**
+	 * Generate intro for an article.
+	 *
+	 * @param string $topic    Topic or brief.
+	 * @param array  $outline  The full outline.
+	 * @param string $style_id Writing style ID.
+	 * @param array  $options  Additional options.
+	 * @return array|WP_Error Generated intro HTML or error.
+	 */
+	public function generate_intro( string $topic, array $outline, string $style_id = '', array $options = [] ) {
+		$prompt = "Write an engaging introduction for an article about the following topic:\n\n";
+		$prompt .= "Topic/Brief: {$topic}\n\n";
+		$prompt .= "Here is the full article outline for context:\n" . wp_json_encode( $outline ) . "\n\n";
+		
+		$style_prompt = $this->build_style_instructions( $style_id );
+		if ( $style_prompt ) {
+			$prompt .= $style_prompt . "\n";
+			
+			$writing_styles = $this->options->get( 'writing_styles', array() );
+			foreach ( $writing_styles as $style ) {
+				if ( $style['id'] === $style_id ) {
+					if ( ! empty( $style['greetings'] ) ) {
+						$prompt .= "GREETINGS/SAPAAN: Start the intro with '{$style['greetings']}'.\n";
+					}
+					if ( ! empty( $style['intro'] ) ) {
+						$prompt .= "OPENING PATTERN: Follow this pattern for the intro: {$style['intro']}\n";
+					}
+					break;
+				}
+			}
+		}
+
+		$prompt .= "\nReturn ONLY valid HTML for the intro (no markdown formatting, no ` ```html ` wrapper, no H1 title). Just the paragraphs (using <p> tags) and formatting tags like <strong>, <em>, or <ul> if needed.\n";
+		
+		$result = $this->provider_manager->generate_text( $prompt, $options );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return [ 'content' => trim( $result['content'] ) ];
+	}
+
+	/**
+	 * Generate body section for an article.
+	 *
+	 * @param string $topic    Topic or brief.
+	 * @param array  $section  The outline section to write about.
+	 * @param string $style_id Writing style ID.
+	 * @param array  $options  Additional options.
+	 * @return array|WP_Error Generated section HTML or error.
+	 */
+	public function generate_body_section( string $topic, array $section, string $style_id = '', array $options = [] ) {
+		$prompt = "Write a comprehensive section for an article about the following topic:\n\n";
+		$prompt .= "Topic/Brief: {$topic}\n\n";
+		$prompt .= "This specific section is:\n";
+		$prompt .= "Heading (H2): {$section['heading']}\n";
+		$prompt .= "Subpoints to cover:\n- " . implode( "\n- ", $section['subpoints'] ) . "\n\n";
+		
+		$style_prompt = $this->build_style_instructions( $style_id );
+		if ( $style_prompt ) {
+			$prompt .= $style_prompt . "\n";
+		}
+
+		$prompt .= "\nReturn ONLY valid HTML for this section (no markdown formatting, no ` ```html ` wrapper). Start directly with an <h2> tag for the heading, followed by the content using <p>, <h3>, <ul>, <strong>, etc.\n";
+		
+		$result = $this->provider_manager->generate_text( $prompt, $options );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return [ 'content' => trim( $result['content'] ) ];
+	}
+
+	/**
+	 * Generate conclusion for an article.
+	 *
+	 * @param string $topic    Topic or brief.
+	 * @param array  $outline  The full outline.
+	 * @param string $style_id Writing style ID.
+	 * @param array  $options  Additional options.
+	 * @return array|WP_Error Generated conclusion HTML or error.
+	 */
+	public function generate_conclusion( string $topic, array $outline, string $style_id = '', array $options = [] ) {
+		$prompt = "Write a strong conclusion for an article about the following topic:\n\n";
+		$prompt .= "Topic/Brief: {$topic}\n\n";
+		$prompt .= "Here is the full article outline that was covered:\n" . wp_json_encode( $outline ) . "\n\n";
+		
+		$style_prompt = $this->build_style_instructions( $style_id );
+		if ( $style_prompt ) {
+			$prompt .= $style_prompt . "\n";
+			
+			$writing_styles = $this->options->get( 'writing_styles', array() );
+			foreach ( $writing_styles as $style ) {
+				if ( $style['id'] === $style_id ) {
+					if ( ! empty( $style['outro'] ) ) {
+						$prompt .= "CLOSING PATTERN / SIGN-OFF: End the conclusion with: {$style['outro']}\n";
+					}
+					break;
+				}
+			}
+		}
+
+		$prompt .= "\nReturn ONLY valid HTML for the conclusion (no markdown formatting, no ` ```html ` wrapper). Start with an <h2> tag for the conclusion heading, followed by paragraphs using <p> tags.\n";
+		
+		$result = $this->provider_manager->generate_text( $prompt, $options );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return [ 'content' => trim( $result['content'] ) ];
+	}
+
+	/**
+	 * Generate simple article in one pass.
+	 *
+	 * @param string $topic    Topic or brief.
+	 * @param string $style_id Writing style ID.
+	 * @param array  $options  Additional options.
+	 * @return array|WP_Error Generated HTML or error.
+	 */
+	public function generate_article_simple( string $topic, string $style_id = '', array $options = [] ) {
+		$prompt = "Write a complete article based on the following prompt/topic:\n\n";
+		$prompt .= "Prompt: {$topic}\n\n";
+		
+		$style_prompt = $this->build_style_instructions( $style_id );
+		if ( $style_prompt ) {
+			$prompt .= $style_prompt . "\n";
+			
+			$writing_styles = $this->options->get( 'writing_styles', array() );
+			foreach ( $writing_styles as $style ) {
+				if ( $style['id'] === $style_id ) {
+					if ( ! empty( $style['anatomy'] ) ) {
+						$prompt .= "ARTICLE STRUCTURE/ANATOMY: {$style['anatomy']}\n";
+					}
+					if ( ! empty( $style['greetings'] ) ) {
+						$prompt .= "GREETINGS/SAPAAN: Start the article with '{$style['greetings']}'.\n";
+					}
+					if ( ! empty( $style['intro'] ) ) {
+						$prompt .= "OPENING PATTERN: {$style['intro']}\n";
+					}
+					if ( ! empty( $style['outro'] ) ) {
+						$prompt .= "CLOSING PATTERN / SIGN-OFF: End the article with: {$style['outro']}\n";
+					}
+					break;
+				}
+			}
+		}
+
+		$prompt .= "\nReturn ONLY valid HTML for the article (no markdown formatting, no ` ```html ` wrapper). Use appropriate tags like <h2>, <h3>, <p>, <ul>, <strong> for formatting. Do not include an <h1> tag.\n";
+		
+		$result = $this->provider_manager->generate_text( $prompt, $options );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		// Clean up potential markdown wrapper just in case.
+		$content = preg_replace( '/^```html\s*/m', '', trim( $result['content'] ) );
+		$content = preg_replace( '/^```\s*/m', '', $content );
+
+		return [ 'content' => trim( $content ) ];
+	}
+
+	/**
 	 * Generate only text content for a post.
 	 *
 	 * @since 1.0.0

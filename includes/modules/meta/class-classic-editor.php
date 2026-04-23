@@ -143,6 +143,7 @@ class Classic_Editor {
 				<button type="button" data-tab="general">General</button>
 				<button type="button" data-tab="social">Social</button>
 				<button type="button" data-tab="schema">Schema</button>
+				<button type="button" data-tab="writer">AI Writer</button>
 				<button type="button" data-tab="advanced">Advanced</button>
 			</div>
 
@@ -517,6 +518,43 @@ class Classic_Editor {
 				<input type="hidden" id="meowseo_schema_config" name="meowseo_schema_config"
 					value="<?php echo esc_attr( $schema_config_raw ); ?>" />
 
+			</div>
+
+			<!-- ============================================================ -->
+			<!-- TAB: AI Writer                                                -->
+			<!-- ============================================================ -->
+			<div id="meowseo-tab-writer" class="meowseo-tab-panel">
+				<div class="meowseo-section-heading"><?php esc_html_e( 'Article Writer', 'meowseo' ); ?></div>
+				<p class="description"><?php esc_html_e( 'Generate full articles based on your configured Writing Styles.', 'meowseo' ); ?></p>
+				
+				<div class="meowseo-field">
+					<label for="meowseo_writer_style"><?php esc_html_e( 'Writing Style', 'meowseo' ); ?></label>
+					<select id="meowseo_writer_style" name="meowseo_writer_style" style="width:100%">
+						<?php
+						$writing_styles = $meowseo_opt['writing_styles'] ?? array();
+						foreach ( $writing_styles as $style ) {
+							$mode = $style['mode'] ?? 'advance';
+							$mode_label = 'advance' === $mode ? 'Advance' : 'Simple';
+							printf( '<option value="%s" data-mode="%s">%s (%s Mode)</option>', esc_attr( $style['id'] ), esc_attr( $mode ), esc_html( $style['label'] ), esc_html( $mode_label ) );
+						}
+						?>
+					</select>
+				</div>
+
+				<div class="meowseo-field">
+					<label for="meowseo_writer_topic"><?php esc_html_e( 'Topic or Prompt', 'meowseo' ); ?></label>
+					<textarea id="meowseo_writer_topic" rows="4" placeholder="<?php esc_attr_e( 'What should the article be about?', 'meowseo' ); ?>"></textarea>
+				</div>
+
+				<div class="meowseo-field">
+					<button type="button" class="button button-primary" id="meowseo-writer-btn">
+						&#10024; <?php esc_html_e( 'Generate Article', 'meowseo' ); ?>
+					</button>
+				</div>
+
+				<div id="meowseo-writer-log" style="width:100%;background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:4px;font-family:monospace;font-size:11px;margin-top:10px;display:none;max-height:200px;overflow-y:auto;border:1px solid #333">
+					<div style="color:#6a9955">// MeowSEO AI Writer Log</div>
+				</div>
 			</div>
 
 			<!-- ============================================================ -->
