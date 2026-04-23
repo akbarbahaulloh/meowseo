@@ -1164,6 +1164,8 @@ class AI_Generator {
 			$template = $style['intro_prompt_template'];
 			$template = str_replace( '[TOPIC]', $topic, $template );
 			$template = str_replace( '[OUTLINE]', $outline_json, $template );
+			$template = str_replace( '[GREETINGS]', $style['greetings'] ?? '', $template );
+			$template = str_replace( '[HOOK_STYLE]', $style['intro'] ?? '', $template );
 			$prompt .= $template;
 			$prompt .= "\n\nIMPORTANT: Return ONLY valid HTML (no markdown wrappers like ```html). Use <p>, <strong>, etc. Do not include <h1>.";
 		} else {
@@ -1242,6 +1244,7 @@ class AI_Generator {
 			$template = $style['conclusion_prompt_template'];
 			$template = str_replace( '[TOPIC]', $topic, $template );
 			$template = str_replace( '[OUTLINE]', $outline_json, $template );
+			$template = str_replace( '[SIGN_OFF]', $style['outro'] ?? '', $template );
 			$prompt .= $template;
 			$prompt .= "\n\nIMPORTANT: Return ONLY valid HTML (no markdown wrappers like ```html). Start with <h2> for the conclusion heading, followed by <p>.";
 		} else {
@@ -1275,6 +1278,9 @@ class AI_Generator {
 		if ( $style && ! empty( $style['single_prompt_template'] ) ) {
 			$template = $style['single_prompt_template'];
 			$template = str_replace( '[TOPIC]', $topic, $template );
+			$template = str_replace( '[GREETINGS]', $style['greetings'] ?? '', $template );
+			$template = str_replace( '[HOOK_STYLE]', $style['intro'] ?? '', $template );
+			$template = str_replace( '[SIGN_OFF]', $style['outro'] ?? '', $template );
 			$prompt .= $template;
 			$prompt .= "\n\nIMPORTANT: Return ONLY valid HTML (no markdown wrappers like ```html). Use <h2>, <h3>, <p>, <ul>, <strong>. Do not include <h1>.";
 		} else {

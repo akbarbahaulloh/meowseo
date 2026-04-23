@@ -1992,6 +1992,9 @@ class Settings_Manager {
 					'tone'             => sanitize_textarea_field( $style['tone'] ?? '' ),
 					'linguistic_rules' => sanitize_textarea_field( $style['linguistic_rules'] ?? '' ),
 					'anatomy'                    => sanitize_textarea_field( $style['anatomy'] ?? '' ),
+					'greetings'                  => sanitize_textarea_field( $style['greetings'] ?? '' ),
+					'intro'                      => sanitize_text_field( $style['intro'] ?? '' ),
+					'outro'                      => sanitize_textarea_field( $style['outro'] ?? '' ),
 					'single_prompt_template'     => sanitize_textarea_field( $style['single_prompt_template'] ?? '' ),
 					'outline_prompt_template'    => sanitize_textarea_field( $style['outline_prompt_template'] ?? '' ),
 					'intro_prompt_template'      => sanitize_textarea_field( $style['intro_prompt_template'] ?? '' ),
@@ -2471,6 +2474,22 @@ class Settings_Manager {
 									<p class="description"><?php esc_html_e( 'How to structure the article (e.g. Key takeaways at start, Conclusion with FAQ)', 'meowseo' ); ?></p>
 								</td>
 							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Greetings (Pembuka)', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][greetings]" rows="2" class="large-text"><?php echo esc_textarea( $style['greetings'] ?? '' ); ?></textarea>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Article Intro Hook', 'meowseo' ); ?></label></th>
+								<td><input type="text" name="writing_styles[<?php echo esc_attr( $index ); ?>][intro]" value="<?php echo esc_attr( $style['intro'] ?? '' ); ?>" class="large-text"></td>
+							</tr>
+							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Sign-off (Penutup)', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][outro]" rows="2" class="large-text"><?php echo esc_textarea( $style['outro'] ?? '' ); ?></textarea>
+								</td>
+							</tr>
 
 							<!-- Prompt Templates Section -->
 							<tr>
@@ -2483,8 +2502,8 @@ class Settings_Manager {
 							<tr class="meowseo-template-simple" style="<?php echo ( $style['mode'] ?? 'advance' ) === 'simple' ? '' : 'display:none;'; ?>">
 								<th scope="row"><label><?php esc_html_e( 'Single Prompt Template', 'meowseo' ); ?></label></th>
 								<td>
-									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][single_prompt_template]" rows="4" class="large-text" placeholder="Tuliskan artikel lengkap tentang [TOPIC]..."><?php echo esc_textarea( $style['single_prompt_template'] ?? 'Write a comprehensive article about [TOPIC].' ); ?></textarea>
-									<p class="description"><?php esc_html_e( 'Available placeholder: [TOPIC]', 'meowseo' ); ?></p>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][single_prompt_template]" rows="4" class="large-text" placeholder="Tuliskan artikel lengkap tentang [TOPIC]..."><?php echo esc_textarea( $style['single_prompt_template'] ?? "Write a comprehensive article about [TOPIC].\nStart the article using this greeting: [GREETINGS] and this hook style: [HOOK_STYLE].\nEnd the article using this sign-off: [SIGN_OFF]." ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [GREETINGS], [HOOK_STYLE], [SIGN_OFF]', 'meowseo' ); ?></p>
 								</td>
 							</tr>
 
@@ -2499,22 +2518,22 @@ class Settings_Manager {
 							<tr class="meowseo-template-advance" style="<?php echo ( $style['mode'] ?? 'advance' ) === 'advance' ? '' : 'display:none;'; ?>">
 								<th scope="row"><label><?php esc_html_e( 'Intro Prompt Template', 'meowseo' ); ?></label></th>
 								<td>
-									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][intro_prompt_template]" rows="4" class="large-text" placeholder="Write intro for [TOPIC]..."><?php echo esc_textarea( $style['intro_prompt_template'] ?? "Write an engaging introduction for: [TOPIC].\n\nOutline context:\n[OUTLINE]" ); ?></textarea>
-									<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [OUTLINE]', 'meowseo' ); ?></p>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][intro_prompt_template]" rows="4" class="large-text" placeholder="Write intro for [TOPIC]..."><?php echo esc_textarea( $style['intro_prompt_template'] ?? "Write an engaging introduction for: [TOPIC].\nOutline context: [OUTLINE].\nStart with this exact greeting: [GREETINGS].\nUse this hook approach: [HOOK_STYLE].\nDo NOT write any conclusion." ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [OUTLINE], [GREETINGS], [HOOK_STYLE]', 'meowseo' ); ?></p>
 								</td>
 							</tr>
 							<tr class="meowseo-template-advance" style="<?php echo ( $style['mode'] ?? 'advance' ) === 'advance' ? '' : 'display:none;'; ?>">
 								<th scope="row"><label><?php esc_html_e( 'Body/Core Prompt Template', 'meowseo' ); ?></label></th>
 								<td>
-									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][body_prompt_template]" rows="4" class="large-text" placeholder="Write section [HEADING] for [TOPIC]..."><?php echo esc_textarea( $style['body_prompt_template'] ?? "Topic: [TOPIC]\n\nWrite a comprehensive section for this heading:\n[HEADING]\n\nCover these subpoints:\n[SUBPOINTS]" ); ?></textarea>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][body_prompt_template]" rows="4" class="large-text" placeholder="Write section [HEADING] for [TOPIC]..."><?php echo esc_textarea( $style['body_prompt_template'] ?? "Topic: [TOPIC]\n\nWrite a comprehensive section for this heading:\n[HEADING]\n\nCover these subpoints:\n[SUBPOINTS]\n\nIMPORTANT: Write ONLY the body content. DO NOT write any introduction, greetings, conclusions, or sign-offs in this section. Transition smoothly from the previous section." ); ?></textarea>
 									<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [HEADING], [SUBPOINTS]', 'meowseo' ); ?></p>
 								</td>
 							</tr>
 							<tr class="meowseo-template-advance" style="<?php echo ( $style['mode'] ?? 'advance' ) === 'advance' ? '' : 'display:none;'; ?>">
 								<th scope="row"><label><?php esc_html_e( 'Conclusion Prompt Template', 'meowseo' ); ?></label></th>
 								<td>
-									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][conclusion_prompt_template]" rows="4" class="large-text" placeholder="Write conclusion for [TOPIC]..."><?php echo esc_textarea( $style['conclusion_prompt_template'] ?? "Write a strong conclusion for: [TOPIC].\n\nBased on this outline:\n[OUTLINE]" ); ?></textarea>
-									<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [OUTLINE]', 'meowseo' ); ?></p>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][conclusion_prompt_template]" rows="4" class="large-text" placeholder="Write conclusion for [TOPIC]..."><?php echo esc_textarea( $style['conclusion_prompt_template'] ?? "Write a strong conclusion for: [TOPIC].\nBased on this outline: [OUTLINE].\nEnd the article with this exact sign-off: [SIGN_OFF]." ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [OUTLINE], [SIGN_OFF]', 'meowseo' ); ?></p>
 								</td>
 							</tr>
 						</table>
@@ -2642,6 +2661,11 @@ class Settings_Manager {
 											</td>
 										</tr>
 										<tr>
+											<td colspan="2" style="padding-top:20px; padding-bottom:0;">
+												<h3 style="margin:0; border-bottom:1px solid #ccd0d4; padding-bottom:8px;"><?php esc_html_e( 'Style Configuration (System Prompt)', 'meowseo' ); ?></h3>
+											</td>
+										</tr>
+										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Persona', 'meowseo' ); ?></label></th>
 											<td><textarea name="writing_styles[${index}][persona]" rows="3" class="large-text"></textarea></td>
 										</tr>
@@ -2662,12 +2686,58 @@ class Settings_Manager {
 											<td><textarea name="writing_styles[${index}][greetings]" rows="2" class="large-text"></textarea></td>
 										</tr>
 										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Article Intro Hook', 'meowseo' ); ?></label></th>
+											<td><input type="text" name="writing_styles[${index}][intro]" value="" class="large-text"></td>
+										</tr>
+										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Sign-off (Penutup)', 'meowseo' ); ?></label></th>
 											<td><textarea name="writing_styles[${index}][outro]" rows="2" class="large-text"></textarea></td>
 										</tr>
+
+										<!-- Prompt Templates Section -->
 										<tr>
-											<th scope="row"><label><?php esc_html_e( 'Article Intro Hook', 'meowseo' ); ?></label></th>
-											<td><input type="text" name="writing_styles[${index}][intro]" value="" class="large-text"></td>
+											<td colspan="2" style="padding-top:20px; padding-bottom:0;">
+												<h3 style="margin:0; border-bottom:1px solid #ccd0d4; padding-bottom:8px;"><?php esc_html_e( 'Prompt Templates', 'meowseo' ); ?></h3>
+											</td>
+										</tr>
+
+										<!-- Simple Mode Templates -->
+										<tr class="meowseo-template-simple" style="display:none;">
+											<th scope="row"><label><?php esc_html_e( 'Single Prompt Template', 'meowseo' ); ?></label></th>
+											<td>
+												<textarea name="writing_styles[${index}][single_prompt_template]" rows="4" class="large-text" placeholder="Tuliskan artikel lengkap tentang [TOPIC]..."><?php echo esc_textarea( "Write a comprehensive article about [TOPIC].\nStart the article using this greeting: [GREETINGS] and this hook style: [HOOK_STYLE].\nEnd the article using this sign-off: [SIGN_OFF]." ); ?></textarea>
+												<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [GREETINGS], [HOOK_STYLE], [SIGN_OFF]', 'meowseo' ); ?></p>
+											</td>
+										</tr>
+
+										<!-- Advance Mode Templates -->
+										<tr class="meowseo-template-advance">
+											<th scope="row"><label><?php esc_html_e( 'Outline Prompt Template', 'meowseo' ); ?></label></th>
+											<td>
+												<textarea name="writing_styles[${index}][outline_prompt_template]" rows="4" class="large-text" placeholder="Generate outline for [TOPIC]..."><?php echo esc_textarea( 'Generate a comprehensive outline for an article about: [TOPIC]. Return JSON format only.' ); ?></textarea>
+												<p class="description"><?php esc_html_e( 'Must instruct AI to return JSON format. Available placeholder: [TOPIC]', 'meowseo' ); ?></p>
+											</td>
+										</tr>
+										<tr class="meowseo-template-advance">
+											<th scope="row"><label><?php esc_html_e( 'Intro Prompt Template', 'meowseo' ); ?></label></th>
+											<td>
+												<textarea name="writing_styles[${index}][intro_prompt_template]" rows="4" class="large-text" placeholder="Write intro for [TOPIC]..."><?php echo esc_textarea( "Write an engaging introduction for: [TOPIC].\nOutline context: [OUTLINE].\nStart with this exact greeting: [GREETINGS].\nUse this hook approach: [HOOK_STYLE].\nDo NOT write any conclusion." ); ?></textarea>
+												<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [OUTLINE], [GREETINGS], [HOOK_STYLE]', 'meowseo' ); ?></p>
+											</td>
+										</tr>
+										<tr class="meowseo-template-advance">
+											<th scope="row"><label><?php esc_html_e( 'Body/Core Prompt Template', 'meowseo' ); ?></label></th>
+											<td>
+												<textarea name="writing_styles[${index}][body_prompt_template]" rows="4" class="large-text" placeholder="Write section [HEADING] for [TOPIC]..."><?php echo esc_textarea( "Topic: [TOPIC]\n\nWrite a comprehensive section for this heading:\n[HEADING]\n\nCover these subpoints:\n[SUBPOINTS]\n\nIMPORTANT: Write ONLY the body content. DO NOT write any introduction, greetings, conclusions, or sign-offs in this section. Transition smoothly from the previous section." ); ?></textarea>
+												<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [HEADING], [SUBPOINTS]', 'meowseo' ); ?></p>
+											</td>
+										</tr>
+										<tr class="meowseo-template-advance">
+											<th scope="row"><label><?php esc_html_e( 'Conclusion Prompt Template', 'meowseo' ); ?></label></th>
+											<td>
+												<textarea name="writing_styles[${index}][conclusion_prompt_template]" rows="4" class="large-text" placeholder="Write conclusion for [TOPIC]..."><?php echo esc_textarea( "Write a strong conclusion for: [TOPIC].\nBased on this outline: [OUTLINE].\nEnd the article with this exact sign-off: [SIGN_OFF]." ); ?></textarea>
+												<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [OUTLINE], [SIGN_OFF]', 'meowseo' ); ?></p>
+											</td>
 										</tr>
 									</table>
 								</div>
