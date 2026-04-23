@@ -3,7 +3,7 @@
  * Plugin Name: MeowSEO
  * Plugin URI: https://github.com/akbarbahaulloh/meowseo
  * Description: A modular WordPress SEO plugin optimized for Google Discover, AI Overviews, and headless WordPress deployments.
- * Version: 1.0.0-b1b0d0d
+ * Version: 1.0.0-50969fe
  * Requires at least: 6.0
  * Requires PHP: 8.0
  * Author: Akbar Bahaulloh
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 
 // Define plugin constants.
-define( 'MEOWSEO_VERSION', '1.0.0-b1b0d0d' );
+define( 'MEOWSEO_VERSION', '1.0.0-50969fe' );
 define( 'MEOWSEO_FILE', __FILE__ );
 define( 'MEOWSEO_PATH', plugin_dir_path( __FILE__ ) );
 define( 'MEOWSEO_URL', plugin_dir_url( __FILE__ ) );
