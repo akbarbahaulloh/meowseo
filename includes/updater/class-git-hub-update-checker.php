@@ -147,11 +147,6 @@ class GitHub_Update_Checker {
 			return $transient;
 		}
 
-		// Check if we should perform an update check based on frequency.
-		if ( ! $this->should_check_for_update() ) {
-			return $transient;
-		}
-
 		try {
 			// Get current installed commit ID (full SHA).
 			$current_commit = $this->get_current_commit_id();
@@ -636,46 +631,13 @@ class GitHub_Update_Checker {
 			return null;
 		}
 
-		// Cache the result for 12 hours (43200 seconds).
-		$this->set_cache( $cache_key, $commit_data );
+		// Cache the result based on configured check frequency.
+		$frequency = $this->config->get_check_frequency();
+		$this->set_cache( $cache_key, $commit_data, $frequency );
 
 		return $commit_data;
 	}
 
-	/**
-	 * Check if update check is needed
-	 *
-	 * Determines whether an update check should be performed based on:
-	 * - Configured check frequency
-	 * - Time since last check
-	 * - Cache status
-	 *
-	 * @since 1.0.0
-	 *
-	 * @return bool True if update check should be performed, false otherwise.
-	 */
-	private function should_check_for_update(): bool {
-		// Check if cache exists.
-		$cache_key   = 'meowseo_github_update_info';
-		$cached_data = $this->get_cache( $cache_key );
-
-		// If cache is empty, force check.
-		if ( false === $cached_data ) {
-			return true;
-		}
-
-		// Get last check time from option.
-		$last_check = get_option( 'meowseo_github_last_check', 0 );
-
-		// Get configured check frequency (in seconds).
-		$frequency = $this->config->get_check_frequency();
-
-		// Calculate time since last check.
-		$time_since_last_check = time() - $last_check;
-
-		// Return true if enough time has passed.
-		return $time_since_last_check >= $frequency;
-	}
 
 	/**
 	 * Make GitHub API request

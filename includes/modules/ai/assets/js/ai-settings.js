@@ -31,8 +31,20 @@
 			customInstructionsCountSelector: '#ai_custom_instructions_count',
 			statusTableSelector: '.meowseo-provider-status-table',
 			statusRefreshInterval: 30000, // 30 seconds
-			testConnectionEndpoint: '/wp-json/meowseo/v1/ai/test-provider',
-			statusEndpoint: '/wp-json/meowseo/v1/ai/provider-status',
+			testConnectionEndpoint: 'meowseo/v1/ai/test-provider',
+			statusEndpoint: 'meowseo/v1/ai/provider-status',
+		},
+
+		/**
+		 * Helper to get the correct REST URL
+		 * @param {string} path - The REST API path
+		 * @return {string} Full URL
+		 */
+		getRestUrl: function(path) {
+			if (typeof meowseoAISettings !== 'undefined' && meowseoAISettings.restUrl) {
+				return meowseoAISettings.restUrl.replace(/\/$/, '') + '/' + path.replace(/^\//, '');
+			}
+			return '/wp-json/' + path.replace(/^\//, '');
 		},
 
 		/**
@@ -256,7 +268,7 @@
 			this.showTestStatus(profileId || provider, 'loading', 'Connecting to ' + selectedProvider + '...');
 
 			// Make AJAX request with proper nonce
-			fetch(this.config.testConnectionEndpoint, {
+			fetch(this.getRestUrl(this.config.testConnectionEndpoint), {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -270,10 +282,14 @@
 				}),
 			})
 				.then((response) => {
-					if (!response.ok) {
+					return response.json().then((data) => {
+						if (!response.ok) {
+							data._httpStatus = response.status;
+						}
+						return data;
+					}).catch(() => {
 						throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-					}
-					return response.json();
+					});
 				})
 				.then((data) => {
 					// Display debug log if available
@@ -281,11 +297,11 @@
 						this.showDebugLog(profileId || provider, data.data.debug_log);
 					}
 
-					if (data.success && data.data && data.data.valid) {
+					if (!data._httpStatus && data.success && data.data && data.data.valid) {
 						this.showTestStatus(profileId || provider, 'success', data.data.message || 'Connection successful');
 						this.updateStatusIndicator(selectedProvider, 'success');
 					} else {
-						const errorMsg = data.data?.message || data.message || 'Connection failed';
+						const errorMsg = data.data?.message || data.message || (data._httpStatus ? `HTTP ${data._httpStatus} Error` : 'Connection failed');
 						this.showTestStatus(profileId || provider, 'error', errorMsg);
 						this.updateStatusIndicator(selectedProvider, 'error');
 					}
@@ -477,7 +493,7 @@
 		 * Refresh provider status from API
 		 */
 		refreshProviderStatus: function() {
-			fetch(this.config.statusEndpoint, {
+			fetch(this.getRestUrl(this.config.statusEndpoint), {
 				method: 'GET',
 				headers: {
 					'X-WP-Nonce': this.state.nonce,
