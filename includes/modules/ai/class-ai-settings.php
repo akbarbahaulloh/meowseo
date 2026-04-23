@@ -591,21 +591,56 @@ class AI_Settings {
 				$(document).on('change', '.meowseo-provider-select', function() {
 					var provider = $(this).val();
 					var index = $(this).data('index');
-					var modelInput = $(this).closest('.meowseo-profile-item').find('.meowseo-model-input');
+					var $profileItem = $(this).closest('.meowseo-profile-item');
+					var $modelField = $profileItem.find('.meowseo-profile-field').eq(2); // Model field is 3rd field
 					
-					if (modelInput.length && defaultModels[provider]) {
-						// Only auto-fill if empty or still has default value
-						var currentValue = modelInput.val().trim();
-						if (!currentValue || Object.values(defaultModels).indexOf(currentValue) !== -1) {
-							modelInput.val(defaultModels[provider]);
-							modelInput.attr('placeholder', defaultModels[provider]);
+					// Define Gemini models dropdown HTML
+					var geminiModelsHTML = `
+						<select name="ai_profiles[${index}][model]" class="regular-text meowseo-model-select" data-index="${index}">
+							<option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Latest)</option>
+							<option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
+							<option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite Preview</option>
+							<option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+							<option value="gemini-pro-latest">Gemini Pro Latest (Alias)</option>
+							<option value="gemini-flash-latest">Gemini Flash Latest (Alias)</option>
+							<option value="gemini-flash-lite-latest">Gemini Flash-Lite Latest (Alias)</option>
+							<option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+							<option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+							<option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+							<option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
+						</select>
+					`;
+					
+					// Get current model value
+					var currentModel = defaultModels[provider] || '';
+					
+					if (provider === 'gemini') {
+						// Replace input with dropdown for Gemini
+						var $currentInput = $modelField.find('input, select').first();
+						if ($currentInput.is('input')) {
+							$currentInput.replaceWith(geminiModelsHTML);
+							$modelField.find('select').val(currentModel);
 						}
-						
-						// Update description
-						var description = modelInput.next('.description');
-						if (description.length) {
-							description.find('code').text(defaultModels[provider]);
+					} else {
+						// Replace dropdown with input for other providers
+						var $currentSelect = $modelField.find('select').first();
+						if ($currentSelect.length) {
+							var inputHTML = `<input type="text" name="ai_profiles[${index}][model]" value="${currentModel}" class="regular-text meowseo-model-input" placeholder="${currentModel}" data-index="${index}">`;
+							$currentSelect.replaceWith(inputHTML);
+						} else {
+							// Just update the input value
+							var $modelInput = $modelField.find('input').first();
+							if ($modelInput.length) {
+								$modelInput.val(currentModel);
+								$modelInput.attr('placeholder', currentModel);
+							}
 						}
+					}
+					
+					// Update description
+					var $description = $modelField.find('.description code');
+					if ($description.length) {
+						$description.text(currentModel);
 					}
 				});
 				
@@ -699,7 +734,31 @@ class AI_Settings {
 				</div>
 				<div class="meowseo-profile-field">
 					<label><?php esc_html_e( 'Model Version', 'meowseo' ); ?></label>
-					<input type="text" name="ai_profiles[<?php echo esc_attr( $index ); ?>][model]" value="<?php echo esc_attr( $current_model ); ?>" class="regular-text meowseo-model-input" placeholder="<?php echo esc_attr( $default_model ); ?>" data-index="<?php echo esc_attr( $index ); ?>">
+					<?php if ( $provider === 'gemini' ) : ?>
+						<?php
+						// Gemini models - filtered for text generation
+						$gemini_models = array(
+							'gemini-3-flash-preview' => 'Gemini 3 Flash Preview (Latest)',
+							'gemini-3.1-pro-preview' => 'Gemini 3.1 Pro Preview',
+							'gemini-3.1-flash-lite-preview' => 'Gemini 3.1 Flash Lite Preview',
+							'gemini-2.5-pro' => 'Gemini 2.5 Pro',
+							'gemini-pro-latest' => 'Gemini Pro Latest (Alias)',
+							'gemini-flash-latest' => 'Gemini Flash Latest (Alias)',
+							'gemini-flash-lite-latest' => 'Gemini Flash-Lite Latest (Alias)',
+							'gemini-2.5-flash' => 'Gemini 2.5 Flash',
+							'gemini-2.5-flash-lite' => 'Gemini 2.5 Flash-Lite',
+							'gemini-2.0-flash' => 'Gemini 2.0 Flash',
+							'gemini-2.0-flash-lite' => 'Gemini 2.0 Flash-Lite',
+						);
+						?>
+						<select name="ai_profiles[<?php echo esc_attr( $index ); ?>][model]" class="regular-text meowseo-model-select" data-index="<?php echo esc_attr( $index ); ?>">
+							<?php foreach ( $gemini_models as $model_value => $model_label ) : ?>
+								<option value="<?php echo esc_attr( $model_value ); ?>" <?php selected( $current_model, $model_value ); ?>><?php echo esc_html( $model_label ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					<?php else : ?>
+						<input type="text" name="ai_profiles[<?php echo esc_attr( $index ); ?>][model]" value="<?php echo esc_attr( $current_model ); ?>" class="regular-text meowseo-model-input" placeholder="<?php echo esc_attr( $default_model ); ?>" data-index="<?php echo esc_attr( $index ); ?>">
+					<?php endif; ?>
 					<p class="description" style="margin-top: 5px; font-size: 11px; color: #666;">
 						<?php esc_html_e( 'Default:', 'meowseo' ); ?> <code><?php echo esc_html( $default_model ); ?></code>
 					</p>
