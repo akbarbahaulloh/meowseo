@@ -251,15 +251,21 @@ class Provider_Imagen implements AI_Provider {
 
 		$code = wp_remote_retrieve_response_code( $response );
 
-		// 401 and 403 indicate invalid API key.
-		if ( 401 === $code || 403 === $code ) {
-			$body             = json_decode( wp_remote_retrieve_body( $response ), true );
-			$this->last_error = $body['error']['message'] ?? 'Invalid API key';
-			return false;
+		// 200 indicates valid API key.
+		if ( 200 === $code ) {
+			return true;
 		}
 
-		// Any other response (including 429 rate limit) means the key is valid.
-		return true;
+		// 429 indicates rate limit, but key is valid.
+		if ( 429 === $code ) {
+			return true;
+		}
+
+		// Otherwise, it's an error (400, 401, 403, etc).
+		$body             = json_decode( wp_remote_retrieve_body( $response ), true );
+		$this->last_error = $body['error']['message'] ?? "HTTP Error {$code}";
+		
+		return false;
 	}
 
 	/**

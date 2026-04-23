@@ -843,4 +843,13 @@ class AI_Provider_Manager {
 		}
 		return $this->decrypt_key( $profile['api_key'] ) ?: '';
 	}
+
+	/**
+	 * Get the Options instance.
+	 *
+	 * @return Options
+	 */
+	public function get_options(): Options {
+		return $this->options;
+	}
 }

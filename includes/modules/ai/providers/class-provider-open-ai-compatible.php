@@ -366,16 +366,16 @@ abstract class Provider_OpenAI_Compatible implements AI_Provider {
 			return true;
 		}
 
-		// 401 or 403 indicates invalid API key.
-		if ( 401 === $code || 403 === $code ) {
-			$body             = json_decode( wp_remote_retrieve_body( $response ), true );
-			$this->last_error = $body['error']['message'] ?? 'Invalid API key';
-			return false;
+		// 429 indicates rate limit, but key is valid.
+		if ( 429 === $code ) {
+			return true;
 		}
 
-		// Any other response (including 429 rate limit) means the key is valid.
-		// The key is valid if we get rate limited - it just means we're making too many requests.
-		return true;
+		// Otherwise, it's an error (400, 401, 403, etc).
+		$body             = json_decode( wp_remote_retrieve_body( $response ), true );
+		$this->last_error = $body['error']['message'] ?? "HTTP Error {$code}";
+		
+		return false;
 	}
 
 	/**
