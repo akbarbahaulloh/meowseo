@@ -2018,6 +2018,7 @@ class Settings_Manager {
 					'description'     => sanitize_textarea_field( $style['description'] ?? '' ),
 					'medium'          => sanitize_text_field( $style['medium'] ?? '' ),
 					'colors'          => sanitize_text_field( $style['colors'] ?? '' ),
+					'lighting_mood'   => sanitize_text_field( $style['lighting_mood'] ?? '' ),
 					'negative_prompt' => sanitize_textarea_field( $style['negative_prompt'] ?? '' ),
 				);
 			}
@@ -2599,6 +2600,10 @@ class Settings_Manager {
 								<td><input type="text" name="image_styles[<?php echo esc_attr( $index ); ?>][colors]" value="<?php echo esc_attr( $style['colors'] ?? '' ); ?>" class="regular-text" placeholder="e.g. Vibrant, Pastel, Monochromatic, Moody Dark"></td>
 							</tr>
 							<tr>
+								<th scope="row"><label><?php esc_html_e( 'Lighting & Mood', 'meowseo' ); ?></label></th>
+								<td><input type="text" name="image_styles[<?php echo esc_attr( $index ); ?>][lighting_mood]" value="<?php echo esc_attr( $style['lighting_mood'] ?? '' ); ?>" class="regular-text" placeholder="e.g. Soft studio lighting, Cinematic, Bright and Airy"></td>
+							</tr>
+							<tr>
 								<th scope="row"><label><?php esc_html_e( 'Negative Prompt', 'meowseo' ); ?></label></th>
 								<td>
 									<textarea name="image_styles[<?php echo esc_attr( $index ); ?>][negative_prompt]" rows="2" class="large-text"><?php echo esc_textarea( $style['negative_prompt'] ?? '' ); ?></textarea>
@@ -2770,6 +2775,10 @@ class Settings_Manager {
 										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Color Palette', 'meowseo' ); ?></label></th>
 											<td><input type="text" name="image_styles[${index}][colors]" value="" class="regular-text"></td>
+										</tr>
+										<tr>
+											<th scope="row"><label><?php esc_html_e( 'Lighting & Mood', 'meowseo' ); ?></label></th>
+											<td><input type="text" name="image_styles[${index}][lighting_mood]" value="" class="regular-text"></td>
 										</tr>
 										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Negative Prompt', 'meowseo' ); ?></label></th>

@@ -567,21 +567,29 @@ class AI_Generator {
 			}
 
 			if ( $selected_style ) {
-				$prompt = "Generate a featured image for an article about: {$title}\n";
-				$prompt .= "VISUAL STYLE REQUIREMENTS:\n";
-				if ( ! empty( $selected_style['description'] ) ) {
-					$prompt .= "- Overall Style: {$selected_style['description']}\n";
+				$description = $selected_style['description'] ?? '';
+				$medium      = $selected_style['medium'] ?? '';
+				$colors      = $selected_style['colors'] ?? '';
+				$lighting    = $selected_style['lighting_mood'] ?? '';
+				$negative    = $selected_style['negative_prompt'] ?? '';
+
+				$prompt = "{$title}";
+				if ( ! empty( $description ) ) {
+					$prompt .= ", {$description}";
 				}
-				if ( ! empty( $selected_style['medium'] ) ) {
-					$prompt .= "- Art Medium: {$selected_style['medium']}\n";
+				if ( ! empty( $medium ) ) {
+					$prompt .= ". Rendered as {$medium}";
 				}
-				if ( ! empty( $selected_style['colors'] ) ) {
-					$prompt .= "- Color Palette: {$selected_style['colors']}\n";
+				if ( ! empty( $colors ) ) {
+					$prompt .= ". Color palette: {$colors}";
 				}
-				if ( ! empty( $selected_style['negative_prompt'] ) ) {
-					$prompt .= "- IMPORTANT - DO NOT INCLUDE: {$selected_style['negative_prompt']}\n";
+				if ( ! empty( $lighting ) ) {
+					$prompt .= ". {$lighting}";
 				}
-				$prompt .= "\nGoal: Create a visually stunning image that perfectly matches the artistic style described above.\n";
+				if ( ! empty( $negative ) ) {
+					$prompt .= ". --no {$negative}";
+				}
+				$prompt .= " --ar 16:9";
 			}
 		} else {
 			// Fallback to legacy settings or default.
@@ -602,14 +610,14 @@ class AI_Generator {
 			if ( ! empty( $color_palette ) ) {
 				$prompt .= "Color palette: {$color_palette}\n";
 			}
-		}
 
-		// Add format requirements.
-		$prompt .= "\nFinal Requirements:\n";
-		$prompt .= "- Clean, professional, suitable for web publishing\n";
-		$prompt .= "- No text overlay, watermarks, or logos\n";
-		$prompt .= "- Wide format 16:9 aspect ratio (1200x630 pixels)\n";
-		$prompt .= "- High resolution with sharp details\n";
+			// Add format requirements.
+			$prompt .= "\nFinal Requirements:\n";
+			$prompt .= "- Clean, professional, suitable for web publishing\n";
+			$prompt .= "- No text overlay, watermarks, or logos\n";
+			$prompt .= "- Wide format 16:9 aspect ratio (1200x630 pixels)\n";
+			$prompt .= "- High resolution with sharp details\n";
+		}
 
 		return $prompt;
 	}
