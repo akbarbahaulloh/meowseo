@@ -216,6 +216,97 @@
 	}
 
 	// -------------------------------------------------------------------------
+	// FAQ / HowTo Repeaters
+	// -------------------------------------------------------------------------
+	function initRepeaters() {
+		var labels = meowseoClassic.labels || {};
+
+		$( document ).on( 'click', '#meowseo-add-faq', function () {
+			$( '#meowseo-faq-items' ).append(
+				'<div class="meowseo-faq-item" style="border:1px solid #dcdcde;padding:10px;margin-bottom:8px;border-radius:4px">' +
+				'<div class="meowseo-field"><label>' + escHtml( labels.question || 'Question' ) + '</label>' +
+				'<input type="text" name="meowseo_faq_question[]" /></div>' +
+				'<div class="meowseo-field"><label>' + escHtml( labels.answer || 'Answer' ) + '</label>' +
+				'<textarea name="meowseo_faq_answer[]"></textarea></div>' +
+				'<button type="button" class="button meowseo-remove-faq">' + escHtml( labels.remove || 'Remove' ) + '</button>' +
+				'</div>'
+			);
+		} );
+
+		$( document ).on( 'click', '.meowseo-remove-faq', function () {
+			$( this ).closest( '.meowseo-faq-item' ).remove();
+		} );
+
+		$( document ).on( 'click', '#meowseo-add-step', function () {
+			$( '#meowseo-howto-steps' ).append(
+				'<div class="meowseo-howto-step" style="border:1px solid #dcdcde;padding:10px;margin-bottom:8px;border-radius:4px">' +
+				'<div class="meowseo-field"><label>' + escHtml( labels.stepName || 'Step Name' ) + '</label>' +
+				'<input type="text" name="meowseo_howto_step_name[]" /></div>' +
+				'<div class="meowseo-field"><label>' + escHtml( labels.stepText || 'Step Text' ) + '</label>' +
+				'<textarea name="meowseo_howto_step_text[]"></textarea></div>' +
+				'<button type="button" class="button meowseo-remove-step">' + escHtml( labels.remove || 'Remove' ) + '</button>' +
+				'</div>'
+			);
+		} );
+
+		$( document ).on( 'click', '.meowseo-remove-step', function () {
+			$( this ).closest( '.meowseo-howto-step' ).remove();
+		} );
+
+		// Build schema_config JSON before form submit
+		$( '#post' ).on( 'submit', function () {
+			var type = $( '#meowseo_schema_type' ).val();
+			if ( ! type ) {
+				$( '#meowseo_schema_config' ).val( '' );
+				return;
+			}
+
+			var config = {};
+			if ( type === 'Article' ) {
+				config.article_type = $( '#meowseo_schema_article_type' ).val();
+			} else if ( type === 'FAQPage' ) {
+				config.faq_items = [];
+				$( '#meowseo-faq-items .meowseo-faq-item' ).each( function () {
+					config.faq_items.push( {
+						question: $( this ).find( '[name="meowseo_faq_question[]"]' ).val(),
+						answer: $( this ).find( '[name="meowseo_faq_answer[]"]' ).val()
+					} );
+				} );
+			} else if ( type === 'HowTo' ) {
+				config.howto_name        = $( '#meowseo_schema_howto_name' ).val();
+				config.howto_description = $( '#meowseo_schema_howto_description' ).val();
+				config.howto_steps = [];
+				$( '#meowseo-howto-steps .meowseo-howto-step' ).each( function () {
+					config.howto_steps.push( {
+						name: $( this ).find( '[name="meowseo_howto_step_name[]"]' ).val(),
+						text: $( this ).find( '[name="meowseo_howto_step_text[]"]' ).val()
+					} );
+				} );
+			} else if ( type === 'LocalBusiness' ) {
+				[ 'lb_name', 'lb_type', 'lb_address', 'lb_phone', 'lb_hours' ].forEach( function ( k ) {
+					config[ k ] = $( '#meowseo_schema_' + k ).val();
+				} );
+			} else if ( type === 'Product' ) {
+				[ 'product_name', 'product_description', 'product_sku', 'product_price', 'product_currency', 'product_availability' ].forEach( function ( k ) {
+					config[ k ] = $( '#meowseo_schema_' + k ).val();
+				} );
+			}
+			$( '#meowseo_schema_config' ).val( JSON.stringify( config ) );
+		} );
+	}
+
+	// -------------------------------------------------------------------------
+	// Content Type toggle
+	// -------------------------------------------------------------------------
+	function initContentTypeToggle() {
+		$( '#meowseo_content_type' ).on( 'change', function () {
+			var val = $( this ).val();
+			$( '.meowseo-ct-field' ).hide();
+			$( '.meowseo-ct-field[data-ct="' + val + '"]' ).show();
+		} ).trigger( 'change' );
+	}
+
+	// -------------------------------------------------------------------------
 	// Analysis via REST
 	// -------------------------------------------------------------------------
 	var analysisTimer = null;
@@ -224,7 +315,8 @@
 		clearTimeout( analysisTimer );
 		analysisTimer = setTimeout( function () {
 			var $panel = $( '#meowseo-analysis-panel' );
-			$panel.html( '<p style="color:#50575e">Running analysis…</p>' );
+			var labels = meowseoClassic.labels || {};
+			$panel.html( '<p style="color:#50575e">' + escHtml( labels.analyzing || 'Running analysis…' ) + '</p>' );
 
 			// Get current content from TinyMCE or textarea
 			var content = '';
@@ -234,8 +326,14 @@
 				content = $( '#content' ).val() || '';
 			}
 
+			var postId = meowseoClassic.postId || $( '#post_ID' ).val();
+			if ( ! postId || postId === '0' ) {
+				$panel.html( '<p style="color:#721c24">Post ID not found. Please save the post as draft first.</p>' );
+				return;
+			}
+
 			$.ajax( {
-				url: meowseoClassic.restUrl + '/analysis/' + meowseoClassic.postId,
+				url: meowseoClassic.restUrl + '/analysis/' + postId,
 				method: 'GET',
 				data: {
 					content: content,
@@ -763,6 +861,23 @@
 		} catch ( e ) {
 			console.error( 'MeowSEO AI Writer Initialization Error:', e );
 		}
+
+		try {
+			initRepeaters();
+		} catch ( e ) {
+			console.error( 'MeowSEO Repeaters Initialization Error:', e );
+		}
+
+		try {
+			initContentTypeToggle();
+		} catch ( e ) {
+			console.error( 'MeowSEO Content Type Toggle Initialization Error:', e );
+		}
+
+		// Analysis button click handler
+		$( '#meowseo-run-analysis' ).on( 'click', function () {
+			runAnalysis();
+		} );
 	} );
 
 } )( jQuery );

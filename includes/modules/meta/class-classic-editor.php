@@ -70,6 +70,14 @@ class Classic_Editor {
 				'postTitle'   => $post_id ? get_the_title( $post_id ) : '',
 				'postExcerpt' => $post_id ? get_the_excerpt( $post_id ) : '',
 				'siteUrl'     => home_url(),
+				'labels'      => array(
+					'question'  => __( 'Question', 'meowseo' ),
+					'answer'    => __( 'Answer', 'meowseo' ),
+					'stepName'  => __( 'Step Name', 'meowseo' ),
+					'stepText'  => __( 'Step Text', 'meowseo' ),
+					'remove'    => __( 'Remove', 'meowseo' ),
+					'analyzing' => __( 'Running analysis…', 'meowseo' ),
+				),
 			)
 		);
 	}
@@ -602,111 +610,6 @@ class Classic_Editor {
 
 		</div><!-- #meowseo-tabs -->
 
-		<script>
-		// FAQ/HowTo repeater logic (inline — runs before classic-editor.js)
-		(function($){
-			$(document).on('click', '#meowseo-add-faq', function(){
-				$('#meowseo-faq-items').append(
-					'<div class="meowseo-faq-item" style="border:1px solid #dcdcde;padding:10px;margin-bottom:8px;border-radius:4px">' +
-					'<div class="meowseo-field"><label><?php echo esc_js( __( 'Question', 'meowseo' ) ); ?></label>' +
-					'<input type="text" name="meowseo_faq_question[]" /></div>' +
-					'<div class="meowseo-field"><label><?php echo esc_js( __( 'Answer', 'meowseo' ) ); ?></label>' +
-					'<textarea name="meowseo_faq_answer[]"></textarea></div>' +
-					'<button type="button" class="button meowseo-remove-faq"><?php echo esc_js( __( 'Remove', 'meowseo' ) ); ?></button>' +
-					'</div>'
-				);
-			});
-			$(document).on('click', '.meowseo-remove-faq', function(){ $(this).closest('.meowseo-faq-item').remove(); });
-
-			$(document).on('click', '#meowseo-add-step', function(){
-				$('#meowseo-howto-steps').append(
-					'<div class="meowseo-howto-step" style="border:1px solid #dcdcde;padding:10px;margin-bottom:8px;border-radius:4px">' +
-					'<div class="meowseo-field"><label><?php echo esc_js( __( 'Step Name', 'meowseo' ) ); ?></label>' +
-					'<input type="text" name="meowseo_howto_step_name[]" /></div>' +
-					'<div class="meowseo-field"><label><?php echo esc_js( __( 'Step Text', 'meowseo' ) ); ?></label>' +
-					'<textarea name="meowseo_howto_step_text[]"></textarea></div>' +
-					'<button type="button" class="button meowseo-remove-step"><?php echo esc_js( __( 'Remove', 'meowseo' ) ); ?></button>' +
-					'</div>'
-				);
-			});
-			$(document).on('click', '.meowseo-remove-step', function(){ $(this).closest('.meowseo-howto-step').remove(); });
-
-			// Build schema_config JSON before form submit
-			$('#post').on('submit', function(){
-				var type = $('#meowseo_schema_type').val();
-				if (!type) { $('#meowseo_schema_config').val(''); return; }
-
-				var config = {};
-				if (type === 'Article') {
-					config.article_type = $('#meowseo_schema_article_type').val();
-				} else if (type === 'FAQPage') {
-					config.faq_items = [];
-					$('#meowseo-faq-items .meowseo-faq-item').each(function(){
-						config.faq_items.push({
-							question: $(this).find('[name="meowseo_faq_question[]"]').val(),
-							answer:   $(this).find('[name="meowseo_faq_answer[]"]').val()
-						});
-					});
-				} else if (type === 'HowTo') {
-					config.howto_name        = $('#meowseo_schema_howto_name').val();
-					config.howto_description = $('#meowseo_schema_howto_description').val();
-					config.howto_steps = [];
-					$('#meowseo-howto-steps .meowseo-howto-step').each(function(){
-						config.howto_steps.push({
-							name: $(this).find('[name="meowseo_howto_step_name[]"]').val(),
-							text: $(this).find('[name="meowseo_howto_step_text[]"]').val()
-						});
-					});
-				} else if (type === 'LocalBusiness') {
-					['lb_name','lb_type','lb_address','lb_phone','lb_hours'].forEach(function(k){
-						config[k] = $('#meowseo_schema_' + k).val();
-					});
-				} else if (type === 'Product') {
-					['product_name','product_description','product_sku','product_price','product_currency','product_availability'].forEach(function(k){
-						config[k] = $('#meowseo_schema_' + k).val();
-					});
-				}
-				$('#meowseo_schema_config').val(JSON.stringify(config));
-			});
-
-			// Analysis button
-			$(document).on('click', '#meowseo-run-analysis', function(){
-				if (typeof meowseoClassic === 'undefined') return;
-				var $panel = $('#meowseo-analysis-panel');
-				$panel.html('<p style="color:#50575e">Running analysis…</p>');
-				$.ajax({
-					url: meowseoClassic.restUrl + '/analysis/' + meowseoClassic.postId,
-					method: 'GET',
-					beforeSend: function(xhr){ xhr.setRequestHeader('X-WP-Nonce', meowseoClassic.nonce); },
-					success: function(data){
-						var html = '';
-						if (data.seo_score !== undefined) {
-							html += '<div style="margin-bottom:10px"><strong>SEO Score: ' + data.seo_score + '</strong></div>';
-						}
-						if (data.checks && data.checks.length) {
-							data.checks.forEach(function(check){
-								var color = check.status === 'good' ? '#155724' : (check.status === 'ok' ? '#856404' : '#721c24');
-								html += '<div style="margin-bottom:4px;color:' + color + '">&#9679; ' + $('<div>').text(check.message).html() + '</div>';
-							});
-						} else {
-							html = '<p style="color:#50575e;font-size:13px">No analysis data. Save the post first.</p>';
-						}
-						$panel.html(html);
-					},
-					error: function(){
-						$panel.html('<p style="color:#721c24">Analysis failed. Save the post first.</p>');
-					}
-				});
-			});
-
-			// Content Type fields toggle
-			$('#meowseo_content_type').on('change', function(){
-				var val = $(this).val();
-				$('.meowseo-ct-field').hide();
-				$('.meowseo-ct-field[data-ct="' + val + '"]').show();
-			}).trigger('change');
-		})(jQuery);
-		</script>
 		<?php
 	}
 
