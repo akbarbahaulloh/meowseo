@@ -10,7 +10,7 @@
 
 namespace MeowSEO\Modules\Import;
 
-use MeowSEO\Modules\Settings\Options;
+use MeowSEO\Options;
 use MeowSEO\Modules\Import\Importers\Base_Importer;
 
 // Exit if accessed directly.
