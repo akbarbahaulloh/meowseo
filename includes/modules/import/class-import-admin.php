@@ -44,6 +44,7 @@ class Import_Admin {
 			
 			<h2 class="nav-tab-wrapper">
 				<a href="?page=meowseo-import&tab=posts" class="nav-tab <?php echo 'posts' === $active_tab ? 'nav-tab-active' : ''; ?>"><?php echo esc_html__( 'Posts & Pages', 'meowseo' ); ?></a>
+				<a href="?page=meowseo-import&tab=media" class="nav-tab <?php echo 'media' === $active_tab ? 'nav-tab-active' : ''; ?>"><?php echo esc_html__( 'Media', 'meowseo' ); ?></a>
 				<a href="?page=meowseo-import&tab=terms" class="nav-tab <?php echo 'terms' === $active_tab ? 'nav-tab-active' : ''; ?>"><?php echo esc_html__( 'Categories & Tags', 'meowseo' ); ?></a>
 				<a href="?page=meowseo-import&tab=settings" class="nav-tab <?php echo 'settings' === $active_tab ? 'nav-tab-active' : ''; ?>"><?php echo esc_html__( 'Settings & Redirects', 'meowseo' ); ?></a>
 			</h2>
@@ -52,6 +53,15 @@ class Import_Admin {
 				<?php
 				if ( 'posts' === $active_tab ) {
 					$table = new Import_Posts_List_Table();
+					$table->prepare_items();
+					?>
+					<form method="post">
+						<?php wp_nonce_field( 'meowseo_bulk_import_posts' ); ?>
+						<?php $table->display(); ?>
+					</form>
+					<?php
+				} elseif ( 'media' === $active_tab ) {
+					$table = new Import_Posts_List_Table( array( 'attachment' ) );
 					$table->prepare_items();
 					?>
 					<form method="post">

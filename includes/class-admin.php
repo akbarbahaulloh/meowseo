@@ -162,6 +162,9 @@ class Admin {
 		// Display admin notices.
 		add_action( 'admin_notices', array( $this, 'display_update_notice' ) );
 
+		// Save screen options (Requirement: standard WP behavior).
+		add_filter( 'set-screen-option', array( $this, 'save_screen_options' ), 10, 3 );
+
 
 
 		// Reorder submenus (Requirement: Logical flow).
@@ -249,7 +252,7 @@ class Admin {
 		);
 
 		// 6. Import - Migration
-		add_submenu_page(
+		$import_page = add_submenu_page(
 			'meowseo',
 			__( 'Import SEO Data', 'meowseo' ),
 			__( 'Import', 'meowseo' ),
@@ -257,6 +260,10 @@ class Admin {
 			'meowseo-import',
 			array( $this, 'render_import_page' )
 		);
+
+		if ( $import_page ) {
+			add_action( "load-$import_page", array( $this, 'add_import_screen_options' ) );
+		}
 
 		// 7. Tools - Utilities (last)
 		add_submenu_page(
@@ -434,6 +441,34 @@ class Admin {
 			<?php $this->get_tools_manager()->render_tools_page(); ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Add screen options for the import page.
+	 *
+	 * @return void
+	 */
+	public function add_import_screen_options(): void {
+		add_screen_option( 'per_page', array(
+			'label'   => __( 'Items per page', 'meowseo' ),
+			'default' => 20,
+			'option'  => 'meowseo_import_per_page',
+		) );
+	}
+
+	/**
+	 * Save screen options.
+	 *
+	 * @param mixed  $status The value to save instead of the option value.
+	 * @param string $option The screen option name.
+	 * @param mixed  $value  The screen option value.
+	 * @return mixed The saved value.
+	 */
+	public function save_screen_options( $status, $option, $value ) {
+		if ( 'meowseo_import_per_page' === $option ) {
+			return $value;
+		}
+		return $status;
 	}
 
 	/**

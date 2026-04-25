@@ -13,7 +13,10 @@ if ( ! class_exists( '\WP_List_Table' ) ) {
 
 class Import_Posts_List_Table extends \WP_List_Table {
 
-	public function __construct() {
+	private array $post_types;
+
+	public function __construct( array $post_types = array() ) {
+		$this->post_types = $post_types;
 		parent::__construct( array(
 			'singular' => 'post',
 			'plural'   => 'posts',
@@ -91,15 +94,17 @@ class Import_Posts_List_Table extends \WP_List_Table {
 
 		$this->_column_headers = array( $columns, $hidden, $sortable );
 
-		$per_page = 20;
-		if ( isset( $_REQUEST['per_page'] ) && is_numeric( $_REQUEST['per_page'] ) ) {
-			$per_page = intval( $_REQUEST['per_page'] );
-		}
-		
+		$per_page = $this->get_items_per_page( 'meowseo_import_per_page', 20 );
 		$current_page = $this->get_pagenum();
 
-		// Get all public post types.
-		$post_types = \get_post_types( array( 'public' => true ) );
+		// Get post types to display.
+		if ( empty( $this->post_types ) ) {
+			// All public post types EXCEPT attachment.
+			$post_types = \get_post_types( array( 'public' => true ) );
+			unset( $post_types['attachment'] );
+		} else {
+			$post_types = $this->post_types;
+		}
 
 		$args = array(
 			'post_type'      => $post_types,

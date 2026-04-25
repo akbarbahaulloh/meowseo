@@ -83,11 +83,7 @@ class Import_Terms_List_Table extends \WP_List_Table {
 
 		$this->_column_headers = array( $columns, $hidden, $sortable );
 
-		$per_page = 20;
-		if ( isset( $_REQUEST['per_page'] ) && is_numeric( $_REQUEST['per_page'] ) ) {
-			$per_page = intval( $_REQUEST['per_page'] );
-		}
-		
+		$per_page = $this->get_items_per_page( 'meowseo_import_per_page', 20 );
 		$current_page = $this->get_pagenum();
 
 		// Get all public taxonomies.
@@ -104,16 +100,9 @@ class Import_Terms_List_Table extends \WP_List_Table {
 
 		$this->items = \get_terms( $args );
 
-		// Get total count (using lightweight count array)
-		$count_args = $args;
-		unset( $count_args['number'] );
-		unset( $count_args['offset'] );
-		$count_args['count'] = true;
-		
-		$total_items = \get_terms( $count_args );
-		if ( \is_wp_error( $total_items ) ) {
-			$total_items = 0;
-		}
+		global $wpdb;
+		$in_tax      = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
+		$total_items = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ($in_tax)" );
 
 		$this->set_pagination_args( array(
 			'total_items' => $total_items,
