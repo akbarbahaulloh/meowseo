@@ -58,7 +58,8 @@ class Import_Admin {
 			&& in_array( $action, array( 'import_rankmath', 'import_yoast' ), true )
 			&& isset( $_POST['post'] ) && is_array( $_POST['post'] )
 		) {
-			\check_admin_referer( 'meowseo_bulk_import_posts' );
+			// Use WP_List_Table's built-in nonce (bulk-{plural}).
+			\check_admin_referer( 'bulk-posts' );
 
 			$plugin   = str_replace( 'import_', '', $action );
 			$importer = $this->import_manager->get_importer( $plugin );
@@ -84,7 +85,8 @@ class Import_Admin {
 			&& in_array( $action, array( 'import_rankmath', 'import_yoast' ), true )
 			&& isset( $_POST['term'] ) && is_array( $_POST['term'] )
 		) {
-			\check_admin_referer( 'meowseo_bulk_import_terms' );
+			// Use WP_List_Table's built-in nonce (bulk-{plural}).
+			\check_admin_referer( 'bulk-terms' );
 
 			$plugin   = str_replace( 'import_', '', $action );
 			$importer = $this->import_manager->get_importer( $plugin );
@@ -164,7 +166,6 @@ class Import_Admin {
 					?>
 					<form method="post" action="<?php echo esc_url( \admin_url( 'admin.php?page=meowseo-import&tab=posts' ) ); ?>">
 						<input type="hidden" name="tab" value="posts" />
-						<?php \wp_nonce_field( 'meowseo_bulk_import_posts' ); ?>
 						<?php $table->display(); ?>
 					</form>
 					<?php
@@ -174,7 +175,6 @@ class Import_Admin {
 					?>
 					<form method="post" action="<?php echo esc_url( \admin_url( 'admin.php?page=meowseo-import&tab=media' ) ); ?>">
 						<input type="hidden" name="tab" value="media" />
-						<?php \wp_nonce_field( 'meowseo_bulk_import_posts' ); ?>
 						<?php $table->display(); ?>
 					</form>
 					<?php
@@ -184,7 +184,6 @@ class Import_Admin {
 					?>
 					<form method="post" action="<?php echo esc_url( \admin_url( 'admin.php?page=meowseo-import&tab=terms' ) ); ?>">
 						<input type="hidden" name="tab" value="terms" />
-						<?php \wp_nonce_field( 'meowseo_bulk_import_terms' ); ?>
 						<?php $table->display(); ?>
 					</form>
 					<?php
