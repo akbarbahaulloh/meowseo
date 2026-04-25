@@ -143,15 +143,16 @@ abstract class Base_Importer {
 	 * @return int Total terms.
 	 */
 	public function get_total_terms(): int {
-		$args = array(
-			'taxonomy'   => \get_taxonomies( array( 'public' => true ) ),
-			'hide_empty' => false,
-			'number'     => 0,
-			'offset'     => 0,
-			'count'      => true,
-		);
-		$total = \get_terms( $args );
-		return \is_wp_error( $total ) ? 0 : (int) $total;
+		global $wpdb;
+		$taxonomies = \get_taxonomies( array( 'public' => true ) );
+		if ( empty( $taxonomies ) ) {
+			return 0;
+		}
+
+		$in_tax = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
+		$total  = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ($in_tax)" );
+
+		return (int) $total;
 	}
 
 	/**
