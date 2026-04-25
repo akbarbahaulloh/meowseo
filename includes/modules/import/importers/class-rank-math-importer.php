@@ -141,45 +141,30 @@ class RankMath_Importer extends Base_Importer {
 	 * - rank_math_robots: Array containing multiple directives
 	 * - rank_math_focus_keyword: Comma-separated string
 	 *
-	 * @param array $post_ids Optional array of specific post IDs to import.
+	 * @param int   $page     Page number to process (for batch processing).
 	 * @return array Import results.
 	 */
-	public function import_postmeta( array $post_ids = array() ): array {
+	public function import_postmeta( int $page = 1 ): array {
 		$mappings = $this->get_postmeta_mappings();
 
 		if ( empty( $mappings ) ) {
 			return array(
-				'imported' => 0,
-				'total'    => 0,
-				'errors'   => 0,
+				'imported'  => 0,
+				'total'     => 0,
+				'errors'    => 0,
+				'next_page' => $page,
+				'is_done'   => true,
 			);
 		}
 
 		$imported = 0;
 		$errors   = 0;
 
-		// If specific post IDs provided, process them directly.
-		if ( ! empty( $post_ids ) ) {
-			foreach ( $post_ids as $post_id ) {
-				$result = $this->import_rankmath_post_meta_fields( $post_id, $mappings );
-				if ( $result ) {
-					$imported++;
-				} else {
-					$errors++;
-				}
-			}
-
-			return array(
-				'imported' => $imported,
-				'total'    => count( $post_ids ),
-				'errors'   => $errors,
-			);
-		}
-
 		// Build query args.
 		$args = array(
 			'post_type'   => 'any',
 			'post_status' => 'any',
+			'paged'       => $page,
 		);
 
 		// Process posts in batches.
@@ -196,9 +181,11 @@ class RankMath_Importer extends Base_Importer {
 		$result = $this->processor->process_posts( $callback, $args );
 
 		return array(
-			'imported' => $imported,
-			'total'    => $result['total'] ?? 0,
-			'errors'   => $errors,
+			'imported'  => $imported,
+			'total'     => $result['total'] ?? 0,
+			'errors'    => $errors,
+			'next_page' => $result['next_page'] ?? $page + 1,
+			'is_done'   => $result['is_done'] ?? true,
 		);
 	}
 
