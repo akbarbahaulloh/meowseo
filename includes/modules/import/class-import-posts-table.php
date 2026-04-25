@@ -49,49 +49,61 @@ class Import_Posts_List_Table extends \WP_List_Table {
 	}
 
 	protected function get_views() {
-		$current = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
-		$post_types = $this->post_types ?: array_diff( \get_post_types( array( 'public' => true ) ), array( 'attachment' ) );
-		
-		// All count
-		$all_count = $this->count_posts_by_seo_status( 'all', $post_types );
-		$pending_count = $this->count_posts_by_seo_status( 'pending', $post_types );
-		$imported_count = $this->count_posts_by_seo_status( 'imported', $post_types );
+		$current    = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
+		$post_types = $this->post_types ?: array_values( array_diff( \get_post_types( array( 'public' => true ) ), array( 'attachment' ) ) );
+		$base_url   = \admin_url( 'admin.php' );
+		$tab        = isset( $_GET['tab'] ) ? \sanitize_text_field( $_GET['tab'] ) : 'posts';
 
-		$views = array(
-			'all'      => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'all' ), 'all' === $current ? 'current' : '', \__( 'All', 'meowseo' ), $all_count ),
-			'pending'  => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'pending' ), 'pending' === $current ? 'current' : '', \__( 'Pending', 'meowseo' ), $pending_count ),
-			'imported' => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'imported' ), 'imported' === $current ? 'current' : '', \__( 'Imported', 'meowseo' ), $imported_count ),
+		$counts = $this->get_counts_by_seo_status( $post_types );
+
+		$make_url = function( $status ) use ( $base_url, $tab ) {
+			return \add_query_arg( array( 'page' => 'meowseo-import', 'tab' => $tab, 'status' => $status ), $base_url );
+		};
+
+		return array(
+			'all'      => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', esc_url( $make_url( 'all' ) ), 'all' === $current ? 'current' : '', \__( 'All', 'meowseo' ), $counts['all'] ),
+			'pending'  => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', esc_url( $make_url( 'pending' ) ), 'pending' === $current ? 'current' : '', \__( 'Pending', 'meowseo' ), $counts['pending'] ),
+			'imported' => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', esc_url( $make_url( 'imported' ) ), 'imported' === $current ? 'current' : '', \__( 'Imported', 'meowseo' ), $counts['imported'] ),
 		);
+	}
 
-		return $views;
+	private function get_counts_by_seo_status( array $post_types ): array {
+		global $wpdb;
+
+		if ( empty( $post_types ) ) {
+			return array( 'all' => 0, 'pending' => 0, 'imported' => 0 );
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
+
+		// Total posts count.
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$all = (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type IN ($placeholders) AND post_status != 'auto-draft'",
+			...$post_types
+		) );
+
+		// Imported count: posts that have _meowseo_title meta.
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$imported = (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
+			INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_meowseo_title'
+			WHERE p.post_type IN ($placeholders) AND p.post_status != 'auto-draft'",
+			...$post_types
+		) );
+
+		$pending = $all - $imported;
+
+		return array(
+			'all'      => $all,
+			'pending'  => $pending,
+			'imported' => $imported,
+		);
 	}
 
 	private function count_posts_by_seo_status( $status, $post_types ) {
-		$args = array(
-			'post_type'      => $post_types,
-			'post_status'    => 'any',
-			'posts_per_page' => 1,
-			'fields'         => 'ids',
-		);
-
-		if ( 'pending' === $status ) {
-			$args['meta_query'] = array(
-				array(
-					'key'     => '_meowseo_title',
-					'compare' => 'NOT EXISTS',
-				),
-			);
-		} elseif ( 'imported' === $status ) {
-			$args['meta_query'] = array(
-				array(
-					'key'     => '_meowseo_title',
-					'compare' => 'EXISTS',
-				),
-			);
-		}
-
-		$query = new \WP_Query( $args );
-		return $query->found_posts;
+		$counts = $this->get_counts_by_seo_status( (array) $post_types );
+		return $counts[ $status ] ?? 0;
 	}
 
 	public function column_default( $item, $column_name ) {

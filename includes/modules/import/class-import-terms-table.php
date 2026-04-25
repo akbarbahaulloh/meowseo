@@ -44,56 +44,55 @@ class Import_Terms_List_Table extends \WP_List_Table {
 	}
 
 	protected function get_views() {
-		$current = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
-		$taxonomies = \get_taxonomies( array( 'public' => true ) );
-		
-		$all_count = $this->count_terms_by_seo_status( 'all', $taxonomies );
-		$pending_count = $this->count_terms_by_seo_status( 'pending', $taxonomies );
-		$imported_count = $this->count_terms_by_seo_status( 'imported', $taxonomies );
+		$current    = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
+		$taxonomies = array_values( \get_taxonomies( array( 'public' => true ) ) );
+		$base_url   = \admin_url( 'admin.php' );
 
-		$views = array(
-			'all'      => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'all' ), 'all' === $current ? 'current' : '', \__( 'All', 'meowseo' ), $all_count ),
-			'pending'  => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'pending' ), 'pending' === $current ? 'current' : '', \__( 'Pending', 'meowseo' ), $pending_count ),
-			'imported' => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'imported' ), 'imported' === $current ? 'current' : '', \__( 'Imported', 'meowseo' ), $imported_count ),
+		$counts = $this->get_term_counts_by_seo_status( $taxonomies );
+
+		$make_url = function( $status ) use ( $base_url ) {
+			return \add_query_arg( array( 'page' => 'meowseo-import', 'tab' => 'terms', 'status' => $status ), $base_url );
+		};
+
+		return array(
+			'all'      => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', esc_url( $make_url( 'all' ) ), 'all' === $current ? 'current' : '', \__( 'All', 'meowseo' ), $counts['all'] ),
+			'pending'  => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', esc_url( $make_url( 'pending' ) ), 'pending' === $current ? 'current' : '', \__( 'Pending', 'meowseo' ), $counts['pending'] ),
+			'imported' => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', esc_url( $make_url( 'imported' ) ), 'imported' === $current ? 'current' : '', \__( 'Imported', 'meowseo' ), $counts['imported'] ),
+		);
+	}
+
+	private function get_term_counts_by_seo_status( array $taxonomies ): array {
+		global $wpdb;
+
+		if ( empty( $taxonomies ) ) {
+			return array( 'all' => 0, 'pending' => 0, 'imported' => 0 );
+		}
+
+		$in_tax = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
+
+		// Total count via SQL — very fast.
+		$all = (int) $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ($in_tax)"
 		);
 
-		return $views;
+		// Imported count: terms that have _meowseo_title termmeta.
+		$imported = (int) $wpdb->get_var(
+			"SELECT COUNT(DISTINCT tt.term_id)
+			FROM {$wpdb->term_taxonomy} tt
+			INNER JOIN {$wpdb->termmeta} tm ON tt.term_id = tm.term_id AND tm.meta_key = '_meowseo_title'
+			WHERE tt.taxonomy IN ($in_tax)"
+		);
+
+		return array(
+			'all'      => $all,
+			'pending'  => $all - $imported,
+			'imported' => $imported,
+		);
 	}
 
 	private function count_terms_by_seo_status( $status, $taxonomies ) {
-		global $wpdb;
-		$in_tax = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
-		
-		if ( 'all' === $status ) {
-			return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ($in_tax)" );
-		}
-		
-		$compare = 'pending' === $status ? 'NOT EXISTS' : 'EXISTS';
-		
-		// For terms, we need a meta query or a subquery.
-		$args = array(
-			'taxonomy'   => $taxonomies,
-			'hide_empty' => false,
-			'count'      => true,
-		);
-		
-		if ( 'pending' === $status ) {
-			$args['meta_query'] = array(
-				array(
-					'key'     => '_meowseo_title',
-					'compare' => 'NOT EXISTS',
-				),
-			);
-		} else {
-			$args['meta_query'] = array(
-				array(
-					'key'     => '_meowseo_title',
-					'compare' => 'EXISTS',
-				),
-			);
-		}
-		
-		return (int) \get_terms( $args );
+		$counts = $this->get_term_counts_by_seo_status( (array) $taxonomies );
+		return $counts[ $status ] ?? 0;
 	}
 
 	public function column_default( $item, $column_name ) {
