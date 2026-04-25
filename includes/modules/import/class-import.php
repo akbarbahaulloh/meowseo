@@ -70,6 +70,7 @@ class Import implements Module {
 
 		// Initialize admin interface.
 		$this->import_admin = new Import_Admin( $this->import_manager );
+		$this->import_admin->boot();
 	}
 
 	/**
