@@ -123,4 +123,13 @@ class Import implements Module {
 	public function get_import_manager(): Import_Manager {
 		return $this->import_manager;
 	}
+
+	/**
+	 * Get Import Admin instance.
+	 *
+	 * @return Import_Admin Import Admin instance.
+	 */
+	public function get_import_admin(): Import_Admin {
+		return $this->import_admin;
+	}
 }

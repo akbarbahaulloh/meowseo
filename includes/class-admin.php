@@ -248,7 +248,17 @@ class Admin {
 			array( $this, 'render_404_monitor_page' )
 		);
 
-		// 6. Tools - Utilities (last)
+		// 6. Import - Migration
+		add_submenu_page(
+			'meowseo',
+			__( 'Import SEO Data', 'meowseo' ),
+			__( 'Import', 'meowseo' ),
+			'manage_options',
+			'meowseo-import',
+			array( $this, 'render_import_page' )
+		);
+
+		// 7. Tools - Utilities (last)
 		add_submenu_page(
 			'meowseo',
 			__( 'Tools', 'meowseo' ),
@@ -372,6 +382,35 @@ class Admin {
 			<div id="meowseo-search-console-root"></div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render import page
+	 *
+	 * Outputs the import UI for migration from Yoast/RankMath.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function render_import_page(): void {
+		// Verify user has manage_options capability.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'meowseo' ) );
+		}
+
+		$import_module = $this->module_manager->get_module( 'import' );
+		if ( $import_module ) {
+			$import_module->get_import_admin()->render_import_page();
+		} else {
+			?>
+			<div class="wrap">
+				<h1><?php echo esc_html__( 'Import SEO Data', 'meowseo' ); ?></h1>
+				<div class="notice notice-error">
+					<p><?php echo esc_html__( 'Import module is not active. Please enable it in settings.', 'meowseo' ); ?></p>
+				</div>
+			</div>
+			<?php
+		}
 	}
 
 	/**

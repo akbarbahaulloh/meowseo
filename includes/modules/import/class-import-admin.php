@@ -46,7 +46,6 @@ class Import_Admin {
 	 * @return void
 	 */
 	public function boot(): void {
-		add_action( 'admin_menu', array( $this, 'register_admin_menu' ), 20 );
 		add_action( 'admin_post_meowseo_start_import', array( $this, 'handle_start_import' ) );
 		add_action( 'wp_ajax_meowseo_import_status', array( $this, 'handle_import_status' ) );
 		add_action( 'wp_ajax_meowseo_cancel_import', array( $this, 'handle_cancel_import' ) );
@@ -54,25 +53,6 @@ class Import_Admin {
 		add_action( 'wp_ajax_meowseo_export_error_log', array( $this, 'handle_export_error_log' ) );
 		add_action( 'wp_ajax_meowseo_set_completed_import', array( $this, 'handle_set_completed_import' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
-	}
-
-	/**
-	 * Register admin menu page.
-	 *
-	 * Adds import page under MeowSEO settings.
-	 * Requirement: 1.26
-	 *
-	 * @return void
-	 */
-	public function register_admin_menu(): void {
-		add_submenu_page(
-			'meowseo',
-			__( 'Import SEO Data', 'meowseo' ),
-			__( 'Import', 'meowseo' ),
-			'manage_options',
-			'meowseo-import',
-			array( $this, 'render_import_page' )
-		);
 	}
 
 	/**
