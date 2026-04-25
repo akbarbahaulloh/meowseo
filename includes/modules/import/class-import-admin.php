@@ -163,6 +163,7 @@ class Import_Admin {
 				if ( 'posts' === $active_tab ) {
 					$table = new Import_Posts_List_Table();
 					$table->prepare_items();
+					$table->views();
 					?>
 					<form method="post" action="<?php echo esc_url( \admin_url( 'admin.php?page=meowseo-import&tab=posts' ) ); ?>">
 						<input type="hidden" name="tab" value="posts" />
@@ -172,6 +173,7 @@ class Import_Admin {
 				} elseif ( 'media' === $active_tab ) {
 					$table = new Import_Posts_List_Table( array( 'attachment' ) );
 					$table->prepare_items();
+					$table->views();
 					?>
 					<form method="post" action="<?php echo esc_url( \admin_url( 'admin.php?page=meowseo-import&tab=media' ) ); ?>">
 						<input type="hidden" name="tab" value="media" />
@@ -181,6 +183,7 @@ class Import_Admin {
 				} elseif ( 'terms' === $active_tab ) {
 					$table = new Import_Terms_List_Table();
 					$table->prepare_items();
+					$table->views();
 					?>
 					<form method="post" action="<?php echo esc_url( \admin_url( 'admin.php?page=meowseo-import&tab=terms' ) ); ?>">
 						<input type="hidden" name="tab" value="terms" />

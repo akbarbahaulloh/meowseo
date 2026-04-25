@@ -187,8 +187,12 @@ abstract class Base_Importer {
 
 		foreach ( $post_ids as $post_id ) {
 			$result = $this->import_post_meta_fields( $post_id, $mappings );
-			$imported += $result['imported'];
-			$errors += $result['errors'];
+			// Count per post: success if at least 1 field imported, error if all fields failed.
+			if ( $result['imported'] > 0 || $result['errors'] === 0 ) {
+				$imported++;
+			} else {
+				$errors++;
+			}
 		}
 
 		return array(
@@ -227,8 +231,12 @@ abstract class Base_Importer {
 
 		foreach ( $term_ids as $term_id ) {
 			$result = $this->import_term_meta_fields( $term_id, $mappings );
-			$imported += $result['imported'];
-			$errors += $result['errors'];
+			// Count per term: success if at least 1 field imported.
+			if ( $result['imported'] > 0 || $result['errors'] === 0 ) {
+				$imported++;
+			} else {
+				$errors++;
+			}
 		}
 
 		return array(
