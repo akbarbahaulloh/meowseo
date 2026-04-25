@@ -83,45 +83,39 @@ class Batch_Processor {
 
 		$query_args = array_merge( $default_args, $args );
 
-		// Reset progress.
-		$this->progress = array(
-			'processed' => 0,
-			'total'     => 0,
-			'errors'    => 0,
-			'page'      => 1,
-		);
+		// Query current batch.
+		$query = new \WP_Query( $query_args );
+		$total = $query->found_posts;
+		$processed = 0;
+		$errors = 0;
 
-		// First query to get total count.
-		$query                  = new \WP_Query( $query_args );
-		$this->progress['total'] = $query->found_posts;
-
-		// Process batches.
-		while ( $query->have_posts() ) {
+		// Process batch.
+		if ( $query->have_posts() ) {
 			foreach ( $query->posts as $post_id ) {
 				$result = call_user_func( $callback, $post_id );
-
 				if ( false === $result ) {
-					$this->progress['errors']++;
+					$errors++;
 				}
-
-				$this->progress['processed']++;
+				$processed++;
 			}
-
-			// Move to next page.
-			$this->progress['page']++;
-			$query_args['paged'] = $this->progress['page'];
-
-			// Query next batch.
-			$query = new \WP_Query( $query_args );
 		}
 
-		return $this->progress;
+		$next_page = $query_args['paged'] + 1;
+		$is_done = ( $query->max_num_pages <= $query_args['paged'] ) || ( $total === 0 );
+
+		return array(
+			'processed' => $processed,
+			'total'     => $total,
+			'errors'    => $errors,
+			'next_page' => $next_page,
+			'is_done'   => $is_done,
+		);
 	}
 
 	/**
 	 * Process terms in batches.
 	 *
-	 * Iterates through all terms using get_terms with pagination.
+	 * Iterates through terms using get_terms with pagination for a single batch.
 	 *
 	 * @param callable $callback Callback function to process each term.
 	 *                           Receives term ID as parameter.
@@ -132,12 +126,14 @@ class Batch_Processor {
 	 *                   'processed' => 50,
 	 *                   'total' => 100,
 	 *                   'errors' => 1,
+	 *                   'next_offset' => 50,
+	 *                   'is_done' => false
 	 *               ]
 	 */
 	public function process_terms( callable $callback, array $args = array() ): array {
 		// Default query args.
 		$default_args = array(
-			'taxonomy'   => 'category',
+			'taxonomy'   => 'category', // Base_Importer overrides this with all taxonomies
 			'hide_empty' => false,
 			'number'     => $this->batch_size,
 			'offset'     => 0,
@@ -146,46 +142,44 @@ class Batch_Processor {
 
 		$query_args = array_merge( $default_args, $args );
 
-		// Reset progress.
-		$this->progress = array(
-			'processed' => 0,
-			'total'     => 0,
-			'errors'    => 0,
-			'offset'    => 0,
-		);
-
 		// Get total count.
 		$count_args              = $query_args;
 		$count_args['number']    = 0;
 		$count_args['offset']    = 0;
 		$count_args['count']     = true;
-		$this->progress['total'] = \get_terms( $count_args );
+		$total = \get_terms( $count_args );
+		
+		if ( \is_wp_error( $total ) ) {
+			$total = 0;
+		}
 
-		// Process batches.
-		do {
-			$term_ids = \get_terms( $query_args );
+		$processed = 0;
+		$errors = 0;
+		
+		// Query current batch.
+		$term_ids = \get_terms( $query_args );
 
-			if ( empty( $term_ids ) || \is_wp_error( $term_ids ) ) {
-				break;
-			}
-
+		if ( ! empty( $term_ids ) && ! \is_wp_error( $term_ids ) ) {
 			foreach ( $term_ids as $term_id ) {
 				$result = call_user_func( $callback, $term_id );
-
 				if ( false === $result ) {
-					$this->progress['errors']++;
+					$errors++;
 				}
-
-				$this->progress['processed']++;
+				$processed++;
 			}
+		}
 
-			// Move to next batch.
-			$this->progress['offset'] += $this->batch_size;
-			$query_args['offset']      = $this->progress['offset'];
+		$next_offset = $query_args['offset'] + $this->batch_size;
+		// Determine if done: if returned items < requested number, or total is 0.
+		$is_done = ( count( $term_ids ) < $this->batch_size ) || ( $total === 0 );
 
-		} while ( count( $term_ids ) === $this->batch_size );
-
-		return $this->progress;
+		return array(
+			'processed'   => $processed,
+			'total'       => $total,
+			'errors'      => $errors,
+			'next_offset' => $next_offset,
+			'is_done'     => $is_done,
+		);
 	}
 
 	/**

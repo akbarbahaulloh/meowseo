@@ -148,10 +148,10 @@ class Import_Manager {
 			'started_at'   => time(),
 			'completed_at' => null,
 			'progress'     => array(
-				'posts'     => array( 'processed' => 0, 'total' => 0 ),
-				'terms'     => array( 'processed' => 0, 'total' => 0 ),
-				'options'   => array( 'processed' => 0, 'total' => 0 ),
-				'redirects' => array( 'processed' => 0, 'total' => 0 ),
+				'options'   => array( 'processed' => 0, 'total' => 0, 'is_done' => false ),
+				'redirects' => array( 'processed' => 0, 'total' => 0, 'is_done' => false ),
+				'terms'     => array( 'processed' => 0, 'total' => 0, 'is_done' => false, 'offset' => 0 ),
+				'posts'     => array( 'processed' => 0, 'total' => 0, 'is_done' => false, 'page' => 1 ),
 			),
 			'summary'      => array(
 				'posts_imported'     => 0,

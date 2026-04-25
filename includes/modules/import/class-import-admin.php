@@ -293,11 +293,11 @@ class Import_Admin {
 
 							foreach ( $progress as $phase => $data ) :
 								$phase_percentage = $data['total'] > 0 ? round( ( $data['processed'] / $data['total'] ) * 100 ) : 0;
-								$phase_status     = $data['processed'] >= $data['total'] ? 'complete' : 'in-progress';
+								$phase_status     = ( ! empty( $data['is_done'] ) ) ? 'complete' : 'in-progress';
 								?>
-								<tr>
+								<tr id="phase-<?php echo esc_attr( $phase ); ?>">
 									<td><?php echo esc_html( $phase_labels[ $phase ] ?? $phase ); ?></td>
-									<td>
+									<td class="phase-progress">
 										<?php
 										echo esc_html(
 											sprintf(
@@ -309,7 +309,7 @@ class Import_Admin {
 										);
 										?>
 									</td>
-									<td>
+									<td class="phase-status">
 										<?php if ( 'complete' === $phase_status ) : ?>
 											<span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
 											<?php echo esc_html__( 'Complete', 'meowseo' ); ?>
@@ -363,24 +363,52 @@ class Import_Admin {
 		<script>
 		jQuery(document).ready(function($) {
 			var importId = '<?php echo esc_js( $import_job['import_id'] ); ?>';
-			var statusCheckInterval;
+			var isCancelled = false;
 
-			// Poll import status every 2 seconds
-			function checkImportStatus() {
+			// Actively process batches
+			function processBatch() {
+				if (isCancelled) return;
+
 				$.ajax({
 					url: ajaxurl,
 					type: 'POST',
 					data: {
-						action: 'meowseo_import_status',
-						nonce: '<?php echo esc_js( wp_create_nonce( 'meowseo_import_status' ) ); ?>',
+						action: 'meowseo_process_import_batch',
+						nonce: '<?php echo esc_js( wp_create_nonce( 'meowseo_process_batch' ) ); ?>',
 						import_id: importId
 					},
 					success: function(response) {
 						if (response.success && response.data) {
-							var status = response.data.status;
+							var job = response.data;
+							var status = job.status;
+							var totalItems = 0;
+							var processedItems = 0;
+
+							// Update UI
+							$.each(job.progress, function(phase, data) {
+								totalItems += data.total || 0;
+								processedItems += data.processed || 0;
+
+								var $row = $('#phase-' + phase);
+								if ($row.length) {
+									$row.find('.phase-progress').text(data.processed + ' / ' + data.total);
+									
+									if (data.is_done) {
+										$row.find('.phase-status').html('<span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span> <?php echo esc_html__( 'Complete', 'meowseo' ); ?>');
+									} else {
+										$row.find('.phase-status').html('<span class="dashicons dashicons-update" style="color: #f56e28;"></span> <?php echo esc_html__( 'In Progress', 'meowseo' ); ?>');
+									}
+								}
+							});
+
+							// Update global progress bar
+							if (totalItems > 0) {
+								var percent = Math.round((processedItems / totalItems) * 100);
+								$('.meowseo-progress-bar').css('width', percent + '%');
+								$('#meowseo-progress-text').text('<?php echo esc_html__( 'Processing: ', 'meowseo' ); ?>' + processedItems + ' / ' + totalItems + ' <?php echo esc_html__( 'items', 'meowseo' ); ?> (' + percent + '%)');
+							}
 
 							if (status === 'completed') {
-								clearInterval(statusCheckInterval);
 								// Set completed import transient via AJAX
 								$.post(ajaxurl, {
 									action: 'meowseo_set_completed_import',
@@ -390,16 +418,24 @@ class Import_Admin {
 									location.reload();
 								});
 							} else if (status === 'cancelled' || status === 'failed') {
-								clearInterval(statusCheckInterval);
 								location.reload();
+							} else {
+								// Process next batch
+								setTimeout(processBatch, 500);
 							}
+						} else {
+							// On failure, wait and retry or stop
+							setTimeout(processBatch, 2000);
 						}
+					},
+					error: function() {
+						setTimeout(processBatch, 2000);
 					}
 				});
 			}
 
-			// Start polling
-			statusCheckInterval = setInterval(checkImportStatus, 2000);
+			// Start processing
+			processBatch();
 
 			// Handle cancel button
 			$('#meowseo-cancel-import').on('click', function() {
@@ -417,7 +453,7 @@ class Import_Admin {
 					},
 					success: function(response) {
 						if (response.success) {
-							clearInterval(statusCheckInterval);
+							isCancelled = true;
 							location.reload();
 						}
 					}
@@ -779,8 +815,48 @@ class Import_Admin {
 		}
 
 		// Process next phase.
-		// This is a simplified implementation - actual batch processing would be more complex.
-		\wp_send_json_success( array( 'message' => \__( 'Batch processed.', 'meowseo' ) ) );
+		if ( ! $job['progress']['options']['is_done'] ) {
+			$res = $importer->import_options();
+			$job['progress']['options']['processed'] = $res['imported'];
+			$job['progress']['options']['total'] = max( 1, $res['imported'] ); // Show 100% complete
+			$job['progress']['options']['is_done'] = true;
+			$job['summary']['options_imported'] += $res['imported'];
+			$job['summary']['errors'] += $res['errors'];
+		} elseif ( ! $job['progress']['redirects']['is_done'] ) {
+			$res = $importer->import_redirects();
+			$job['progress']['redirects']['processed'] = $res['imported'];
+			$job['progress']['redirects']['total'] = max( 1, $res['imported'] );
+			$job['progress']['redirects']['is_done'] = true;
+			$job['summary']['redirects_imported'] += $res['imported'];
+			$job['summary']['errors'] += $res['errors'];
+		} elseif ( ! $job['progress']['terms']['is_done'] ) {
+			$offset = $job['progress']['terms']['offset'] ?? 0;
+			$res = $importer->import_termmeta( $offset );
+			$job['progress']['terms']['processed'] += $res['imported'];
+			$job['progress']['terms']['total'] = max( $job['progress']['terms']['processed'], $res['total'] );
+			$job['progress']['terms']['offset'] = $res['next_offset'];
+			$job['progress']['terms']['is_done'] = $res['is_done'];
+			$job['summary']['terms_imported'] += $res['imported'];
+			$job['summary']['errors'] += $res['errors'];
+		} elseif ( ! $job['progress']['posts']['is_done'] ) {
+			$page = $job['progress']['posts']['page'] ?? 1;
+			$res = $importer->import_postmeta( $page );
+			$job['progress']['posts']['processed'] += $res['imported'];
+			$job['progress']['posts']['total'] = max( $job['progress']['posts']['processed'], $res['total'] );
+			$job['progress']['posts']['page'] = $res['next_page'];
+			$job['progress']['posts']['is_done'] = $res['is_done'];
+			$job['summary']['posts_imported'] += $res['imported'];
+			$job['summary']['errors'] += $res['errors'];
+		} else {
+			// All phases done.
+			$job['status'] = 'completed';
+			$job['completed_at'] = time();
+		}
+
+		// Update transient.
+		\set_transient( 'meowseo_import_' . $import_id, $job, DAY_IN_SECONDS );
+
+		\wp_send_json_success( $job );
 	}
 
 	/**

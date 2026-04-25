@@ -119,48 +119,37 @@ abstract class Base_Importer {
 	 *
 	 * Processes all posts and imports mapped postmeta fields.
 	 *
-	 * @param array $post_ids Optional array of specific post IDs to import.
-	 *                        If empty, imports all posts.
+	 * @param int   $page     Page number to process (for batch processing).
 	 * @return array Import results with structure:
 	 *               [
 	 *                   'imported' => 150,
 	 *                   'total' => 500,
 	 *                   'errors' => 3,
+	 *                   'next_page' => 2,
+	 *                   'is_done' => false
 	 *               ]
 	 */
-	public function import_postmeta( array $post_ids = array() ): array {
+	public function import_postmeta( int $page = 1 ): array {
 		$mappings = $this->get_postmeta_mappings();
 
 		if ( empty( $mappings ) ) {
 			return array(
-				'imported' => 0,
+				'imported'  => 0,
 				'total'     => 0,
 				'errors'    => 0,
+				'next_page' => $page,
+				'is_done'   => true,
 			);
 		}
 
 		$imported = 0;
 		$errors   = 0;
 
-		// If specific post IDs provided, process them directly
-		if ( ! empty( $post_ids ) ) {
-			foreach ( $post_ids as $post_id ) {
-				$result = $this->import_post_meta_fields( $post_id, $mappings );
-				$imported += $result['imported'];
-				$errors += $result['errors'];
-			}
-
-			return array(
-				'imported' => $imported,
-				'total'    => count( $post_ids ),
-				'errors'   => $errors,
-			);
-		}
-
 		// Build query args for all posts
 		$args = array(
 			'post_type'   => 'any',
 			'post_status' => 'any',
+			'paged'       => $page,
 		);
 
 		// Process posts in batches.
@@ -174,9 +163,11 @@ abstract class Base_Importer {
 		$result = $this->processor->process_posts( $callback, $args );
 
 		return array(
-			'imported' => $imported,
-			'total'    => $result['total'] ?? 0,
-			'errors'   => $errors,
+			'imported'  => $imported, // How many were successfully processed in this batch
+			'total'     => $result['total'] ?? 0,
+			'errors'    => $errors,
+			'next_page' => $result['next_page'] ?? $page + 1,
+			'is_done'   => $result['is_done'] ?? true,
 		);
 	}
 
@@ -185,48 +176,37 @@ abstract class Base_Importer {
 	 *
 	 * Processes all terms and imports mapped termmeta fields.
 	 *
-	 * @param array $term_ids Optional array of specific term IDs to import.
-	 *                        If empty, imports all terms.
+	 * @param int   $offset   Offset to process (for batch processing).
 	 * @return array Import results with structure:
 	 *               [
 	 *                   'imported' => 50,
 	 *                   'total' => 100,
 	 *                   'errors' => 1,
+	 *                   'next_offset' => 50,
+	 *                   'is_done' => false
 	 *               ]
 	 */
-	public function import_termmeta( array $term_ids = array() ): array {
+	public function import_termmeta( int $offset = 0 ): array {
 		$mappings = $this->get_termmeta_mappings();
 
 		if ( empty( $mappings ) ) {
 			return array(
-				'imported' => 0,
-				'total'     => 0,
-				'errors'    => 0,
+				'imported'    => 0,
+				'total'       => 0,
+				'errors'      => 0,
+				'next_offset' => $offset,
+				'is_done'     => true,
 			);
 		}
 
 		$imported = 0;
 		$errors   = 0;
 
-		// If specific term IDs provided, process them directly
-		if ( ! empty( $term_ids ) ) {
-			foreach ( $term_ids as $term_id ) {
-				$result = $this->import_term_meta_fields( $term_id, $mappings );
-				$imported += $result['imported'];
-				$errors += $result['errors'];
-			}
-
-			return array(
-				'imported' => $imported,
-				'total'    => count( $term_ids ),
-				'errors'   => $errors,
-			);
-		}
-
 		// Build query args for all terms
 		$args = array(
 			'taxonomy'   => \get_taxonomies( array( 'public' => true ) ),
 			'hide_empty' => false,
+			'offset'     => $offset,
 		);
 
 		// Process terms in batches.
@@ -240,9 +220,11 @@ abstract class Base_Importer {
 		$result = $this->processor->process_terms( $callback, $args );
 
 		return array(
-			'imported' => $imported,
-			'total'    => $result['total'] ?? 0,
-			'errors'   => $errors,
+			'imported'    => $imported,
+			'total'       => $result['total'] ?? 0,
+			'errors'      => $errors,
+			'next_offset' => $result['next_offset'] ?? $offset,
+			'is_done'     => $result['is_done'] ?? true,
 		);
 	}
 
