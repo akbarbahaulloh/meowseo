@@ -115,6 +115,60 @@ abstract class Base_Importer {
 	abstract public function import_redirects(): array;
 
 	/**
+	 * Get total redirects to import.
+	 *
+	 * @return int Total redirects.
+	 */
+	abstract public function get_total_redirects(): int;
+
+	/**
+	 * Get total posts to import.
+	 *
+	 * @return int Total posts.
+	 */
+	public function get_total_posts(): int {
+		$args = array(
+			'post_type'      => 'any',
+			'post_status'    => 'any',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+		);
+		$query = new \WP_Query( $args );
+		return $query->found_posts;
+	}
+
+	/**
+	 * Get total terms to import.
+	 *
+	 * @return int Total terms.
+	 */
+	public function get_total_terms(): int {
+		$args = array(
+			'taxonomy'   => \get_taxonomies( array( 'public' => true ) ),
+			'hide_empty' => false,
+			'number'     => 0,
+			'offset'     => 0,
+			'count'      => true,
+		);
+		$total = \get_terms( $args );
+		return \is_wp_error( $total ) ? 0 : (int) $total;
+	}
+
+	/**
+	 * Get total options to import.
+	 *
+	 * @return int Total options.
+	 */
+	public function get_total_options(): int {
+		$mappings = $this->get_options_mappings();
+		$total    = 0;
+		foreach ( $mappings as $group ) {
+			$total += count( $group );
+		}
+		return $total;
+	}
+
+	/**
 	 * Import postmeta.
 	 *
 	 * Processes all posts and imports mapped postmeta fields.

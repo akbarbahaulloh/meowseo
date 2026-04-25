@@ -137,6 +137,22 @@ class Yoast_Importer extends Base_Importer {
 	}
 
 	/**
+	 * Get total redirects to import.
+	 *
+	 * @return int Total redirects.
+	 */
+	public function get_total_redirects(): int {
+		$args = array(
+			'post_type'      => 'wpseo_redirect',
+			'post_status'    => 'any',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+		);
+		$query = new \WP_Query( $args );
+		return $query->found_posts;
+	}
+
+	/**
 	 * Import redirects from Yoast SEO.
 	 *
 	 * Queries wpseo_redirect custom post type and transforms to MeowSEO format.

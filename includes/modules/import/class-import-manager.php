@@ -140,6 +140,12 @@ class Import_Manager {
 		// Generate import ID.
 		$import_id = $plugin_slug . '_' . gmdate( 'Ymd_His' );
 
+		// Calculate initial totals for accurate UI progress.
+		$total_options   = $importer->get_total_options();
+		$total_redirects = $importer->get_total_redirects();
+		$total_terms     = $importer->get_total_terms();
+		$total_posts     = $importer->get_total_posts();
+
 		// Create import job.
 		$job = array(
 			'import_id'    => $import_id,
@@ -148,10 +154,10 @@ class Import_Manager {
 			'started_at'   => time(),
 			'completed_at' => null,
 			'progress'     => array(
-				'options'   => array( 'processed' => 0, 'total' => 0, 'is_done' => false ),
-				'redirects' => array( 'processed' => 0, 'total' => 0, 'is_done' => false ),
-				'terms'     => array( 'processed' => 0, 'total' => 0, 'is_done' => false, 'offset' => 0 ),
-				'posts'     => array( 'processed' => 0, 'total' => 0, 'is_done' => false, 'page' => 1 ),
+				'options'   => array( 'processed' => 0, 'total' => $total_options, 'is_done' => false ),
+				'redirects' => array( 'processed' => 0, 'total' => $total_redirects, 'is_done' => false ),
+				'terms'     => array( 'processed' => 0, 'total' => $total_terms, 'is_done' => false, 'offset' => 0 ),
+				'posts'     => array( 'processed' => 0, 'total' => $total_posts, 'is_done' => false, 'page' => 1 ),
 			),
 			'summary'      => array(
 				'posts_imported'     => 0,

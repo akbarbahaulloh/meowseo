@@ -326,6 +326,28 @@ class RankMath_Importer extends Base_Importer {
 	}
 
 	/**
+	 * Get total redirects to import.
+	 *
+	 * @return int Total redirects.
+	 */
+	public function get_total_redirects(): int {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . 'rank_math_redirections';
+		$table_exists = $wpdb->get_var( $wpdb->prepare(
+			"SHOW TABLES LIKE %s",
+			$table_name
+		) );
+
+		if ( $table_name !== $table_exists ) {
+			return 0;
+		}
+
+		$total = $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" );
+		return (int) $total;
+	}
+
+	/**
 	 * Import redirects from RankMath.
 	 *
 	 * Queries rank_math_redirections database table and transforms to MeowSEO format.
