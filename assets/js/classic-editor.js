@@ -334,13 +334,14 @@
 
 			$.ajax( {
 				url: meowseoClassic.restUrl + '/analysis/' + postId,
-				method: 'GET',
-				data: {
+				method: 'POST',
+				data: JSON.stringify( {
 					content: content,
 					focus_keyword: $( '#meowseo_focus_keyword' ).val() || ''
-				},
+				} ),
 				beforeSend: function ( xhr ) {
 					xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
+					xhr.setRequestHeader( 'Content-Type', 'application/json' );
 				},
 				success: function ( data ) {
 					try {
@@ -571,6 +572,15 @@
 						if ( res.direct_answer ) {
 							$( '#meowseo_direct_answer' ).val( res.direct_answer ).trigger( 'input' );
 							addLog( '✓ Updated Featured Snippet', '#b5cea8' );
+							updatedCount++;
+						}
+
+						if ( data.data.image && data.data.image.attachment_id ) {
+							var attId = data.data.image.attachment_id;
+							var imgUrl = data.data.image.url;
+							$( '#_thumbnail_id' ).val( attId );
+							$( '#postimagediv .inside' ).html( '<p class="hide-if-no-js"><a href="#" id="set-post-thumbnail" aria-describedby="set-post-thumbnail-desc"><img src="' + imgUrl + '" alt="" style="max-width:100%;height:auto;" /></a></p><p class="hide-if-no-js howto" id="set-post-thumbnail-desc">Click the image to edit or update</p><p class="hide-if-no-js"><a href="#" id="remove-post-thumbnail">Remove featured image</a></p>' );
+							addLog( '✓ Generated and set Featured Image', '#b5cea8' );
 							updatedCount++;
 						}
 						
@@ -874,8 +884,9 @@
 			console.error( 'MeowSEO Content Type Toggle Initialization Error:', e );
 		}
 
-		// Analysis button click handler
-		$( '#meowseo-run-analysis' ).on( 'click', function () {
+		// Analysis button click handler (delegated to survive DOM updates)
+		$( document ).on( 'click', '#meowseo-run-analysis', function ( e ) {
+			e.preventDefault();
 			runAnalysis();
 		} );
 	} );

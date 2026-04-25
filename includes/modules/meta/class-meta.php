@@ -463,7 +463,7 @@ class Meta implements Module {
 			'meowseo/v1',
 			'/analysis/(?P<post_id>\d+)',
 			array(
-				'methods'             => 'GET',
+				'methods'             => 'GET, POST',
 				'callback'            => array( $this, 'rest_get_analysis' ),
 				'permission_callback' => array( $this, 'check_analysis_permission' ),
 				'args'                => array(

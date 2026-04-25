@@ -536,7 +536,8 @@ class AI_REST {
 				'bypass_cache'   => true,
 			);
 
-			$result = $this->generator->generate_all_meta( $post_id, false, $gen_options );
+			// Pass true to generate_image for bulk AI generation
+			$result = $this->generator->generate_all_meta( $post_id, true, $gen_options );
 
 			if ( is_wp_error( $result ) ) {
 				return $result;

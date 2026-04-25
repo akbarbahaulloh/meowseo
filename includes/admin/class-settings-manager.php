@@ -2593,15 +2593,15 @@ class Settings_Manager {
 							</tr>
 							<tr>
 								<th scope="row"><label><?php esc_html_e( 'Art Medium', 'meowseo' ); ?></label></th>
-								<td><input type="text" name="image_styles[<?php echo esc_attr( $index ); ?>][medium]" value="<?php echo esc_attr( $style['medium'] ?? '' ); ?>" class="regular-text" placeholder="e.g. Digital Art, Oil Painting, Vector Illustration"></td>
+								<td><textarea name="image_styles[<?php echo esc_attr( $index ); ?>][medium]" rows="2" class="large-text" placeholder="e.g. Digital Art, Oil Painting, Vector Illustration"><?php echo esc_textarea( $style['medium'] ?? '' ); ?></textarea></td>
 							</tr>
 							<tr>
 								<th scope="row"><label><?php esc_html_e( 'Color Palette', 'meowseo' ); ?></label></th>
-								<td><input type="text" name="image_styles[<?php echo esc_attr( $index ); ?>][colors]" value="<?php echo esc_attr( $style['colors'] ?? '' ); ?>" class="regular-text" placeholder="e.g. Vibrant, Pastel, Monochromatic, Moody Dark"></td>
+								<td><textarea name="image_styles[<?php echo esc_attr( $index ); ?>][colors]" rows="2" class="large-text" placeholder="e.g. Vibrant, Pastel, Monochromatic, Moody Dark"><?php echo esc_textarea( $style['colors'] ?? '' ); ?></textarea></td>
 							</tr>
 							<tr>
 								<th scope="row"><label><?php esc_html_e( 'Lighting & Mood', 'meowseo' ); ?></label></th>
-								<td><input type="text" name="image_styles[<?php echo esc_attr( $index ); ?>][lighting_mood]" value="<?php echo esc_attr( $style['lighting_mood'] ?? '' ); ?>" class="regular-text" placeholder="e.g. Soft studio lighting, Cinematic, Bright and Airy"></td>
+								<td><textarea name="image_styles[<?php echo esc_attr( $index ); ?>][lighting_mood]" rows="2" class="large-text" placeholder="e.g. Soft studio lighting, Cinematic, Bright and Airy"><?php echo esc_textarea( $style['lighting_mood'] ?? '' ); ?></textarea></td>
 							</tr>
 							<tr>
 								<th scope="row"><label><?php esc_html_e( 'Negative Prompt', 'meowseo' ); ?></label></th>
@@ -2770,15 +2770,15 @@ class Settings_Manager {
 										</tr>
 										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Art Medium', 'meowseo' ); ?></label></th>
-											<td><input type="text" name="image_styles[${index}][medium]" value="" class="regular-text"></td>
+											<td><textarea name="image_styles[${index}][medium]" rows="2" class="large-text"></textarea></td>
 										</tr>
 										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Color Palette', 'meowseo' ); ?></label></th>
-											<td><input type="text" name="image_styles[${index}][colors]" value="" class="regular-text"></td>
+											<td><textarea name="image_styles[${index}][colors]" rows="2" class="large-text"></textarea></td>
 										</tr>
 										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Lighting & Mood', 'meowseo' ); ?></label></th>
-											<td><input type="text" name="image_styles[${index}][lighting_mood]" value="" class="regular-text"></td>
+											<td><textarea name="image_styles[${index}][lighting_mood]" rows="2" class="large-text"></textarea></td>
 										</tr>
 										<tr>
 											<th scope="row"><label><?php esc_html_e( 'Negative Prompt', 'meowseo' ); ?></label></th>
