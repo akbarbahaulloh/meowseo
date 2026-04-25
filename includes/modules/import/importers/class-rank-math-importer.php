@@ -132,6 +132,7 @@ class RankMath_Importer extends Base_Importer {
 		return $this->options_mappings;
 	}
 
+	/**
 	 * Import postmeta with RankMath-specific handling.
 	 *
 	 * Extends parent method to handle special RankMath fields:
