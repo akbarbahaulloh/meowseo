@@ -10,8 +10,6 @@
 
 namespace MeowSEO\Modules\Import\Importers;
 
-use MeowSEO\Modules\Import\Batch_Processor;
-
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -26,12 +24,6 @@ abstract class Base_Importer {
 
 	/**
 	 * Batch processor instance.
-	 *
-	 * @var Batch_Processor
-	 */
-	protected Batch_Processor $processor;
-
-	/**
 	 * Import ID for tracking.
 	 *
 	 * @var string
@@ -40,11 +32,8 @@ abstract class Base_Importer {
 
 	/**
 	 * Constructor.
-	 *
-	 * @param Batch_Processor $processor Batch processor instance.
 	 */
-	public function __construct( Batch_Processor $processor ) {
-		$this->processor = $processor;
+	public function __construct() {
 	}
 
 	/**
@@ -172,114 +161,80 @@ abstract class Base_Importer {
 	/**
 	 * Import postmeta.
 	 *
-	 * Processes all posts and imports mapped postmeta fields.
+	 * Processes specific posts and imports mapped postmeta fields.
 	 *
-	 * @param int   $page     Page number to process (for batch processing).
+	 * @param array $post_ids Array of post IDs to import.
 	 * @return array Import results with structure:
 	 *               [
 	 *                   'imported' => 150,
 	 *                   'total' => 500,
 	 *                   'errors' => 3,
-	 *                   'next_page' => 2,
-	 *                   'is_done' => false
 	 *               ]
 	 */
-	public function import_postmeta( int $page = 1 ): array {
+	public function import_postmeta( array $post_ids ): array {
 		$mappings = $this->get_postmeta_mappings();
 
-		if ( empty( $mappings ) ) {
+		if ( empty( $mappings ) || empty( $post_ids ) ) {
 			return array(
-				'imported'  => 0,
-				'total'     => 0,
-				'errors'    => 0,
-				'next_page' => $page,
-				'is_done'   => true,
+				'imported' => 0,
+				'total'    => count( $post_ids ),
+				'errors'   => 0,
 			);
 		}
 
 		$imported = 0;
 		$errors   = 0;
 
-		// Build query args for all posts
-		$args = array(
-			'post_type'   => 'any',
-			'post_status' => 'any',
-			'paged'       => $page,
-		);
-
-		// Process posts in batches.
-		$callback = function ( $post_id ) use ( $mappings, &$imported, &$errors ) {
+		foreach ( $post_ids as $post_id ) {
 			$result = $this->import_post_meta_fields( $post_id, $mappings );
 			$imported += $result['imported'];
 			$errors += $result['errors'];
-			return true;
-		};
-
-		$result = $this->processor->process_posts( $callback, $args );
+		}
 
 		return array(
-			'imported'  => $imported, // How many were successfully processed in this batch
-			'total'     => $result['total'] ?? 0,
-			'errors'    => $errors,
-			'next_page' => $result['next_page'] ?? $page + 1,
-			'is_done'   => $result['is_done'] ?? true,
+			'imported' => $imported,
+			'total'    => count( $post_ids ),
+			'errors'   => $errors,
 		);
 	}
 
 	/**
 	 * Import termmeta.
 	 *
-	 * Processes all terms and imports mapped termmeta fields.
+	 * Processes specific terms and imports mapped termmeta fields.
 	 *
-	 * @param int   $offset   Offset to process (for batch processing).
+	 * @param array $term_ids Array of term IDs to import.
 	 * @return array Import results with structure:
 	 *               [
 	 *                   'imported' => 50,
 	 *                   'total' => 100,
 	 *                   'errors' => 1,
-	 *                   'next_offset' => 50,
-	 *                   'is_done' => false
 	 *               ]
 	 */
-	public function import_termmeta( int $offset = 0 ): array {
+	public function import_termmeta( array $term_ids ): array {
 		$mappings = $this->get_termmeta_mappings();
 
-		if ( empty( $mappings ) ) {
+		if ( empty( $mappings ) || empty( $term_ids ) ) {
 			return array(
-				'imported'    => 0,
-				'total'       => 0,
-				'errors'      => 0,
-				'next_offset' => $offset,
-				'is_done'     => true,
+				'imported' => 0,
+				'total'    => count( $term_ids ),
+				'errors'   => 0,
 			);
 		}
 
 		$imported = 0;
 		$errors   = 0;
 
-		// Build query args for all terms
-		$args = array(
-			'taxonomy'   => \get_taxonomies( array( 'public' => true ) ),
-			'hide_empty' => false,
-			'offset'     => $offset,
-		);
-
-		// Process terms in batches.
-		$callback = function ( $term_id ) use ( $mappings, &$imported, &$errors ) {
+		foreach ( $term_ids as $term_id ) {
 			$result = $this->import_term_meta_fields( $term_id, $mappings );
 			$imported += $result['imported'];
 			$errors += $result['errors'];
-			return true;
-		};
-
-		$result = $this->processor->process_terms( $callback, $args );
+		}
 
 		return array(
-			'imported'    => $imported,
-			'total'       => $result['total'] ?? 0,
-			'errors'      => $errors,
-			'next_offset' => $result['next_offset'] ?? $offset,
-			'is_done'     => $result['is_done'] ?? true,
+			'imported' => $imported,
+			'total'    => count( $term_ids ),
+			'errors'   => $errors,
 		);
 	}
 

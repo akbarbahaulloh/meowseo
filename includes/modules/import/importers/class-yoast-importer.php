@@ -77,11 +77,9 @@ class Yoast_Importer extends Base_Importer {
 
 	/**
 	 * Constructor.
-	 *
-	 * @param Batch_Processor $processor Batch processor instance.
 	 */
-	public function __construct( Batch_Processor $processor ) {
-		parent::__construct( $processor );
+	public function __construct() {
+		parent::__construct();
 	}
 
 	/**

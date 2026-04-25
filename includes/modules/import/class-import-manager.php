@@ -10,7 +10,7 @@
 
 namespace MeowSEO\Modules\Import;
 
-use MeowSEO\Options;
+use MeowSEO\Modules\Settings\Options;
 use MeowSEO\Modules\Import\Importers\Base_Importer;
 
 // Exit if accessed directly.
@@ -33,13 +33,6 @@ class Import_Manager {
 	private Options $options;
 
 	/**
-	 * Batch processor instance.
-	 *
-	 * @var Batch_Processor
-	 */
-	private Batch_Processor $processor;
-
-	/**
 	 * Registered importers.
 	 *
 	 * @var array<string, Base_Importer>
@@ -49,12 +42,10 @@ class Import_Manager {
 	/**
 	 * Constructor.
 	 *
-	 * @param Options         $options   Options instance.
-	 * @param Batch_Processor $processor Batch processor instance.
+	 * @param Options $options Options instance.
 	 */
-	public function __construct( Options $options, Batch_Processor $processor ) {
-		$this->options   = $options;
-		$this->processor = $processor;
+	public function __construct( Options $options ) {
+		$this->options = $options;
 	}
 
 	/**
@@ -97,113 +88,6 @@ class Import_Manager {
 	}
 
 	/**
-	 * Start an import process.
-	 *
-	 * Validates plugin detection, creates import job, and returns import_id.
-	 *
-	 * @param string $plugin_slug Plugin slug to import from (e.g., 'yoast', 'rankmath').
-	 * @return array Import job data with structure:
-	 *               [
-	 *                   'import_id' => 'yoast_20240115_123456',
-	 *                   'status' => 'pending',
-	 *                   'plugin' => 'yoast',
-	 *               ]
-	 *               Or WP_Error on failure.
-	 */
-	public function start_import( string $plugin_slug ): array {
-		// Validate plugin slug.
-		if ( ! isset( $this->importers[ $plugin_slug ] ) ) {
-			return array(
-				'error' => true,
-				'message' => sprintf(
-					/* translators: %s: plugin slug */
-					__( 'Unknown plugin: %s', 'meowseo' ),
-					$plugin_slug
-				),
-			);
-		}
-
-		$importer = $this->importers[ $plugin_slug ];
-
-		// Verify plugin is installed.
-		if ( ! $importer->is_plugin_installed() ) {
-			return array(
-				'error' => true,
-				'message' => sprintf(
-					/* translators: %s: plugin name */
-					__( '%s is not installed or detected.', 'meowseo' ),
-					$importer->get_plugin_name()
-				),
-			);
-		}
-
-		// Generate import ID.
-		$import_id = $plugin_slug . '_' . gmdate( 'Ymd_His' );
-
-		// Calculate initial totals for accurate UI progress.
-		$total_options   = $importer->get_total_options();
-		$total_redirects = $importer->get_total_redirects();
-		$total_terms     = $importer->get_total_terms();
-		$total_posts     = $importer->get_total_posts();
-
-		// Create import job.
-		$job = array(
-			'import_id'    => $import_id,
-			'plugin'       => $plugin_slug,
-			'status'       => 'pending',
-			'started_at'   => time(),
-			'completed_at' => null,
-			'progress'     => array(
-				'options'   => array( 'processed' => 0, 'total' => $total_options, 'is_done' => false ),
-				'redirects' => array( 'processed' => 0, 'total' => $total_redirects, 'is_done' => false ),
-				'terms'     => array( 'processed' => 0, 'total' => $total_terms, 'is_done' => false, 'offset' => 0 ),
-				'posts'     => array( 'processed' => 0, 'total' => $total_posts, 'is_done' => false, 'page' => 1 ),
-			),
-			'summary'      => array(
-				'posts_imported'     => 0,
-				'terms_imported'     => 0,
-				'options_imported'   => 0,
-				'redirects_imported' => 0,
-				'errors'             => 0,
-			),
-			'errors'       => array(),
-		);
-
-		// Store import job in transient (expires in 24 hours).
-		set_transient( 'meowseo_import_' . $import_id, $job, DAY_IN_SECONDS );
-
-		return $job;
-	}
-
-	/**
-	 * Get import status.
-	 *
-	 * Returns progress (processed/total counts, current phase).
-	 *
-	 * @param string $import_id Import ID.
-	 * @return array Import job data or error array.
-	 */
-	public function get_import_status( string $import_id ): array {
-		$job = get_transient( 'meowseo_import_' . $import_id );
-
-		if ( false === $job ) {
-			return array(
-				'error' => true,
-				'message' => __( 'Import job not found or expired.', 'meowseo' ),
-			);
-		}
-
-		return $job;
-	}
-
-	/**
-	 * Cancel an import process.
-	 *
-	 * Marks the import as cancelled and cleans up transients.
-	 *
-	 * @param string $import_id Import ID.
-	 * @return bool True on success, false on failure.
-	 */
 	public function cancel_import( string $import_id ): bool {
 		$job = get_transient( 'meowseo_import_' . $import_id );
 

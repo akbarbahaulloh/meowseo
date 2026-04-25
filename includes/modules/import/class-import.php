@@ -62,11 +62,8 @@ class Import implements Module {
 	public function __construct( Options $options ) {
 		$this->options = $options;
 
-		// Initialize batch processor.
-		$this->batch_processor = new Batch_Processor();
-
 		// Initialize import manager.
-		$this->import_manager = new Import_Manager( $options, $this->batch_processor );
+		$this->import_manager = new Import_Manager( $options );
 
 		// Register importers.
 		$this->register_importers();
@@ -107,11 +104,11 @@ class Import implements Module {
 	 */
 	private function register_importers(): void {
 		// Register Yoast importer.
-		$yoast_importer = new Yoast_Importer( $this->batch_processor );
+		$yoast_importer = new Yoast_Importer();
 		$this->import_manager->register_importer( 'yoast', $yoast_importer );
 
 		// Register RankMath importer.
-		$rankmath_importer = new RankMath_Importer( $this->batch_processor );
+		$rankmath_importer = new RankMath_Importer();
 		$this->import_manager->register_importer( 'rankmath', $rankmath_importer );
 	}
 

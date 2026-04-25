@@ -75,11 +75,9 @@ class RankMath_Importer extends Base_Importer {
 
 	/**
 	 * Constructor.
-	 *
-	 * @param Batch_Processor $processor Batch processor instance.
 	 */
-	public function __construct( Batch_Processor $processor ) {
-		parent::__construct( $processor );
+	public function __construct() {
+		parent::__construct();
 	}
 
 	/**
@@ -134,58 +132,42 @@ class RankMath_Importer extends Base_Importer {
 		return $this->options_mappings;
 	}
 
-	/**
 	 * Import postmeta with RankMath-specific handling.
 	 *
 	 * Extends parent method to handle special RankMath fields:
 	 * - rank_math_robots: Array containing multiple directives
 	 * - rank_math_focus_keyword: Comma-separated string
 	 *
-	 * @param int   $page     Page number to process (for batch processing).
+	 * @param array $post_ids Array of post IDs to import.
 	 * @return array Import results.
 	 */
-	public function import_postmeta( int $page = 1 ): array {
+	public function import_postmeta( array $post_ids ): array {
 		$mappings = $this->get_postmeta_mappings();
 
-		if ( empty( $mappings ) ) {
+		if ( empty( $mappings ) || empty( $post_ids ) ) {
 			return array(
-				'imported'  => 0,
-				'total'     => 0,
-				'errors'    => 0,
-				'next_page' => $page,
-				'is_done'   => true,
+				'imported' => 0,
+				'total'    => count( $post_ids ),
+				'errors'   => 0,
 			);
 		}
 
 		$imported = 0;
 		$errors   = 0;
 
-		// Build query args.
-		$args = array(
-			'post_type'   => 'any',
-			'post_status' => 'any',
-			'paged'       => $page,
-		);
-
-		// Process posts in batches.
-		$callback = function ( $post_id ) use ( $mappings, &$imported, &$errors ) {
+		foreach ( $post_ids as $post_id ) {
 			$result = $this->import_rankmath_post_meta_fields( $post_id, $mappings );
 			if ( $result ) {
 				$imported++;
 			} else {
 				$errors++;
 			}
-			return true;
-		};
-
-		$result = $this->processor->process_posts( $callback, $args );
+		}
 
 		return array(
-			'imported'  => $imported,
-			'total'     => $result['total'] ?? 0,
-			'errors'    => $errors,
-			'next_page' => $result['next_page'] ?? $page + 1,
-			'is_done'   => $result['is_done'] ?? true,
+			'imported' => $imported,
+			'total'    => count( $post_ids ),
+			'errors'   => $errors,
 		);
 	}
 
