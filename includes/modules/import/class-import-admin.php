@@ -56,6 +56,8 @@ class Import_Admin {
 					$table->prepare_items();
 					?>
 					<form method="post">
+						<input type="hidden" name="page" value="meowseo-import" />
+						<input type="hidden" name="tab" value="posts" />
 						<?php wp_nonce_field( 'meowseo_bulk_import_posts' ); ?>
 						<?php $table->display(); ?>
 					</form>
@@ -65,6 +67,8 @@ class Import_Admin {
 					$table->prepare_items();
 					?>
 					<form method="post">
+						<input type="hidden" name="page" value="meowseo-import" />
+						<input type="hidden" name="tab" value="media" />
 						<?php wp_nonce_field( 'meowseo_bulk_import_posts' ); ?>
 						<?php $table->display(); ?>
 					</form>
@@ -74,6 +78,8 @@ class Import_Admin {
 					$table->prepare_items();
 					?>
 					<form method="post">
+						<input type="hidden" name="page" value="meowseo-import" />
+						<input type="hidden" name="tab" value="terms" />
 						<?php wp_nonce_field( 'meowseo_bulk_import_terms' ); ?>
 						<?php $table->display(); ?>
 					</form>
