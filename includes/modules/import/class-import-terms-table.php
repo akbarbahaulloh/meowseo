@@ -43,6 +43,59 @@ class Import_Terms_List_Table extends \WP_List_Table {
 		);
 	}
 
+	protected function get_views() {
+		$current = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
+		$taxonomies = \get_taxonomies( array( 'public' => true ) );
+		
+		$all_count = $this->count_terms_by_seo_status( 'all', $taxonomies );
+		$pending_count = $this->count_terms_by_seo_status( 'pending', $taxonomies );
+		$imported_count = $this->count_terms_by_seo_status( 'imported', $taxonomies );
+
+		$views = array(
+			'all'      => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'all' ), 'all' === $current ? 'current' : '', \__( 'All', 'meowseo' ), $all_count ),
+			'pending'  => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'pending' ), 'pending' === $current ? 'current' : '', \__( 'Pending', 'meowseo' ), $pending_count ),
+			'imported' => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'imported' ), 'imported' === $current ? 'current' : '', \__( 'Imported', 'meowseo' ), $imported_count ),
+		);
+
+		return $views;
+	}
+
+	private function count_terms_by_seo_status( $status, $taxonomies ) {
+		global $wpdb;
+		$in_tax = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
+		
+		if ( 'all' === $status ) {
+			return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ($in_tax)" );
+		}
+		
+		$compare = 'pending' === $status ? 'NOT EXISTS' : 'EXISTS';
+		
+		// For terms, we need a meta query or a subquery.
+		$args = array(
+			'taxonomy'   => $taxonomies,
+			'hide_empty' => false,
+			'count'      => true,
+		);
+		
+		if ( 'pending' === $status ) {
+			$args['meta_query'] = array(
+				array(
+					'key'     => '_meowseo_title',
+					'compare' => 'NOT EXISTS',
+				),
+			);
+		} else {
+			$args['meta_query'] = array(
+				array(
+					'key'     => '_meowseo_title',
+					'compare' => 'EXISTS',
+				),
+			);
+		}
+		
+		return (int) \get_terms( $args );
+	}
+
 	public function column_default( $item, $column_name ) {
 		switch ( $column_name ) {
 			case 'taxonomy':
@@ -98,11 +151,37 @@ class Import_Terms_List_Table extends \WP_List_Table {
 			'order'      => ! empty( $_REQUEST['order'] ) ? \sanitize_text_field( $_REQUEST['order'] ) : 'ASC',
 		);
 
+		$status = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
+		if ( 'pending' === $status ) {
+			$args['meta_query'] = array(
+				array(
+					'key'     => '_meowseo_title',
+					'compare' => 'NOT EXISTS',
+				),
+			);
+		} elseif ( 'imported' === $status ) {
+			$args['meta_query'] = array(
+				array(
+					'key'     => '_meowseo_title',
+					'compare' => 'EXISTS',
+				),
+			);
+		}
+
 		$this->items = \get_terms( $args );
 
-		global $wpdb;
-		$in_tax      = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
-		$total_items = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ($in_tax)" );
+		// Get total count (using lightweight count array)
+		if ( 'all' === $status ) {
+			global $wpdb;
+			$in_tax      = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
+			$total_items = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ($in_tax)" );
+		} else {
+			$count_args = $args;
+			$count_args['count'] = true;
+			unset( $count_args['number'] );
+			unset( $count_args['offset'] );
+			$total_items = (int) \get_terms( $count_args );
+		}
 
 		$this->set_pagination_args( array(
 			'total_items' => $total_items,

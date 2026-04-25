@@ -48,6 +48,52 @@ class Import_Posts_List_Table extends \WP_List_Table {
 		);
 	}
 
+	protected function get_views() {
+		$current = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
+		$post_types = $this->post_types ?: array_diff( \get_post_types( array( 'public' => true ) ), array( 'attachment' ) );
+		
+		// All count
+		$all_count = $this->count_posts_by_seo_status( 'all', $post_types );
+		$pending_count = $this->count_posts_by_seo_status( 'pending', $post_types );
+		$imported_count = $this->count_posts_by_seo_status( 'imported', $post_types );
+
+		$views = array(
+			'all'      => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'all' ), 'all' === $current ? 'current' : '', \__( 'All', 'meowseo' ), $all_count ),
+			'pending'  => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'pending' ), 'pending' === $current ? 'current' : '', \__( 'Pending', 'meowseo' ), $pending_count ),
+			'imported' => sprintf( '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>', \add_query_arg( 'status', 'imported' ), 'imported' === $current ? 'current' : '', \__( 'Imported', 'meowseo' ), $imported_count ),
+		);
+
+		return $views;
+	}
+
+	private function count_posts_by_seo_status( $status, $post_types ) {
+		$args = array(
+			'post_type'      => $post_types,
+			'post_status'    => 'any',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+		);
+
+		if ( 'pending' === $status ) {
+			$args['meta_query'] = array(
+				array(
+					'key'     => '_meowseo_title',
+					'compare' => 'NOT EXISTS',
+				),
+			);
+		} elseif ( 'imported' === $status ) {
+			$args['meta_query'] = array(
+				array(
+					'key'     => '_meowseo_title',
+					'compare' => 'EXISTS',
+				),
+			);
+		}
+
+		$query = new \WP_Query( $args );
+		return $query->found_posts;
+	}
+
 	public function column_default( $item, $column_name ) {
 		switch ( $column_name ) {
 			case 'type':
@@ -114,6 +160,23 @@ class Import_Posts_List_Table extends \WP_List_Table {
 			'orderby'        => ! empty( $_REQUEST['orderby'] ) ? \sanitize_text_field( $_REQUEST['orderby'] ) : 'ID',
 			'order'          => ! empty( $_REQUEST['order'] ) ? \sanitize_text_field( $_REQUEST['order'] ) : 'DESC',
 		);
+
+		$status = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
+		if ( 'pending' === $status ) {
+			$args['meta_query'] = array(
+				array(
+					'key'     => '_meowseo_title',
+					'compare' => 'NOT EXISTS',
+				),
+			);
+		} elseif ( 'imported' === $status ) {
+			$args['meta_query'] = array(
+				array(
+					'key'     => '_meowseo_title',
+					'compare' => 'EXISTS',
+				),
+			);
+		}
 
 		$query = new \WP_Query( $args );
 
