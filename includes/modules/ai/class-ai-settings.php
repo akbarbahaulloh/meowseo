@@ -597,17 +597,25 @@ class AI_Settings {
 					// Define Gemini models dropdown HTML
 					var geminiModelsHTML = `
 						<select name="ai_profiles[${index}][model]" class="regular-text meowseo-model-select" data-index="${index}">
-							<option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Latest)</option>
-							<option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
-							<option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite Preview</option>
-							<option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-							<option value="gemini-pro-latest">Gemini Pro Latest (Alias)</option>
-							<option value="gemini-flash-latest">Gemini Flash Latest (Alias)</option>
-							<option value="gemini-flash-lite-latest">Gemini Flash-Lite Latest (Alias)</option>
-							<option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-							<option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
-							<option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-							<option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
+							<optgroup label="Gemini 2.0 (Latest)">
+								<option value="gemini-2.0-flash">Gemini 2.0 Flash (Stable)</option>
+								<option value="gemini-2.0-flash-lite-preview-02-05">Gemini 2.0 Flash-Lite (Latest)</option>
+								<option value="gemini-2.0-pro-exp-02-05">Gemini 2.0 Pro (Experimental)</option>
+							</optgroup>
+							<optgroup label="Gemini 1.5">
+								<option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+								<option value="gemini-1.5-flash-8b">Gemini 1.5 Flash-8B</option>
+								<option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+							</optgroup>
+							<optgroup label="Gemma 2">
+								<option value="gemma-2-2b-it">Gemma 2 2B</option>
+								<option value="gemma-2-9b-it">Gemma 2 9B</option>
+								<option value="gemma-2-27b-it">Gemma 2 27B</option>
+							</optgroup>
+							<optgroup label="Legacy & Aliases">
+								<option value="gemini-pro-latest">Gemini Pro Latest (Alias)</option>
+								<option value="gemini-flash-latest">Gemini Flash Latest (Alias)</option>
+							</optgroup>
 						</select>
 					`;
 					
@@ -736,24 +744,36 @@ class AI_Settings {
 					<label><?php esc_html_e( 'Model Version', 'meowseo' ); ?></label>
 					<?php if ( $provider === 'gemini' ) : ?>
 						<?php
-						// Gemini models - filtered for text generation
-						$gemini_models = array(
-							'gemini-3-flash-preview' => 'Gemini 3 Flash Preview (Latest)',
-							'gemini-3.1-pro-preview' => 'Gemini 3.1 Pro Preview',
-							'gemini-3.1-flash-lite-preview' => 'Gemini 3.1 Flash Lite Preview',
-							'gemini-2.5-pro' => 'Gemini 2.5 Pro',
-							'gemini-pro-latest' => 'Gemini Pro Latest (Alias)',
-							'gemini-flash-latest' => 'Gemini Flash Latest (Alias)',
-							'gemini-flash-lite-latest' => 'Gemini Flash-Lite Latest (Alias)',
-							'gemini-2.5-flash' => 'Gemini 2.5 Flash',
-							'gemini-2.5-flash-lite' => 'Gemini 2.5 Flash-Lite',
-							'gemini-2.0-flash' => 'Gemini 2.0 Flash',
-							'gemini-2.0-flash-lite' => 'Gemini 2.0 Flash-Lite',
+						// Gemini models - organized by version
+						$gemini_model_groups = array(
+							__( 'Gemini 2.0 (Latest)', 'meowseo' ) => array(
+								'gemini-2.0-flash'                 => 'Gemini 2.0 Flash (Stable)',
+								'gemini-2.0-flash-lite-preview-02-05' => 'Gemini 2.0 Flash-Lite (Latest)',
+								'gemini-2.0-pro-exp-02-05'         => 'Gemini 2.0 Pro (Experimental)',
+							),
+							__( 'Gemini 1.5', 'meowseo' ) => array(
+								'gemini-1.5-flash'    => 'Gemini 1.5 Flash',
+								'gemini-1.5-flash-8b' => 'Gemini 1.5 Flash-8B',
+								'gemini-1.5-pro'      => 'Gemini 1.5 Pro',
+							),
+							__( 'Gemma 2', 'meowseo' ) => array(
+								'gemma-2-2b-it'  => 'Gemma 2 2B',
+								'gemma-2-9b-it'  => 'Gemma 2 9B',
+								'gemma-2-27b-it' => 'Gemma 2 27B',
+							),
+							__( 'Legacy & Aliases', 'meowseo' ) => array(
+								'gemini-pro-latest'   => 'Gemini Pro Latest (Alias)',
+								'gemini-flash-latest' => 'Gemini Flash Latest (Alias)',
+							),
 						);
 						?>
 						<select name="ai_profiles[<?php echo esc_attr( $index ); ?>][model]" class="regular-text meowseo-model-select" data-index="<?php echo esc_attr( $index ); ?>">
-							<?php foreach ( $gemini_models as $model_value => $model_label ) : ?>
-								<option value="<?php echo esc_attr( $model_value ); ?>" <?php selected( $current_model, $model_value ); ?>><?php echo esc_html( $model_label ); ?></option>
+							<?php foreach ( $gemini_model_groups as $group_label => $models ) : ?>
+								<optgroup label="<?php echo esc_attr( $group_label ); ?>">
+									<?php foreach ( $models as $model_value => $model_label ) : ?>
+										<option value="<?php echo esc_attr( $model_value ); ?>" <?php selected( $current_model, $model_value ); ?>><?php echo esc_html( $model_label ); ?></option>
+									<?php endforeach; ?>
+								</optgroup>
 							<?php endforeach; ?>
 						</select>
 					<?php else : ?>

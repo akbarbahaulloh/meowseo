@@ -70,10 +70,9 @@ class Import_Terms_List_Table extends \WP_List_Table {
 
 		$in_tax = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
 
-		// Total count via SQL — very fast.
-		$all = (int) $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ($in_tax)"
-		);
+		// External keys to check.
+		$external_keys = array( '_wpseo_title', '_wpseo_desc', 'rank_math_title', 'rank_math_description' );
+		$in_external   = "'" . implode( "','", array_map( 'esc_sql', $external_keys ) ) . "'";
 
 		// Imported count: terms that have _meowseo_title OR _meowseo_description termmeta.
 		$imported = (int) $wpdb->get_var(
@@ -84,9 +83,20 @@ class Import_Terms_List_Table extends \WP_List_Table {
 			AND (tm.meta_key = '_meowseo_title' OR tm.meta_key = '_meowseo_description')"
 		);
 
+		// Pending count: terms that have Yoast/RankMath meta BUT NO MeowSEO meta.
+		$pending = (int) $wpdb->get_var(
+			"SELECT COUNT(DISTINCT tt.term_id)
+			FROM {$wpdb->term_taxonomy} tt
+			INNER JOIN {$wpdb->termmeta} tm_ext ON tt.term_id = tm_ext.term_id
+			LEFT JOIN {$wpdb->termmeta} tm_meow ON tt.term_id = tm_meow.term_id AND (tm_meow.meta_key = '_meowseo_title' OR tm_meow.meta_key = '_meowseo_description')
+			WHERE tt.taxonomy IN ($in_tax)
+			AND tm_ext.meta_key IN ($in_external)
+			AND tm_meow.meta_id IS NULL"
+		);
+
 		return array(
-			'all'      => $all,
-			'pending'  => $all - $imported,
+			'all'      => $imported + $pending,
+			'pending'  => $pending,
 			'imported' => $imported,
 		);
 	}
@@ -156,6 +166,13 @@ class Import_Terms_List_Table extends \WP_List_Table {
 			$args['meta_query'] = array(
 				'relation' => 'AND',
 				array(
+					'relation' => 'OR',
+					array( 'key' => '_wpseo_title', 'compare' => 'EXISTS' ),
+					array( 'key' => '_wpseo_desc', 'compare' => 'EXISTS' ),
+					array( 'key' => 'rank_math_title', 'compare' => 'EXISTS' ),
+					array( 'key' => 'rank_math_description', 'compare' => 'EXISTS' ),
+				),
+				array(
 					'key'     => '_meowseo_title',
 					'compare' => 'NOT EXISTS',
 				),
@@ -167,14 +184,19 @@ class Import_Terms_List_Table extends \WP_List_Table {
 		} elseif ( 'imported' === $status ) {
 			$args['meta_query'] = array(
 				'relation' => 'OR',
-				array(
-					'key'     => '_meowseo_title',
-					'compare' => 'EXISTS',
-				),
-				array(
-					'key'     => '_meowseo_description',
-					'compare' => 'EXISTS',
-				),
+				array( 'key' => '_meowseo_title', 'compare' => 'EXISTS' ),
+				array( 'key' => '_meowseo_description', 'compare' => 'EXISTS' ),
+			);
+		} else {
+			// 'all' tab: Show either already imported OR has external data to import.
+			$args['meta_query'] = array(
+				'relation' => 'OR',
+				array( 'key' => '_meowseo_title', 'compare' => 'EXISTS' ),
+				array( 'key' => '_meowseo_description', 'compare' => 'EXISTS' ),
+				array( 'key' => '_wpseo_title', 'compare' => 'EXISTS' ),
+				array( 'key' => '_wpseo_desc', 'compare' => 'EXISTS' ),
+				array( 'key' => 'rank_math_title', 'compare' => 'EXISTS' ),
+				array( 'key' => 'rank_math_description', 'compare' => 'EXISTS' ),
 			);
 		}
 
@@ -184,7 +206,21 @@ class Import_Terms_List_Table extends \WP_List_Table {
 		if ( 'all' === $status ) {
 			global $wpdb;
 			$in_tax      = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
-			$total_items = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ($in_tax)" );
+			$external_keys = array( '_wpseo_title', '_wpseo_desc', 'rank_math_title', 'rank_math_description' );
+			$in_external   = "'" . implode( "','", array_map( 'esc_sql', $external_keys ) ) . "'";
+			
+			// Count terms that HAVE MeowSEO meta OR HAVE external meta.
+			$total_items = (int) $wpdb->get_var( "
+				SELECT COUNT(DISTINCT tt.term_id) 
+				FROM {$wpdb->term_taxonomy} tt
+				INNER JOIN {$wpdb->termmeta} tm ON tt.term_id = tm.term_id
+				WHERE tt.taxonomy IN ($in_tax)
+				AND (
+					tm.meta_key = '_meowseo_title' OR 
+					tm.meta_key = '_meowseo_description' OR 
+					tm.meta_key IN ($in_external)
+				)
+			" );
 		} else {
 			$count_args = $args;
 			$count_args['count'] = true;
