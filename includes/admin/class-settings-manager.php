@@ -112,6 +112,11 @@ class Settings_Manager {
 				'icon'   => 'dashicons-networking',
 				'method' => 'render_sitemap_tab',
 			),
+			'meowindex'       => array(
+				'title'  => __( 'MeowIndex', 'meowseo' ),
+				'icon'   => 'dashicons-cloud-upload',
+				'method' => 'render_meowindex_tab',
+			),
 			'advanced'        => array(
 				'title'  => __( 'Advanced', 'meowseo' ),
 				'icon'   => 'dashicons-admin-tools',
@@ -991,6 +996,80 @@ class Settings_Manager {
 	 * @since 1.0.0
 	 * @return void
 	 */
+	public function render_meowindex_tab(): void {
+		?>
+		<h2><?php esc_html_e( 'MeowIndex Settings', 'meowseo' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Configure instant URL indexing for Google, Bing, Yandex, and other search engines.', 'meowseo' ); ?></p>
+
+		<table class="form-table" role="presentation">
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'MeowIndex', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Enable MeowIndex', 'meowseo' ); ?></th>
+				<td>
+					<?php
+					$meowindex_enabled = $this->options->get( 'meowindex_enabled', false );
+					?>
+					<label>
+						<input type="checkbox" name="meowindex_enabled" value="1" <?php checked( $meowindex_enabled ); ?>>
+						<?php esc_html_e( 'Enable instant URL indexing for Bing, Yandex, and Seznam', 'meowseo' ); ?>
+					</label>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, published and updated posts will be automatically submitted via MeowIndex.', 'meowseo' ); ?>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="meowindex_api_key"><?php esc_html_e( 'MeowIndex API Key', 'meowseo' ); ?></label></th>
+				<td>
+					<?php
+					$meowindex_api_key = $this->options->get( 'meowindex_api_key', '' );
+					?>
+					<input type="text" id="meowindex_api_key" name="meowindex_api_key" value="<?php echo esc_attr( $meowindex_api_key ); ?>" class="regular-text" readonly>
+					<p class="description">
+						<?php esc_html_e( 'Your unique MeowIndex API key. This is used to verify site ownership for indexing services.', 'meowseo' ); ?>
+						<br><strong><?php esc_html_e( 'Note:', 'meowseo' ); ?></strong> <?php esc_html_e( 'MeowSEO automatically serves the verification file for you. You can test it by visiting:', 'meowseo' ); ?>
+						<code><?php echo esc_url( home_url( '/' . $meowindex_api_key . '.txt' ) ); ?></code>
+					</p>
+				</td>
+			</tr>
+
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Google Indexing API', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Enable Google Indexing', 'meowseo' ); ?></th>
+				<td>
+					<?php
+					$meowindex_google_enabled = $this->options->get( 'meowindex_google_enabled', false );
+					?>
+					<label>
+						<input type="checkbox" name="meowindex_google_enabled" value="1" <?php checked( $meowindex_google_enabled ); ?>>
+						<?php esc_html_e( 'Enable instant URL indexing for Google', 'meowseo' ); ?>
+					</label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="meowindex_google_json_key"><?php esc_html_e( 'Google Service Account JSON', 'meowseo' ); ?></label></th>
+				<td>
+					<?php
+					$meowindex_google_json_key = $this->options->get( 'meowindex_google_json_key', '' );
+					?>
+					<textarea id="meowindex_google_json_key" name="meowindex_google_json_key" rows="10" class="large-text code" placeholder='{"type": "service_account", ...}'><?php echo esc_textarea( $meowindex_google_json_key ); ?></textarea>
+					<div class="meowseo-setup-guide" style="margin-top: 15px; padding: 15px; background: #f0f0f1; border-left: 4px solid #2271b1;">
+						<h4 style="margin-top:0;"><?php esc_html_e( 'How to get your Google JSON Key:', 'meowseo' ); ?></h4>
+						<ol style="margin-bottom:0;">
+							<li><?php printf( wp_kses_post( __( 'Go to <a href="%s" target="_blank">Google Cloud Console</a> and create a new project.', 'meowseo' ) ), 'https://console.cloud.google.com/' ); ?></li>
+							<li><?php esc_html_e( 'Enable the "Indexing API" in your project.', 'meowseo' ); ?></li>
+							<li><?php esc_html_e( 'Go to "IAM & Admin > Service Accounts" and create a service account.', 'meowseo' ); ?></li>
+							<li><?php esc_html_e( 'Create a new JSON key for that service account and download it.', 'meowseo' ); ?></li>
+							<li><?php printf( wp_kses_post( __( 'Go to <a href="%s" target="_blank">Search Console</a> and add the service account email as an <strong>Owner</strong> to your property.', 'meowseo' ) ), 'https://search.google.com/search-console' ); ?></li>
+							<li><?php esc_html_e( 'Paste the content of the downloaded JSON file into the box above.', 'meowseo' ); ?></li>
+						</ol>
+					</div>
+				</td>
+			</tr>
+		</table>
+		<?php
+	}
+
 	public function render_advanced_tab(): void {
 		$noindex_post_types     = $this->options->get( 'noindex_post_types', array() );
 		$noindex_taxonomies     = $this->options->get( 'noindex_taxonomies', array() );
@@ -1312,69 +1391,6 @@ class Settings_Manager {
 					<p class="description">
 						<?php esc_html_e( 'When disabled (recommended), only images without alt text will be processed. When enabled, all images will have their alt text replaced with the generated pattern.', 'meowseo' ); ?>
 					</p>
-				</td>
-			</tr>
-
-			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'MeowIndex Settings', 'meowseo' ); ?></h3></th></tr>
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Enable MeowIndex (IndexNow)', 'meowseo' ); ?></th>
-				<td>
-					<?php
-					$meowindex_enabled = $this->options->get( 'meowindex_enabled', false );
-					?>
-					<label>
-						<input type="checkbox" name="meowindex_enabled" value="1" <?php checked( $meowindex_enabled ); ?>>
-						<?php esc_html_e( 'Enable instant URL indexing for Bing, Yandex, and Seznam', 'meowseo' ); ?>
-					</label>
-					<p class="description">
-						<?php esc_html_e( 'When enabled, published and updated posts will be automatically submitted via IndexNow protocol.', 'meowseo' ); ?>
-					</p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="meowindex_api_key"><?php esc_html_e( 'MeowIndex API Key', 'meowseo' ); ?></label></th>
-				<td>
-					<?php
-					$meowindex_api_key = $this->options->get( 'meowindex_api_key', '' );
-					?>
-					<input type="text" id="meowindex_api_key" name="meowindex_api_key" value="<?php echo esc_attr( $meowindex_api_key ); ?>" class="regular-text" readonly>
-					<p class="description">
-						<?php esc_html_e( 'Your unique MeowIndex API key. This is used to verify site ownership for IndexNow.', 'meowseo' ); ?>
-						<br><strong><?php esc_html_e( 'Note:', 'meowseo' ); ?></strong> <?php esc_html_e( 'MeowSEO automatically serves the verification file for you. You can test it by visiting:', 'meowseo' ); ?>
-						<code><?php echo esc_url( home_url( '/' . $meowindex_api_key . '.txt' ) ); ?></code>
-					</p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Enable Google Indexing', 'meowseo' ); ?></th>
-				<td>
-					<?php
-					$meowindex_google_enabled = $this->options->get( 'meowindex_google_enabled', false );
-					?>
-					<label>
-						<input type="checkbox" name="meowindex_google_enabled" value="1" <?php checked( $meowindex_google_enabled ); ?>>
-						<?php esc_html_e( 'Enable instant URL indexing for Google', 'meowseo' ); ?>
-					</label>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="meowindex_google_json_key"><?php esc_html_e( 'Google Service Account JSON', 'meowseo' ); ?></label></th>
-				<td>
-					<?php
-					$meowindex_google_json_key = $this->options->get( 'meowindex_google_json_key', '' );
-					?>
-					<textarea id="meowindex_google_json_key" name="meowindex_google_json_key" rows="10" class="large-text code" placeholder='{"type": "service_account", ...}'><?php echo esc_textarea( $meowindex_google_json_key ); ?></textarea>
-					<div class="meowseo-setup-guide" style="margin-top: 15px; padding: 15px; background: #f0f0f1; border-left: 4px solid #2271b1;">
-						<h4 style="margin-top:0;"><?php esc_html_e( 'How to get your Google JSON Key:', 'meowseo' ); ?></h4>
-						<ol style="margin-bottom:0;">
-							<li><?php printf( wp_kses_post( __( 'Go to <a href="%s" target="_blank">Google Cloud Console</a> and create a new project.', 'meowseo' ) ), 'https://console.cloud.google.com/' ); ?></li>
-							<li><?php esc_html_e( 'Enable the "Indexing API" in your project.', 'meowseo' ); ?></li>
-							<li><?php esc_html_e( 'Go to "IAM & Admin > Service Accounts" and create a service account.', 'meowseo' ); ?></li>
-							<li><?php esc_html_e( 'Create a new JSON key for that service account and download it.', 'meowseo' ); ?></li>
-							<li><?php printf( wp_kses_post( __( 'Go to <a href="%s" target="_blank">Search Console</a> and add the service account email as an <strong>Owner</strong> to your property.', 'meowseo' ) ), 'https://search.google.com/search-console' ); ?></li>
-							<li><?php esc_html_e( 'Paste the content of the downloaded JSON file into the box above.', 'meowseo' ); ?></li>
-						</ol>
-					</div>
 				</td>
 			</tr>
 
