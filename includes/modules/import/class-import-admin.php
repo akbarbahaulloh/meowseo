@@ -67,14 +67,23 @@ class Import_Admin {
 			if ( $importer ) {
 				$post_ids = array_map( 'intval', $_POST['post'] );
 				$result   = $importer->import_postmeta( $post_ids );
-				$redirect = \add_query_arg( array(
+				
+				// Preserve the current status filter.
+				$redirect_args = array(
 					'page'        => 'meowseo-import',
 					'tab'         => $tab,
 					'imported'    => $result['imported'],
 					'errors'      => $result['errors'],
 					'plugin_name' => rawurlencode( $importer->get_plugin_name() ),
 					'notice_type' => 'posts',
-				), \admin_url( 'admin.php' ) );
+				);
+				
+				// Add status parameter if it was set.
+				if ( isset( $_GET['status'] ) ) {
+					$redirect_args['status'] = \sanitize_text_field( $_GET['status'] );
+				}
+				
+				$redirect = \add_query_arg( $redirect_args, \admin_url( 'admin.php' ) );
 				\wp_safe_redirect( $redirect );
 				exit;
 			}
@@ -94,14 +103,23 @@ class Import_Admin {
 			if ( $importer ) {
 				$term_ids = array_map( 'intval', $_POST['term'] );
 				$result   = $importer->import_termmeta( $term_ids );
-				$redirect = \add_query_arg( array(
+				
+				// Preserve the current status filter.
+				$redirect_args = array(
 					'page'        => 'meowseo-import',
 					'tab'         => 'terms',
 					'imported'    => $result['imported'],
 					'errors'      => $result['errors'],
 					'plugin_name' => rawurlencode( $importer->get_plugin_name() ),
 					'notice_type' => 'terms',
-				), \admin_url( 'admin.php' ) );
+				);
+				
+				// Add status parameter if it was set.
+				if ( isset( $_GET['status'] ) ) {
+					$redirect_args['status'] = \sanitize_text_field( $_GET['status'] );
+				}
+				
+				$redirect = \add_query_arg( $redirect_args, \admin_url( 'admin.php' ) );
 				\wp_safe_redirect( $redirect );
 				exit;
 			}
