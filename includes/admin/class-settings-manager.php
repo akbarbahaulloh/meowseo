@@ -1852,7 +1852,10 @@ class Settings_Manager {
 			
 			// Basic JSON validation if not empty.
 			if ( ! empty( $validated['meowindex_google_json_key'] ) ) {
-				$json = json_decode( $validated['meowindex_google_json_key'], true );
+				// Use wp_unslash as WordPress adds slashes to POST data.
+				$json_content = wp_unslash( $validated['meowindex_google_json_key'] );
+				$json = json_decode( $json_content, true );
+				
 				if ( ! $json ) {
 					$this->errors['meowindex_google_json_key'] = __( 'Invalid JSON format for Google Service Account key.', 'meowseo' );
 				} elseif ( ! isset( $json['private_key'], $json['client_email'] ) ) {
