@@ -1848,16 +1848,33 @@ class Settings_Manager {
 		}
 
 		if ( isset( $settings['meowindex_google_json_key'] ) ) {
-			$validated['meowindex_google_json_key'] = trim( $settings['meowindex_google_json_key'] );
+			// Get raw value and trim whitespace.
+			$raw_json = trim( $settings['meowindex_google_json_key'] );
+			$validated['meowindex_google_json_key'] = $raw_json;
 			
-			// Basic JSON validation if not empty.
-			if ( ! empty( $validated['meowindex_google_json_key'] ) ) {
-				// Use wp_unslash as WordPress adds slashes to POST data.
-				$json_content = wp_unslash( $validated['meowindex_google_json_key'] );
-				$json = json_decode( $json_content, true );
+			if ( ! empty( $raw_json ) ) {
+				// Try decoding directly first (in case magic quotes are off or it's already clean).
+				$json = json_decode( $raw_json, true );
 				
+				// If failed, try unslashing (standard WordPress behavior).
 				if ( ! $json ) {
-					$this->errors['meowindex_google_json_key'] = __( 'Invalid JSON format for Google Service Account key.', 'meowseo' );
+					$json_content = wp_unslash( $raw_json );
+					$json = json_decode( $json_content, true );
+					
+					// If unslashing worked, update the validated value to the unslashed version.
+					if ( $json ) {
+						$validated['meowindex_google_json_key'] = $json_content;
+					}
+				}
+				
+				// Final check.
+				if ( ! $json ) {
+					$error_msg = json_last_error_msg();
+					$this->errors['meowindex_google_json_key'] = sprintf( 
+						/* translators: %s: JSON error message */
+						__( 'Invalid JSON format for Google Service Account key. Error: %s', 'meowseo' ), 
+						$error_msg 
+					);
 				} elseif ( ! isset( $json['private_key'], $json['client_email'] ) ) {
 					$this->errors['meowindex_google_json_key'] = __( 'Google JSON key is missing private_key or client_email.', 'meowseo' );
 				}

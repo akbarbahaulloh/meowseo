@@ -79,7 +79,9 @@ class Import_Admin {
 				);
 				
 				// Add status parameter if it was set.
-				if ( isset( $_GET['status'] ) ) {
+				if ( isset( $_POST['status'] ) ) {
+					$redirect_args['status'] = \sanitize_text_field( $_POST['status'] );
+				} elseif ( isset( $_GET['status'] ) ) {
 					$redirect_args['status'] = \sanitize_text_field( $_GET['status'] );
 				}
 				
@@ -115,7 +117,9 @@ class Import_Admin {
 				);
 				
 				// Add status parameter if it was set.
-				if ( isset( $_GET['status'] ) ) {
+				if ( isset( $_POST['status'] ) ) {
+					$redirect_args['status'] = \sanitize_text_field( $_POST['status'] );
+				} elseif ( isset( $_GET['status'] ) ) {
 					$redirect_args['status'] = \sanitize_text_field( $_GET['status'] );
 				}
 				
@@ -182,9 +186,11 @@ class Import_Admin {
 					$table = new Import_Posts_List_Table();
 					$table->prepare_items();
 					$table->views();
+					$current_status = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
 					?>
 					<form method="post" action="<?php echo esc_url( \admin_url( 'admin.php?page=meowseo-import&tab=posts' ) ); ?>">
 						<input type="hidden" name="tab" value="posts" />
+						<input type="hidden" name="status" value="<?php echo esc_attr( $current_status ); ?>" />
 						<?php $table->display(); ?>
 					</form>
 					<?php
@@ -192,9 +198,11 @@ class Import_Admin {
 					$table = new Import_Posts_List_Table( array( 'attachment' ) );
 					$table->prepare_items();
 					$table->views();
+					$current_status = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
 					?>
 					<form method="post" action="<?php echo esc_url( \admin_url( 'admin.php?page=meowseo-import&tab=media' ) ); ?>">
 						<input type="hidden" name="tab" value="media" />
+						<input type="hidden" name="status" value="<?php echo esc_attr( $current_status ); ?>" />
 						<?php $table->display(); ?>
 					</form>
 					<?php
@@ -202,9 +210,11 @@ class Import_Admin {
 					$table = new Import_Terms_List_Table();
 					$table->prepare_items();
 					$table->views();
+					$current_status = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
 					?>
 					<form method="post" action="<?php echo esc_url( \admin_url( 'admin.php?page=meowseo-import&tab=terms' ) ); ?>">
 						<input type="hidden" name="tab" value="terms" />
+						<input type="hidden" name="status" value="<?php echo esc_attr( $current_status ); ?>" />
 						<?php $table->display(); ?>
 					</form>
 					<?php
