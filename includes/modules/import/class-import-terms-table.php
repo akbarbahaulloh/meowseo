@@ -70,25 +70,24 @@ class Import_Terms_List_Table extends \WP_List_Table {
 
 		$in_tax = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
 
-		// External keys to check.
-		$external_keys = array( '_wpseo_title', '_wpseo_desc', 'rank_math_title', 'rank_math_description' );
-		$in_external   = "'" . implode( "','", array_map( 'esc_sql', $external_keys ) ) . "'";
+		// Simplified external keys check (much faster).
+		$in_external = "'_wpseo_title','rank_math_title'";
 
-		// Imported count: terms that have _meowseo_title OR _meowseo_description termmeta.
+		// Imported count: terms that have _meowseo_title termmeta.
 		$imported = (int) $wpdb->get_var(
 			"SELECT COUNT(DISTINCT tt.term_id)
 			FROM {$wpdb->term_taxonomy} tt
 			INNER JOIN {$wpdb->termmeta} tm ON tt.term_id = tm.term_id
 			WHERE tt.taxonomy IN ($in_tax)
-			AND (tm.meta_key = '_meowseo_title' OR tm.meta_key = '_meowseo_description')"
+			AND tm.meta_key = '_meowseo_title'"
 		);
 
-		// Pending count: terms that have Yoast/RankMath meta BUT NO MeowSEO meta.
+		// Pending count: terms that have Yoast/RankMath title BUT NO MeowSEO title.
 		$pending = (int) $wpdb->get_var(
 			"SELECT COUNT(DISTINCT tt.term_id)
 			FROM {$wpdb->term_taxonomy} tt
 			INNER JOIN {$wpdb->termmeta} tm_ext ON tt.term_id = tm_ext.term_id
-			LEFT JOIN {$wpdb->termmeta} tm_meow ON tt.term_id = tm_meow.term_id AND (tm_meow.meta_key = '_meowseo_title' OR tm_meow.meta_key = '_meowseo_description')
+			LEFT JOIN {$wpdb->termmeta} tm_meow ON tt.term_id = tm_meow.term_id AND tm_meow.meta_key = '_meowseo_title'
 			WHERE tt.taxonomy IN ($in_tax)
 			AND tm_ext.meta_key IN ($in_external)
 			AND tm_meow.meta_id IS NULL"
@@ -162,54 +161,44 @@ class Import_Terms_List_Table extends \WP_List_Table {
 		);
 
 		$status = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
+		$status = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
 		if ( 'pending' === $status ) {
 			$args['meta_query'] = array(
 				'relation' => 'AND',
 				array(
 					'relation' => 'OR',
 					array( 'key' => '_wpseo_title', 'compare' => 'EXISTS' ),
-					array( 'key' => '_wpseo_desc', 'compare' => 'EXISTS' ),
 					array( 'key' => 'rank_math_title', 'compare' => 'EXISTS' ),
-					array( 'key' => 'rank_math_description', 'compare' => 'EXISTS' ),
 				),
 				array(
 					'key'     => '_meowseo_title',
 					'compare' => 'NOT EXISTS',
 				),
-				array(
-					'key'     => '_meowseo_description',
-					'compare' => 'NOT EXISTS',
-				),
 			);
 		} elseif ( 'imported' === $status ) {
 			$args['meta_query'] = array(
-				'relation' => 'OR',
 				array( 'key' => '_meowseo_title', 'compare' => 'EXISTS' ),
-				array( 'key' => '_meowseo_description', 'compare' => 'EXISTS' ),
 			);
 		} else {
-			// 'all' tab: Show either already imported OR has external data to import.
+			// 'all' tab: Show either already imported OR has common external data.
 			$args['meta_query'] = array(
 				'relation' => 'OR',
 				array( 'key' => '_meowseo_title', 'compare' => 'EXISTS' ),
-				array( 'key' => '_meowseo_description', 'compare' => 'EXISTS' ),
 				array( 'key' => '_wpseo_title', 'compare' => 'EXISTS' ),
-				array( 'key' => '_wpseo_desc', 'compare' => 'EXISTS' ),
 				array( 'key' => 'rank_math_title', 'compare' => 'EXISTS' ),
-				array( 'key' => 'rank_math_description', 'compare' => 'EXISTS' ),
 			);
 		}
 
 		$this->items = \get_terms( $args );
 
-		// Get total count (using lightweight count array)
+		// Simplified check for common title keys only (much faster).
+		$in_external = "'_wpseo_title','rank_math_title'";
+
 		if ( 'all' === $status ) {
 			global $wpdb;
 			$in_tax      = "'" . implode( "','", array_map( 'esc_sql', $taxonomies ) ) . "'";
-			$external_keys = array( '_wpseo_title', '_wpseo_desc', 'rank_math_title', 'rank_math_description' );
-			$in_external   = "'" . implode( "','", array_map( 'esc_sql', $external_keys ) ) . "'";
 			
-			// Count terms that HAVE MeowSEO meta OR HAVE external meta.
+			// Count terms that HAVE MeowSEO title OR HAVE external title.
 			$total_items = (int) $wpdb->get_var( "
 				SELECT COUNT(DISTINCT tt.term_id) 
 				FROM {$wpdb->term_taxonomy} tt
@@ -217,7 +206,6 @@ class Import_Terms_List_Table extends \WP_List_Table {
 				WHERE tt.taxonomy IN ($in_tax)
 				AND (
 					tm.meta_key = '_meowseo_title' OR 
-					tm.meta_key = '_meowseo_description' OR 
 					tm.meta_key IN ($in_external)
 				)
 			" );

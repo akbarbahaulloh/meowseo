@@ -83,30 +83,26 @@ class Import_Posts_List_Table extends \WP_List_Table {
 			...$post_types
 		) );
 
-		// External SEO meta keys to look for.
-		$external_keys = array(
-			'_yoast_wpseo_title', '_yoast_wpseo_metadesc', '_yoast_wpseo_focuskw',
-			'rank_math_title', 'rank_math_description', 'rank_math_focus_keyword'
-		);
-		$in_external = "'" . implode( "','", array_map( 'esc_sql', $external_keys ) ) . "'";
+		// Simplified check for common title keys only (much faster).
+		$in_external = "'_yoast_wpseo_title','rank_math_title'";
 
-		// Imported count: posts that have _meowseo_title OR _meowseo_description meta.
+		// Imported count: posts that have _meowseo_title meta.
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$imported = (int) $wpdb->get_var( $wpdb->prepare(
 			"SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
 			INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id 
 			WHERE p.post_type IN ($placeholders) 
 			AND p.post_status != 'auto-draft'
-			AND (pm.meta_key = '_meowseo_title' OR pm.meta_key = '_meowseo_description')",
+			AND pm.meta_key = '_meowseo_title'",
 			...$post_types
 		) );
 
-		// Pending count: posts that have Yoast/RankMath meta BUT NO MeowSEO meta.
+		// Pending count: posts that have Yoast/RankMath title BUT NO MeowSEO title.
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$pending = (int) $wpdb->get_var( $wpdb->prepare(
 			"SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
 			INNER JOIN {$wpdb->postmeta} pm_ext ON p.ID = pm_ext.post_id
-			LEFT JOIN {$wpdb->postmeta} pm_meow ON p.ID = pm_meow.post_id AND (pm_meow.meta_key = '_meowseo_title' OR pm_meow.meta_key = '_meowseo_description')
+			LEFT JOIN {$wpdb->postmeta} pm_meow ON p.ID = pm_meow.post_id AND pm_meow.meta_key = '_meowseo_title'
 			WHERE p.post_type IN ($placeholders)
 			AND p.post_status != 'auto-draft'
 			AND pm_ext.meta_key IN ($in_external)
@@ -201,44 +197,30 @@ class Import_Posts_List_Table extends \WP_List_Table {
 		);
 
 		if ( 'pending' === $status ) {
+			// Optimized: Only check for most common title/desc keys instead of all 6 with EXISTS.
 			$args['meta_query'] = array(
 				'relation' => 'AND',
 				array(
-					'relation' => 'OR', // Must have at least one external key.
+					'relation' => 'OR',
 					array( 'key' => '_yoast_wpseo_title', 'compare' => 'EXISTS' ),
-					array( 'key' => '_yoast_wpseo_metadesc', 'compare' => 'EXISTS' ),
-					array( 'key' => '_yoast_wpseo_focuskw', 'compare' => 'EXISTS' ),
 					array( 'key' => 'rank_math_title', 'compare' => 'EXISTS' ),
-					array( 'key' => 'rank_math_description', 'compare' => 'EXISTS' ),
-					array( 'key' => 'rank_math_focus_keyword', 'compare' => 'EXISTS' ),
 				),
 				array(
 					'key'     => '_meowseo_title',
 					'compare' => 'NOT EXISTS',
 				),
-				array(
-					'key'     => '_meowseo_description',
-					'compare' => 'NOT EXISTS',
-				),
 			);
 		} elseif ( 'imported' === $status ) {
 			$args['meta_query'] = array(
-				'relation' => 'OR',
 				array( 'key' => '_meowseo_title', 'compare' => 'EXISTS' ),
-				array( 'key' => '_meowseo_description', 'compare' => 'EXISTS' ),
 			);
 		} else {
-			// 'all' tab: Show either already imported OR has external data to import.
+			// 'all' tab: Show either already imported OR has common external data.
 			$args['meta_query'] = array(
 				'relation' => 'OR',
 				array( 'key' => '_meowseo_title', 'compare' => 'EXISTS' ),
-				array( 'key' => '_meowseo_description', 'compare' => 'EXISTS' ),
 				array( 'key' => '_yoast_wpseo_title', 'compare' => 'EXISTS' ),
-				array( 'key' => '_yoast_wpseo_metadesc', 'compare' => 'EXISTS' ),
-				array( 'key' => '_yoast_wpseo_focuskw', 'compare' => 'EXISTS' ),
 				array( 'key' => 'rank_math_title', 'compare' => 'EXISTS' ),
-				array( 'key' => 'rank_math_description', 'compare' => 'EXISTS' ),
-				array( 'key' => 'rank_math_focus_keyword', 'compare' => 'EXISTS' ),
 			);
 		}
 

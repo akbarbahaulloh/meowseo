@@ -28,6 +28,13 @@ class Logger {
 	private static ?Logger $instance = null;
 
 	/**
+	 * Flag to prevent recursion in logging.
+	 *
+	 * @var bool
+	 */
+	private bool $is_logging = false;
+
+	/**
 	 * Maximum number of log entries to keep.
 	 */
 	private const MAX_ENTRIES = 1000;
@@ -126,45 +133,67 @@ class Logger {
 	private function log( string $level, string $message, array $context = [] ): void {
 		global $wpdb;
 
-		// Capture automatic fields.
-		$timestamp = current_time( 'mysql' );
-		$module = $this->get_calling_module();
-		$message_hash = hash( 'sha256', $message );
+		// Prevent infinite recursion.
+		if ( $this->is_logging ) {
+			return;
+		}
 
-		// Sanitize sensitive data from context.
-		$sanitized_context = $this->sanitize_context( $context );
+		// Check if we have a valid database connection.
+		if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb || ! $wpdb->ready ) {
+			// Fallback to PHP error log if database is not available.
+			error_log( sprintf( 'MeowSEO [%s]: %s %s', $level, $message, wp_json_encode( $context ) ) );
+			return;
+		}
 
-		// Serialize context to JSON.
-		$context_json = ! empty( $sanitized_context ) ? wp_json_encode( $sanitized_context ) : null;
+		$this->is_logging = true;
 
-		// Extract stack trace if present in context.
-		$stack_trace = $sanitized_context['stack_trace'] ?? null;
-		if ( $stack_trace && is_string( $stack_trace ) ) {
-			unset( $sanitized_context['stack_trace'] );
+		try {
+			// Capture automatic fields.
+			$timestamp = current_time( 'mysql' );
+			$module = $this->get_calling_module();
+			$message_hash = hash( 'sha256', $message );
+
+			// Sanitize sensitive data from context.
+			$sanitized_context = $this->sanitize_context( $context );
+
+			// Serialize context to JSON.
 			$context_json = ! empty( $sanitized_context ) ? wp_json_encode( $sanitized_context ) : null;
+
+			// Extract stack trace if present in context.
+			$stack_trace = $sanitized_context['stack_trace'] ?? null;
+			if ( $stack_trace && is_string( $stack_trace ) ) {
+				unset( $sanitized_context['stack_trace'] );
+				$context_json = ! empty( $sanitized_context ) ? wp_json_encode( $sanitized_context ) : null;
+			}
+
+			// Prepare log entry data.
+			$data = [
+				'level'        => $level,
+				'module'       => $module,
+				'message'      => $message,
+				'message_hash' => $message_hash,
+				'context'      => $context_json,
+				'stack_trace'  => $stack_trace,
+				'created_at'   => $timestamp,
+			];
+
+			// Try deduplication first.
+			if ( $this->deduplicate_log( $data ) ) {
+				$this->is_logging = false;
+				return;
+			}
+
+			// Store new log entry.
+			$this->store_log_entry( $data );
+
+			// Cleanup old logs if needed.
+			$this->cleanup_old_logs();
+		} catch ( \Exception $e ) {
+			// Silently fail to avoid crashing the whole site during logging.
+			error_log( 'MeowSEO Logger Error: ' . $e->getMessage() );
 		}
 
-		// Prepare log entry data.
-		$data = [
-			'level'        => $level,
-			'module'       => $module,
-			'message'      => $message,
-			'message_hash' => $message_hash,
-			'context'      => $context_json,
-			'stack_trace'  => $stack_trace,
-			'created_at'   => $timestamp,
-		];
-
-		// Try deduplication first.
-		if ( $this->deduplicate_log( $data ) ) {
-			return; // Duplicate found and updated.
-		}
-
-		// Store new log entry.
-		$this->store_log_entry( $data );
-
-		// Cleanup old logs if needed.
-		$this->cleanup_old_logs();
+		$this->is_logging = false;
 	}
 
 	/**

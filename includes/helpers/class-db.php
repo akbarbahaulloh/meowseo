@@ -28,6 +28,10 @@ class DB {
 	public static function get_redirect_exact( string $url ): ?array {
 		global $wpdb;
 
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return null;
+		}
+
 		$table = $wpdb->prefix . 'meowseo_redirects';
 
 		$query = $wpdb->prepare(
@@ -47,6 +51,10 @@ class DB {
 	 */
 	public static function get_redirect_regex_rules(): array {
 		global $wpdb;
+
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return [];
+		}
 
 		$table = $wpdb->prefix . 'meowseo_redirects';
 
@@ -68,6 +76,10 @@ class DB {
 	 */
 	public static function increment_redirect_hit( int $id ): void {
 		global $wpdb;
+
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return;
+		}
 
 		$table = $wpdb->prefix . 'meowseo_redirects';
 
@@ -91,6 +103,10 @@ class DB {
 		}
 
 		global $wpdb;
+
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return;
+		}
 
 		$table = $wpdb->prefix . 'meowseo_404_log';
 
@@ -158,6 +174,10 @@ class DB {
 	public static function get_404_log( array $args ): array {
 		global $wpdb;
 
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return [];
+		}
+
 		$table = $wpdb->prefix . 'meowseo_404_log';
 
 		$defaults = [
@@ -194,6 +214,10 @@ class DB {
 	public static function get_gsc_queue( int $limit = 10 ): array {
 		global $wpdb;
 
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return [];
+		}
+
 		$table = $wpdb->prefix . 'meowseo_gsc_queue';
 
 		$query = $wpdb->prepare(
@@ -215,6 +239,10 @@ class DB {
 	 */
 	public static function update_gsc_queue_retry( int $id, int $retry_after ): void {
 		global $wpdb;
+
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return;
+		}
 
 		$table = $wpdb->prefix . 'meowseo_gsc_queue';
 
@@ -239,6 +267,10 @@ class DB {
 		}
 
 		global $wpdb;
+
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return;
+		}
 
 		$table = $wpdb->prefix . 'meowseo_gsc_data';
 
@@ -276,6 +308,10 @@ class DB {
 	public static function get_link_checks( int $post_id ): array {
 		global $wpdb;
 
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return [];
+		}
+
 		$table = $wpdb->prefix . 'meowseo_link_checks';
 
 		$query = $wpdb->prepare(
@@ -300,6 +336,10 @@ class DB {
 		}
 
 		global $wpdb;
+
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return;
+		}
 
 		$table = $wpdb->prefix . 'meowseo_link_checks';
 
