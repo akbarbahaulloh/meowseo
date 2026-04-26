@@ -9,7 +9,7 @@
  * @since 1.0.0
  */
 
-namespace MeowSEO\Modules\IndexNow;
+namespace MeowSEO\Modules\MeowIndex;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -30,7 +30,7 @@ class Submission_Logger {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private const LOG_OPTION_KEY = 'meowseo_indexnow_log';
+	private const LOG_OPTION_KEY = 'meowseo_meowindex_logs';
 
 	/**
 	 * Maximum number of log entries to keep
@@ -50,9 +50,10 @@ class Submission_Logger {
 	 * @since 1.0.0
 	 * @param array                $urls    Array of URLs submitted.
 	 * @param bool|\WP_Error|array $result  Submission result (true/false/WP_Error/array).
+	 * @param string               $engine  Indexing engine (meowindex or google).
 	 * @return bool True on success, false on failure.
 	 */
-	public function log( array $urls, $result ): bool {
+	public function log( array $urls, $result, string $engine = 'meowindex' ): bool {
 		// Determine success status and error message.
 		$success = false;
 		$error   = '';
@@ -71,6 +72,7 @@ class Submission_Logger {
 		$entry = array(
 			'timestamp' => current_time( 'mysql' ),
 			'urls'      => $urls,
+			'engine'    => $engine,
 			'success'   => $success,
 			'error'     => $error,
 		);

@@ -9,7 +9,7 @@
  * @since 1.0.0
  */
 
-namespace MeowSEO\Modules\IndexNow;
+namespace MeowSEO\Modules\MeowIndex;
 
 use MeowSEO\Options;
 
@@ -32,7 +32,7 @@ class Submission_Queue {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private const QUEUE_OPTION_KEY = 'meowseo_indexnow_queue';
+	private const QUEUE_OPTION_KEY = 'meowseo_meowindex_queue';
 
 	/**
 	 * Last submission timestamp option key
@@ -40,7 +40,7 @@ class Submission_Queue {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private const LAST_SUBMISSION_KEY = 'meowseo_indexnow_last_submission';
+	private const LAST_SUBMISSION_KEY = 'meowseo_meowindex_last_submission';
 
 	/**
 	 * Maximum URLs per batch

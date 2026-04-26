@@ -1,14 +1,14 @@
 <?php
 /**
- * IndexNow Module
+ * MeowIndex Module
  *
- * Manages instant URL indexing via IndexNow API.
+ * Manages instant URL indexing via IndexNow and Google Indexing API.
  *
  * @package MeowSEO
  * @since 1.0.0
  */
 
-namespace MeowSEO\Modules\IndexNow;
+namespace MeowSEO\Modules\MeowIndex;
 
 use MeowSEO\Contracts\Module;
 use MeowSEO\Options;
@@ -18,14 +18,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * IndexNow module class
+ * MeowIndex module class
  *
- * Implements the Module interface to provide IndexNow instant indexing.
- * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11, 5.12
+ * Implements the Module interface to provide instant indexing.
  *
  * @since 1.0.0
  */
-class IndexNow implements Module {
+class MeowIndex implements Module {
 
 	/**
 	 * Module ID
@@ -33,7 +32,7 @@ class IndexNow implements Module {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	private const MODULE_ID = 'indexnow';
+	private const MODULE_ID = 'meowindex';
 
 	/**
 	 * Options instance
@@ -44,12 +43,12 @@ class IndexNow implements Module {
 	private Options $options;
 
 	/**
-	 * IndexNow_Client instance
+	 * MeowIndexClient instance
 	 *
 	 * @since 1.0.0
-	 * @var IndexNowClient
+	 * @var MeowIndexClient
 	 */
-	private IndexNowClient $client;
+	private MeowIndexClient $client;
 
 	/**
 	 * Submission_Queue instance
@@ -81,7 +80,7 @@ class IndexNow implements Module {
 		$this->logger = new Submission_Logger();
 
 		// Initialize client.
-		$this->client = new IndexNowClient( $options, $this->queue, $this->logger );
+		$this->client = new MeowIndexClient( $options, $this->queue, $this->logger );
 	}
 
 	/**
@@ -96,7 +95,11 @@ class IndexNow implements Module {
 		// Register custom cron interval (10 seconds).
 		add_filter( 'cron_schedules', array( $this, 'register_cron_interval' ) );
 
-		// Boot the IndexNow_Client.
+		// Initialize verification handler.
+		$verification_handler = new Verification_Handler( $this->options );
+		$verification_handler->register();
+
+		// Boot the MeowIndexClient.
 		$this->client->boot();
 	}
 
@@ -104,14 +107,13 @@ class IndexNow implements Module {
 	 * Register custom cron interval
 	 *
 	 * Registers a 10-second cron interval for queue processing.
-	 * Requirement 5.8: Register custom cron interval (10 seconds).
 	 *
 	 * @since 1.0.0
 	 * @param array $schedules Existing cron schedules.
 	 * @return array Updated cron schedules.
 	 */
 	public function register_cron_interval( array $schedules ): array {
-		$schedules['meowseo_indexnow_interval'] = array(
+		$schedules['meowseo_meowindex_interval'] = array(
 			'interval' => 10,
 			'display'  => __( 'Every 10 seconds', 'meowseo' ),
 		);
@@ -133,9 +135,9 @@ class IndexNow implements Module {
 	 * Get client instance
 	 *
 	 * @since 1.0.0
-	 * @return IndexNowClient Client instance.
+	 * @return MeowIndexClient Client instance.
 	 */
-	public function get_client(): IndexNowClient {
+	public function get_client(): MeowIndexClient {
 		return $this->client;
 	}
 

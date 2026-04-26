@@ -205,25 +205,25 @@ class Tools_Manager {
 				</table>
 			</div>
 
-			<!-- IndexNow Submission History Section -->
+			<!-- MeowIndex Submission History Section -->
 			<div class="meowseo-tools-section">
-				<h3><?php esc_html_e( 'IndexNow Submission History', 'meowseo' ); ?></h3>
-				<p class="description"><?php esc_html_e( 'View recent IndexNow submissions and their status.', 'meowseo' ); ?></p>
-
+				<h3><?php esc_html_e( 'MeowIndex Submission History', 'meowseo' ); ?></h3>
+				<p class="description"><?php esc_html_e( 'View recent instant indexing submissions and their status.', 'meowseo' ); ?></p>
+ 
 				<?php
-				// Get IndexNow module and logger.
+				// Get MeowIndex module and logger.
 				$plugin = \MeowSEO\Plugin::instance();
 				if ( $plugin ) {
 					$module_manager = $plugin->get_module_manager();
-					$indexnow_module = $module_manager ? $module_manager->get_module( 'indexnow' ) : null;
+					$meowindex_module = $module_manager ? $module_manager->get_module( 'meowindex' ) : null;
 				} else {
-					$indexnow_module = null;
+					$meowindex_module = null;
 				}
-
-				if ( $indexnow_module ) {
-					$logger = $indexnow_module->get_logger();
+ 
+				if ( $meowindex_module ) {
+					$logger = $meowindex_module->get_logger();
 					$history = $logger->get_history( 100 );
-
+ 
 					if ( empty( $history ) ) {
 						echo '<p>' . esc_html__( 'No submissions yet.', 'meowseo' ) . '</p>';
 					} else {
@@ -232,6 +232,7 @@ class Tools_Manager {
 							<thead>
 								<tr>
 									<th><?php esc_html_e( 'Timestamp', 'meowseo' ); ?></th>
+									<th><?php esc_html_e( 'Engine', 'meowseo' ); ?></th>
 									<th><?php esc_html_e( 'URLs', 'meowseo' ); ?></th>
 									<th><?php esc_html_e( 'Status', 'meowseo' ); ?></th>
 									<th><?php esc_html_e( 'Error', 'meowseo' ); ?></th>
@@ -242,13 +243,21 @@ class Tools_Manager {
 									<tr>
 										<td><?php echo esc_html( $entry['timestamp'] ); ?></td>
 										<td>
+											<?php 
+											$engine = isset( $entry['engine'] ) ? $entry['engine'] : 'meowindex';
+											echo esc_html( ucfirst( $engine ) );
+											?>
+										</td>
+										<td>
 											<?php
-											$url_count = count( $entry['urls'] );
-											echo esc_html( sprintf(
-												/* translators: %d: number of URLs */
-												_n( '%d URL', '%d URLs', $url_count, 'meowseo' ),
-												$url_count
-											) );
+											if ( ! empty( $entry['urls'] ) ) {
+												$url_count = count( $entry['urls'] );
+												if ( $url_count === 1 ) {
+													echo '<code title="' . esc_attr( $entry['urls'][0] ) . '">' . esc_html( wp_trim_words( $entry['urls'][0], 10 ) ) . '</code>';
+												} else {
+													echo esc_html( sprintf( _n( '%d URL', '%d URLs', $url_count, 'meowseo' ), $url_count ) );
+												}
+											}
 											?>
 										</td>
 										<td>
@@ -276,7 +285,7 @@ class Tools_Manager {
 						<?php
 					}
 				} else {
-					echo '<p>' . esc_html__( 'IndexNow module is not active.', 'meowseo' ) . '</p>';
+					echo '<p>' . esc_html__( 'MeowIndex module is not active.', 'meowseo' ) . '</p>';
 				}
 				?>
 			</div>

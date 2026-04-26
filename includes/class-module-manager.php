@@ -51,7 +51,7 @@ class Module_Manager {
 		'ai'            => 'Modules\AI\AI_Module',
 		'import'        => 'Modules\Import\Import',
 		'image_seo'     => 'Modules\Image_SEO\Image_SEO',
-		'indexnow'      => 'Modules\IndexNow\IndexNow',
+		'meowindex'      => 'Modules\MeowIndex\MeowIndex',
 		'roles'         => 'Modules\Roles\Role_Manager',
 		'multilingual'  => 'Modules\Multilingual\Multilingual_Module',
 		'multisite'     => 'Modules\Multisite\Multisite_Module',

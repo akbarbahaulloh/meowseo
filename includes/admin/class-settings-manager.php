@@ -1315,32 +1315,66 @@ class Settings_Manager {
 				</td>
 			</tr>
 
-			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'IndexNow Settings', 'meowseo' ); ?></h3></th></tr>
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'MeowIndex Settings', 'meowseo' ); ?></h3></th></tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Enable IndexNow', 'meowseo' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Enable MeowIndex (IndexNow)', 'meowseo' ); ?></th>
 				<td>
 					<?php
-					$indexnow_enabled = $this->options->get( 'indexnow_enabled', false );
+					$meowindex_enabled = $this->options->get( 'meowindex_enabled', false );
 					?>
 					<label>
-						<input type="checkbox" name="indexnow_enabled" value="1" <?php checked( $indexnow_enabled ); ?>>
-						<?php esc_html_e( 'Enable instant URL indexing via IndexNow', 'meowseo' ); ?>
+						<input type="checkbox" name="meowindex_enabled" value="1" <?php checked( $meowindex_enabled ); ?>>
+						<?php esc_html_e( 'Enable instant URL indexing for Bing, Yandex, and Seznam', 'meowseo' ); ?>
 					</label>
 					<p class="description">
-						<?php esc_html_e( 'When enabled, published and updated posts will be automatically submitted to IndexNow for instant indexing by Bing, Yandex, and Seznam.', 'meowseo' ); ?>
+						<?php esc_html_e( 'When enabled, published and updated posts will be automatically submitted via IndexNow protocol.', 'meowseo' ); ?>
 					</p>
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><label for="indexnow_api_key"><?php esc_html_e( 'IndexNow API Key', 'meowseo' ); ?></label></th>
+				<th scope="row"><label for="meowindex_api_key"><?php esc_html_e( 'MeowIndex API Key', 'meowseo' ); ?></label></th>
 				<td>
 					<?php
-					$indexnow_api_key = $this->options->get( 'indexnow_api_key', '' );
+					$meowindex_api_key = $this->options->get( 'meowindex_api_key', '' );
 					?>
-					<input type="text" id="indexnow_api_key" name="indexnow_api_key" value="<?php echo esc_attr( $indexnow_api_key ); ?>" class="regular-text" readonly>
+					<input type="text" id="meowindex_api_key" name="meowindex_api_key" value="<?php echo esc_attr( $meowindex_api_key ); ?>" class="regular-text" readonly>
 					<p class="description">
-						<?php esc_html_e( 'Your unique IndexNow API key. This is automatically generated and used to authenticate submissions.', 'meowseo' ); ?>
+						<?php esc_html_e( 'Your unique MeowIndex API key. This is used to verify site ownership for IndexNow.', 'meowseo' ); ?>
+						<br><strong><?php esc_html_e( 'Note:', 'meowseo' ); ?></strong> <?php esc_html_e( 'MeowSEO automatically serves the verification file for you. You can test it by visiting:', 'meowseo' ); ?>
+						<code><?php echo esc_url( home_url( '/' . $meowindex_api_key . '.txt' ) ); ?></code>
 					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Enable Google Indexing', 'meowseo' ); ?></th>
+				<td>
+					<?php
+					$meowindex_google_enabled = $this->options->get( 'meowindex_google_enabled', false );
+					?>
+					<label>
+						<input type="checkbox" name="meowindex_google_enabled" value="1" <?php checked( $meowindex_google_enabled ); ?>>
+						<?php esc_html_e( 'Enable instant URL indexing for Google', 'meowseo' ); ?>
+					</label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="meowindex_google_json_key"><?php esc_html_e( 'Google Service Account JSON', 'meowseo' ); ?></label></th>
+				<td>
+					<?php
+					$meowindex_google_json_key = $this->options->get( 'meowindex_google_json_key', '' );
+					?>
+					<textarea id="meowindex_google_json_key" name="meowindex_google_json_key" rows="10" class="large-text code" placeholder='{"type": "service_account", ...}'><?php echo esc_textarea( $meowindex_google_json_key ); ?></textarea>
+					<div class="meowseo-setup-guide" style="margin-top: 15px; padding: 15px; background: #f0f0f1; border-left: 4px solid #2271b1;">
+						<h4 style="margin-top:0;"><?php esc_html_e( 'How to get your Google JSON Key:', 'meowseo' ); ?></h4>
+						<ol style="margin-bottom:0;">
+							<li><?php printf( wp_kses_post( __( 'Go to <a href="%s" target="_blank">Google Cloud Console</a> and create a new project.', 'meowseo' ) ), 'https://console.cloud.google.com/' ); ?></li>
+							<li><?php esc_html_e( 'Enable the "Indexing API" in your project.', 'meowseo' ); ?></li>
+							<li><?php esc_html_e( 'Go to "IAM & Admin > Service Accounts" and create a service account.', 'meowseo' ); ?></li>
+							<li><?php esc_html_e( 'Create a new JSON key for that service account and download it.', 'meowseo' ); ?></li>
+							<li><?php printf( wp_kses_post( __( 'Go to <a href="%s" target="_blank">Search Console</a> and add the service account email as an <strong>Owner</strong> to your property.', 'meowseo' ) ), 'https://search.google.com/search-console' ); ?></li>
+							<li><?php esc_html_e( 'Paste the content of the downloaded JSON file into the box above.', 'meowseo' ); ?></li>
+						</ol>
+					</div>
 				</td>
 			</tr>
 
@@ -1788,6 +1822,28 @@ class Settings_Manager {
 
 		// Validate delete on uninstall.
 		$validated['delete_on_uninstall'] = ! empty( $settings['delete_on_uninstall'] );
+
+		// Validate MeowIndex settings.
+		$validated['meowindex_enabled']        = ! empty( $settings['meowindex_enabled'] );
+		$validated['meowindex_google_enabled'] = ! empty( $settings['meowindex_google_enabled'] );
+		
+		if ( isset( $settings['meowindex_api_key'] ) ) {
+			$validated['meowindex_api_key'] = sanitize_text_field( $settings['meowindex_api_key'] );
+		}
+
+		if ( isset( $settings['meowindex_google_json_key'] ) ) {
+			$validated['meowindex_google_json_key'] = trim( $settings['meowindex_google_json_key'] );
+			
+			// Basic JSON validation if not empty.
+			if ( ! empty( $validated['meowindex_google_json_key'] ) ) {
+				$json = json_decode( $validated['meowindex_google_json_key'], true );
+				if ( ! $json ) {
+					$this->errors['meowindex_google_json_key'] = __( 'Invalid JSON format for Google Service Account key.', 'meowseo' );
+				} elseif ( ! isset( $json['private_key'], $json['client_email'] ) ) {
+					$this->errors['meowindex_google_json_key'] = __( 'Google JSON key is missing private_key or client_email.', 'meowseo' );
+				}
+			}
+		}
 
 		// Validate automatic video schema setting (Requirement 2.10).
 		$validated['auto_video_schema_enabled'] = ! empty( $settings['auto_video_schema_enabled'] );
