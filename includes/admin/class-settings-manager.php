@@ -2409,8 +2409,12 @@ class Settings_Manager {
 		// Save to database.
 		$saved = $this->options->save();
 
-		// Clean up previous notice parameters from the referer URL.
-		$redirect_url = remove_query_arg( array( 'meowseo_settings_saved', 'meowseo_settings_error' ), wp_get_referer() );
+		// Get active tab for redirection.
+		$active_tab = sanitize_key( $_POST['meowseo_active_tab'] ?? 'general' );
+
+		// Clean up previous notice parameters from the referer URL and ensure tab is preserved.
+		$redirect_url = remove_query_arg( array( 'meowseo_settings_saved', 'meowseo_settings_error', 'tab' ), wp_get_referer() );
+		$redirect_url = add_query_arg( 'tab', $active_tab, $redirect_url );
 
 		// update_option returns false if value hasn't changed, which isn't an error.
 		// We treat it as success if we reached this point.
@@ -2421,7 +2425,7 @@ class Settings_Manager {
 				array(
 					'user_id'       => get_current_user_id(),
 					'changed_fields' => $changed_fields,
-					'tab'           => sanitize_key( $_POST['meowseo_active_tab'] ?? 'general' ),
+					'tab'           => $active_tab,
 				)
 			);
 
