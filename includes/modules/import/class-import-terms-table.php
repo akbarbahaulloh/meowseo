@@ -75,12 +75,13 @@ class Import_Terms_List_Table extends \WP_List_Table {
 			"SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ($in_tax)"
 		);
 
-		// Imported count: terms that have _meowseo_title termmeta.
+		// Imported count: terms that have _meowseo_title OR _meowseo_description termmeta.
 		$imported = (int) $wpdb->get_var(
 			"SELECT COUNT(DISTINCT tt.term_id)
 			FROM {$wpdb->term_taxonomy} tt
-			INNER JOIN {$wpdb->termmeta} tm ON tt.term_id = tm.term_id AND tm.meta_key = '_meowseo_title'
-			WHERE tt.taxonomy IN ($in_tax)"
+			INNER JOIN {$wpdb->termmeta} tm ON tt.term_id = tm.term_id
+			WHERE tt.taxonomy IN ($in_tax)
+			AND (tm.meta_key = '_meowseo_title' OR tm.meta_key = '_meowseo_description')"
 		);
 
 		return array(
@@ -153,15 +154,25 @@ class Import_Terms_List_Table extends \WP_List_Table {
 		$status = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
 		if ( 'pending' === $status ) {
 			$args['meta_query'] = array(
+				'relation' => 'AND',
 				array(
 					'key'     => '_meowseo_title',
+					'compare' => 'NOT EXISTS',
+				),
+				array(
+					'key'     => '_meowseo_description',
 					'compare' => 'NOT EXISTS',
 				),
 			);
 		} elseif ( 'imported' === $status ) {
 			$args['meta_query'] = array(
+				'relation' => 'OR',
 				array(
 					'key'     => '_meowseo_title',
+					'compare' => 'EXISTS',
+				),
+				array(
+					'key'     => '_meowseo_description',
 					'compare' => 'EXISTS',
 				),
 			);

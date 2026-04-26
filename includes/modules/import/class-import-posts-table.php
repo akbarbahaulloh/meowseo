@@ -83,12 +83,14 @@ class Import_Posts_List_Table extends \WP_List_Table {
 			...$post_types
 		) );
 
-		// Imported count: posts that have _meowseo_title meta.
+		// Imported count: posts that have _meowseo_title OR _meowseo_description meta.
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$imported = (int) $wpdb->get_var( $wpdb->prepare(
 			"SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
-			INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_meowseo_title'
-			WHERE p.post_type IN ($placeholders) AND p.post_status != 'auto-draft'",
+			INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id 
+			WHERE p.post_type IN ($placeholders) 
+			AND p.post_status != 'auto-draft'
+			AND (pm.meta_key = '_meowseo_title' OR pm.meta_key = '_meowseo_description')",
 			...$post_types
 		) );
 
@@ -176,15 +178,25 @@ class Import_Posts_List_Table extends \WP_List_Table {
 		$status = isset( $_GET['status'] ) ? \sanitize_text_field( $_GET['status'] ) : 'all';
 		if ( 'pending' === $status ) {
 			$args['meta_query'] = array(
+				'relation' => 'AND',
 				array(
 					'key'     => '_meowseo_title',
+					'compare' => 'NOT EXISTS',
+				),
+				array(
+					'key'     => '_meowseo_description',
 					'compare' => 'NOT EXISTS',
 				),
 			);
 		} elseif ( 'imported' === $status ) {
 			$args['meta_query'] = array(
+				'relation' => 'OR',
 				array(
 					'key'     => '_meowseo_title',
+					'compare' => 'EXISTS',
+				),
+				array(
+					'key'     => '_meowseo_description',
 					'compare' => 'EXISTS',
 				),
 			);
