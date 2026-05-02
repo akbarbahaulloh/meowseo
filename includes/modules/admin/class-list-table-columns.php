@@ -105,6 +105,7 @@ class List_Table_Columns {
 				$new_columns['outbound_links']    = '<span class="dashicons dashicons-external" title="' . esc_attr__( 'Outbound Links', 'meowseo' ) . '"></span>';
 				$new_columns['internal_links']    = '<span class="dashicons dashicons-admin-links" title="' . esc_attr__( 'Internal Links', 'meowseo' ) . '"></span>';
 				$new_columns['inbound_links']     = '<span class="dashicons dashicons-share-alt" title="' . esc_attr__( 'Inbound Links', 'meowseo' ) . '"></span>';
+				$new_columns['broken_links']      = '<span class="dashicons dashicons-warning" title="' . esc_attr__( 'Broken Links', 'meowseo' ) . '" style="color: #dc3232;"></span>';
 			}
 		}
 
@@ -137,6 +138,9 @@ class List_Table_Columns {
 			case 'inbound_links':
 				$count = DB::get_inbound_link_count( $post_id );
 				echo esc_html( $count );
+				break;
+			case 'broken_links':
+				$this->render_broken_links_indicator( $post_id );
 				break;
 		}
 	}
@@ -282,5 +286,32 @@ class List_Table_Columns {
 			defined( 'MEOWSEO_VERSION' ) ? MEOWSEO_VERSION : '1.0.0',
 			'all'
 		);
+	}
+
+	/**
+	 * Render broken links indicator.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	private function render_broken_links_indicator( int $post_id ): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'meowseo_link_checks';
+		
+		$count = $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$table} WHERE source_post_id = %d AND is_broken = 1",
+			$post_id
+		) );
+
+		if ( $count > 0 ) {
+			echo sprintf(
+				'<a href="%s" class="meowseo-broken-count" style="color: #dc3232; font-weight: bold; text-decoration: none;" title="%s">%d</a>',
+				esc_url( admin_url( 'admin.php?page=meowseo-broken-links&s=' . $post_id ) ),
+				esc_attr__( 'View broken links', 'meowseo' ),
+				absint( $count )
+			);
+		} else {
+			echo '<span style="color: #46b450;">✓</span>';
+		}
 	}
 }

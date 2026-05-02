@@ -216,10 +216,17 @@ CREATE TABLE {$prefix}meowseo_link_checks (
 	target_url_hash CHAR(64) NOT NULL,
 	anchor_text VARCHAR(512) NULL,
 	http_status SMALLINT NULL,
+	is_broken TINYINT(1) NOT NULL DEFAULT 0,
+	is_external TINYINT(1) NOT NULL DEFAULT 0,
+	redirect_url VARCHAR(2048) NULL,
+	error_log TEXT NULL,
+	check_count INT UNSIGNED NOT NULL DEFAULT 0,
 	last_checked DATETIME NULL,
+	last_success DATETIME NULL,
 	PRIMARY KEY (id),
 	KEY idx_source_post (source_post_id),
 	KEY idx_http_status (http_status),
+	KEY idx_is_broken (is_broken),
 	UNIQUE KEY idx_source_target (source_post_id, target_url_hash(64))
 ) $charset_collate;
 

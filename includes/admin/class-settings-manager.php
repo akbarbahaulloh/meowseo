@@ -127,6 +127,11 @@ class Settings_Manager {
 				'icon'   => 'dashicons-admin-links',
 				'method' => 'render_breadcrumbs_tab',
 			),
+			'broken-links'    => array(
+				'title'  => __( 'Broken Links', 'meowseo' ),
+				'icon'   => 'dashicons-warning',
+				'method' => 'render_broken_links_tab',
+			),
 		);
 		
 		$this->tabs = apply_filters( 'meowseo_settings_tabs', $this->tabs );
@@ -1793,6 +1798,47 @@ class Settings_Manager {
 				$this->errors['organization_logo_url'] = __( 'Please enter a valid logo URL.', 'meowseo' );
 			}
 		}
+
+		// Validate Broken Link Checker settings.
+		if ( isset( $settings['broken_links_check_frequency'] ) ) {
+			$validated['broken_links_check_frequency'] = max( 1, absint( $settings['broken_links_check_frequency'] ) );
+		}
+		
+		if ( isset( $settings['broken_links_excluded_domains'] ) ) {
+			$validated['broken_links_excluded_domains'] = sanitize_textarea_field( $settings['broken_links_excluded_domains'] );
+		}
+		
+		if ( isset( $settings['broken_links_post_types'] ) && is_array( $settings['broken_links_post_types'] ) ) {
+			$validated['broken_links_post_types'] = array_map( 'sanitize_key', $settings['broken_links_post_types'] );
+		} else {
+			$validated['broken_links_post_types'] = array();
+		}
+
+		if ( isset( $settings['broken_links_post_statuses'] ) && is_array( $settings['broken_links_post_statuses'] ) ) {
+			$validated['broken_links_post_statuses'] = array_map( 'sanitize_key', $settings['broken_links_post_statuses'] );
+		} else {
+			$validated['broken_links_post_statuses'] = array();
+		}
+
+		$validated['broken_links_nofollow'] = ! empty( $settings['broken_links_nofollow'] );
+
+		if ( isset( $settings['broken_links_notifications'] ) ) {
+			$validated['broken_links_notifications'] = ! empty( $settings['broken_links_notifications'] );
+		}
+
+		if ( isset( $settings['broken_links_notification_email'] ) ) {
+			$email = sanitize_email( $settings['broken_links_notification_email'] );
+			if ( is_email( $email ) ) {
+				$validated['broken_links_notification_email'] = $email;
+			} else {
+				$this->errors['broken_links_notification_email'] = __( 'Please enter a valid notification email address.', 'meowseo' );
+			}
+		}
+
+		if ( isset( $settings['broken_links_notification_type'] ) ) {
+			$valid_types = array( 'immediate', 'daily' );
+			$validated['broken_links_notification_type'] = in_array( $settings['broken_links_notification_type'], $valid_types, true ) ? $settings['broken_links_notification_type'] : 'daily';
+		}
 		
 		// Validate organization logo width.
 		if ( isset( $settings['organization_logo_width'] ) && ! empty( $settings['organization_logo_width'] ) ) {
@@ -3073,6 +3119,348 @@ class Settings_Manager {
 			.meowseo-flex-row { display: flex; gap: 10px; }
 			.meowseo-empty-state { padding: 40px; text-align: center; background: #fff; border: 1px dashed #ccc; margin-bottom: 20px; }
 		</style>
+		<?php
+	}
+
+	/**
+	 * Render Broken Links settings tab.
+	 *
+	 * @return void
+	 */
+	public function render_broken_links_tab(): void {
+		$frequency = $this->options->get( 'broken_links_check_frequency', 72 );
+		$excluded  = $this->options->get( 'broken_links_excluded_domains', '' );
+		$selected_post_types = $this->options->get( 'broken_links_post_types', array( 'post', 'page' ) );
+		$selected_post_statuses = $this->options->get( 'broken_links_post_statuses', array( 'publish' ) );
+		$custom_fields = $this->options->get( 'broken_links_custom_fields', '' );
+		$scan_comments = $this->options->get( 'broken_links_scan_comments', false );
+		$link_types = $this->options->get( 'broken_links_types', array( 'html_link', 'html_image', 'plain_url' ) );
+		$nofollow_broken = $this->options->get( 'broken_links_nofollow', false );
+
+		$post_types = get_post_types( array(), 'objects' );
+		$post_statuses = get_post_stati( array( 'internal' => false ), 'objects' );
+		$relevant_types = array( 'post', 'page', 'nav_menu_item', 'wp_block' );
+		?>
+		<h2><?php esc_html_e( 'Broken Link Checker Configuration', 'meowseo' ); ?></h2>
+		
+		<!-- Section: General -->
+		<div class="meowseo-settings-section" style="margin-bottom: 30px; padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">
+			<h3 style="margin-top: 0;"><span class="dashicons dashicons-admin-settings"></span> <?php esc_html_e( 'General Settings', 'meowseo' ); ?></h3>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="broken_links_check_frequency"><?php esc_html_e( 'Check Frequency', 'meowseo' ); ?></label></th>
+					<td>
+						<input type="number" name="broken_links_check_frequency" id="broken_links_check_frequency" value="<?php echo esc_attr( $frequency ); ?>" class="small-text" min="1">
+						<span><?php esc_html_e( 'hours', 'meowseo' ); ?></span>
+						<p class="description"><?php esc_html_e( 'How often to re-verify existing links. Default: 72 hours.', 'meowseo' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="broken_links_excluded_domains"><?php esc_html_e( 'Exclusion list', 'meowseo' ); ?></label></th>
+					<td>
+						<textarea name="broken_links_excluded_domains" id="broken_links_excluded_domains" rows="3" class="large-text" placeholder="example.com"><?php echo esc_textarea( $excluded ); ?></textarea>
+						<p class="description"><?php esc_html_e( 'Don\'t check links where the URL contains any of these words (one per line) :', 'meowseo' ); ?></p>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<!-- Section: Content to Scan -->
+		<div class="meowseo-settings-section" style="margin-bottom: 30px; padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">
+			<h3 style="margin-top: 0;"><span class="dashicons dashicons-edit"></span> <?php esc_html_e( 'Look for links in...', 'meowseo' ); ?></h3>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Post Types', 'meowseo' ); ?></th>
+					<td>
+						<fieldset>
+							<?php 
+							foreach ( $post_types as $post_type ) : 
+								if ( ! $post_type->public && ! in_array( $post_type->name, $relevant_types, true ) ) continue;
+							?>
+								<label style="display: inline-block; margin-right: 15px;">
+									<input type="checkbox" name="broken_links_post_types[]" value="<?php echo esc_attr( $post_type->name ); ?>" <?php checked( in_array( $post_type->name, $selected_post_types, true ) ); ?>>
+									<?php echo esc_html( $post_type->label ); ?>
+								</label>
+							<?php endforeach; ?>
+						</fieldset>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Post Statuses', 'meowseo' ); ?></th>
+					<td>
+						<fieldset>
+							<?php foreach ( $post_statuses as $status ) : ?>
+								<label style="display: inline-block; margin-right: 15px;">
+									<input type="checkbox" name="broken_links_post_statuses[]" value="<?php echo esc_attr( $status->name ); ?>" <?php checked( in_array( $status->name, $selected_post_statuses, true ) ); ?>>
+									<?php echo esc_html( $status->label ); ?>
+								</label>
+							<?php endforeach; ?>
+						</fieldset>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="broken_links_custom_fields"><?php esc_html_e( 'Custom Fields', 'meowseo' ); ?></label></th>
+					<td>
+						<input type="text" name="broken_links_custom_fields" id="broken_links_custom_fields" value="<?php echo esc_attr( $custom_fields ); ?>" class="large-text" placeholder="field_1, field_2">
+						<p class="description"><?php esc_html_e( 'Comma-separated list of custom field keys to scan.', 'meowseo' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Comments', 'meowseo' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="broken_links_scan_comments" value="1" <?php checked( $scan_comments ); ?>>
+							<?php esc_html_e( 'Scan links in comments', 'meowseo' ); ?>
+						</label>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<!-- Section: Link Types -->
+		<div class="meowseo-settings-section" style="margin-bottom: 30px; padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">
+			<h3 style="margin-top: 0;"><span class="dashicons dashicons-admin-links"></span> <?php esc_html_e( 'Which links to check', 'meowseo' ); ?></h3>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Link types', 'meowseo' ); ?></th>
+					<td>
+						<fieldset>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="html_link" <?php checked( in_array( 'html_link', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'HTML links', 'meowseo' ); ?>
+							</label>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="html_image" <?php checked( in_array( 'html_image', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'HTML images', 'meowseo' ); ?>
+							</label>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="plain_url" <?php checked( in_array( 'plain_url', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'Plaintext URLs', 'meowseo' ); ?>
+							</label>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="yt_video" <?php checked( in_array( 'yt_video', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'Embedded YouTube videos', 'meowseo' ); ?>
+							</label>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="gv_video" <?php checked( in_array( 'gv_video', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'Embedded GoogleVideo videos', 'meowseo' ); ?>
+							</label>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="yt_playlist_old" <?php checked( in_array( 'yt_playlist_old', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'Embedded YouTube playlists (old embed code)', 'meowseo' ); ?>
+							</label>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="yt_video_old" <?php checked( in_array( 'yt_video_old', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'Embedded YouTube videos (old embed code)', 'meowseo' ); ?>
+							</label>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="yt_smart_url" <?php checked( in_array( 'yt_smart_url', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'Smart YouTube httpv:// URLs', 'meowseo' ); ?>
+							</label>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="dm_video" <?php checked( in_array( 'dm_video', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'Embedded DailyMotion videos', 'meowseo' ); ?>
+							</label>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="vimeo_video" <?php checked( in_array( 'vimeo_video', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'Embedded Vimeo videos', 'meowseo' ); ?>
+							</label>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_types[]" value="css_url" <?php checked( in_array( 'css_url', $link_types, true ) ); ?>>
+								<?php esc_html_e( 'CSS links (url() in styles)', 'meowseo' ); ?>
+							</label>
+						</fieldset>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<!-- Section: Sidebar Widgets -->
+		<div class="meowseo-settings-section" style="margin-bottom: 30px; padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">
+			<h3 style="margin-top: 0;"><span class="dashicons dashicons-welcome-widgets-menus"></span> <?php esc_html_e( 'Sidebar Widgets', 'meowseo' ); ?></h3>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Scan Widgets', 'meowseo' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="broken_links_scan_widgets" value="1" <?php checked( $this->options->get( 'broken_links_scan_widgets', false ) ); ?>>
+							<?php esc_html_e( 'Scan links in Sidebar and Footer widgets', 'meowseo' ); ?>
+						</label>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<!-- Section: Notifications -->
+		<div class="meowseo-settings-section" style="margin-bottom: 30px; padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">
+			<h3 style="margin-top: 0;"><span class="dashicons dashicons-email-alt"></span> <?php esc_html_e( 'Email Notifications', 'meowseo' ); ?></h3>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Alerts', 'meowseo' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="broken_links_notifications" value="1" <?php checked( $this->options->get( 'broken_links_notifications', false ) ); ?>>
+							<?php esc_html_e( 'Send me email notifications about newly discovered broken links', 'meowseo' ); ?>
+						</label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="broken_links_notification_email"><?php esc_html_e( 'Send to', 'meowseo' ); ?></label></th>
+					<td>
+						<input type="email" name="broken_links_notification_email" id="broken_links_notification_email" value="<?php echo esc_attr( $this->options->get( 'broken_links_notification_email', get_option( 'admin_email' ) ) ); ?>" class="regular-text">
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<!-- Section: Advanced (Matching WPMU DEV exactly) -->
+		<div class="meowseo-settings-section" style="padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">
+			<h3 style="margin-top: 0;"><span class="dashicons dashicons-admin-tools"></span> <?php esc_html_e( 'Advanced Settings', 'meowseo' ); ?></h3>
+			<table class="form-table" role="presentation">
+				<!-- Timeout -->
+				<tr>
+					<th scope="row"><label for="broken_links_timeout"><?php esc_html_e( 'Timeout', 'meowseo' ); ?></label></th>
+					<td>
+						<input type="number" name="broken_links_timeout" id="broken_links_timeout" value="<?php echo esc_attr( $this->options->get( 'broken_links_timeout', 30 ) ); ?>" class="small-text" min="1">
+						<span><?php esc_html_e( 'seconds', 'meowseo' ); ?></span>
+						<p class="description"><?php esc_html_e( 'Links that take longer than this to load will be marked as broken.', 'meowseo' ); ?></p>
+					</td>
+				</tr>
+
+				<!-- Link Monitor -->
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Link monitor', 'meowseo' ); ?></th>
+					<td>
+						<label style="display: block; margin-bottom: 5px;">
+							<input type="checkbox" name="broken_links_monitor_dashboard" value="1" <?php checked( $this->options->get( 'broken_links_monitor_dashboard', true ) ); ?>>
+							<?php esc_html_e( 'Run continuously while the Dashboard is open', 'meowseo' ); ?>
+						</label>
+						<label style="display: block;">
+							<input type="checkbox" name="broken_links_monitor_background" value="1" <?php checked( $this->options->get( 'broken_links_monitor_background', true ) ); ?>>
+							<?php esc_html_e( 'Run hourly in the background', 'meowseo' ); ?>
+						</label>
+					</td>
+				</tr>
+
+				<!-- Dashboard Widget -->
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Show the dashboard widget for', 'meowseo' ); ?></th>
+					<td>
+						<label style="display: block; margin-bottom: 5px;">
+							<input type="radio" name="broken_links_widget_role" value="administrator" <?php checked( $this->options->get( 'broken_links_widget_role', 'editor' ), 'administrator' ); ?>>
+							<?php esc_html_e( 'Administrator', 'meowseo' ); ?>
+						</label>
+						<label style="display: block; margin-bottom: 5px;">
+							<input type="radio" name="broken_links_widget_role" value="editor" <?php checked( $this->options->get( 'broken_links_widget_role', 'editor' ), 'editor' ); ?>>
+							<?php esc_html_e( 'Editor and above', 'meowseo' ); ?>
+						</label>
+						<label style="display: block;">
+							<input type="radio" name="broken_links_widget_role" value="nobody" <?php checked( $this->options->get( 'broken_links_widget_role', 'editor' ), 'nobody' ); ?>>
+							<?php esc_html_e( 'Nobody (disables the widget)', 'meowseo' ); ?>
+						</label>
+					</td>
+				</tr>
+
+				<!-- Link Actions -->
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Show link actions', 'meowseo' ); ?></th>
+					<td>
+						<?php
+						$actions = $this->options->get( 'broken_links_enabled_actions', array( 'edit', 'unlink', 'dismiss', 'recheck' ) );
+						$available_actions = array(
+							'edit'    => __( 'Edit URL', 'meowseo' ),
+							'unlink'  => __( 'Unlink', 'meowseo' ),
+							'not_broken' => __( 'Not broken', 'meowseo' ),
+							'dismiss' => __( 'Dismiss', 'meowseo' ),
+							'recheck' => __( 'Recheck', 'meowseo' ),
+							'fix_redirect' => __( 'Fix redirect', 'meowseo' ),
+						);
+						foreach ( $available_actions as $key => $label ) : ?>
+							<label style="display: block; margin-bottom: 5px;">
+								<input type="checkbox" name="broken_links_enabled_actions[]" value="<?php echo esc_attr( $key ); ?>" <?php checked( in_array( $key, $actions, true ) ); ?>>
+								<?php echo esc_html( $label ); ?>
+							</label>
+						<?php endforeach; ?>
+					</td>
+				</tr>
+
+				<!-- Max Execution Time -->
+				<tr>
+					<th scope="row"><label for="broken_links_max_exec_time"><?php esc_html_e( 'Max. execution time', 'meowseo' ); ?></label></th>
+					<td>
+						<input type="number" name="broken_links_max_exec_time" id="broken_links_max_exec_time" value="<?php echo esc_attr( $this->options->get( 'broken_links_max_exec_time', 420 ) ); ?>" class="small-text">
+						<span><?php esc_html_e( 'seconds', 'meowseo' ); ?></span>
+						<p class="description"><?php esc_html_e( 'The plugin works by periodically launching a background job. Here you can set for how long, at most, the link monitor may run each time before stopping.', 'meowseo' ); ?></p>
+					</td>
+				</tr>
+
+				<!-- Target Resource Usage -->
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Target resource usage', 'meowseo' ); ?></th>
+					<td>
+						<?php $usage = (int) $this->options->get( 'broken_links_resource_usage', 25 ); ?>
+						<input type="range" name="broken_links_resource_usage" min="1" max="100" value="<?php echo esc_attr( $usage ); ?>" style="width: 200px;">
+						<span id="res-usage-val"><?php echo $usage; ?>%</span>
+						<p class="description"><?php esc_html_e( 'Lower values make the plugin more "polite" by adding delays between link checks. Recommended for cheap hosting.', 'meowseo' ); ?></p>
+						<script>
+							document.querySelector('input[name="broken_links_resource_usage"]').oninput = function() {
+								document.getElementById('res-usage-val').innerHTML = this.value + '%';
+							};
+						</script>
+					</td>
+				</tr>
+
+				<!-- Server Load Limit -->
+				<tr>
+					<th scope="row"><label for="broken_links_load_limit"><?php esc_html_e( 'Server load limit', 'meowseo' ); ?></label></th>
+					<td>
+						<input type="text" name="broken_links_load_limit" id="broken_links_load_limit" value="<?php echo esc_attr( $this->options->get( 'broken_links_load_limit', '11.00' ) ); ?>" class="small-text">
+						<p class="description"><?php esc_html_e( 'Link checking will be suspended if the average server load rises above this number. Leave blank to disable.', 'meowseo' ); ?></p>
+					</td>
+				</tr>
+
+				<!-- Logging -->
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Logging', 'meowseo' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="broken_links_logging_enabled" value="1" <?php checked( $this->options->get( 'broken_links_logging_enabled', false ) ); ?>>
+							<?php esc_html_e( 'Enable logging', 'meowseo' ); ?>
+						</label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Log file location', 'meowseo' ); ?></th>
+					<td>
+						<?php 
+						$log_loc = $this->options->get( 'broken_links_log_location_type', 'default' );
+						$default_log = WP_CONTENT_DIR . '/meowseo-link-checker.log';
+						?>
+						<label style="display: block; margin-bottom: 5px;">
+							<input type="radio" name="broken_links_log_location_type" value="default" <?php checked( $log_loc, 'default' ); ?>>
+							<?php esc_html_e( 'Default', 'meowseo' ); ?><br>
+							<code style="display: block; margin-top: 5px; background: #f0f0f1; padding: 5px;"><?php echo esc_html( $default_log ); ?></code>
+						</label>
+						<label style="display: block;">
+							<input type="radio" name="broken_links_log_location_type" value="custom" <?php checked( $log_loc, 'custom' ); ?>>
+							<?php esc_html_e( 'Custom', 'meowseo' ); ?><br>
+							<input type="text" name="broken_links_log_custom_path" value="<?php echo esc_attr( $this->options->get( 'broken_links_log_custom_path', '' ) ); ?>" class="large-text" style="margin-top: 5px;">
+						</label>
+					</td>
+				</tr>
+
+				<!-- Forced Recheck -->
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Forced recheck', 'meowseo' ); ?></th>
+					<td>
+						<button type="submit" name="meowseo_action" value="forced_recheck" class="button" onclick="return confirm('<?php esc_attr_e( 'This will clear all current link results and start over. Are you sure?', 'meowseo' ); ?>');">
+							<?php esc_html_e( 'Re-check all pages', 'meowseo' ); ?>
+						</button>
+						<p class="description"><?php esc_html_e( 'The "Nuclear Option". Click this button to make the plugin empty its link database and recheck the entire site from scratch.', 'meowseo' ); ?></p>
+					</td>
+				</tr>
+			</table>
+		</div>
 		<?php
 	}
 }

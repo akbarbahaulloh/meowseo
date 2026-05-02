@@ -68,6 +68,12 @@ class Options {
 			'ai_profiles'            => array(),
 			'writing_styles'         => array(),
 			'image_styles'           => array(),
+			'broken_links_check_frequency'  => 72,
+			'broken_links_excluded_domains' => '',
+			'broken_links_post_types'       => array( 'post', 'page' ),
+			'broken_links_notifications'    => false,
+			'broken_links_notification_email' => get_option( 'admin_email' ),
+			'broken_links_notification_type'  => 'daily', // 'immediate' or 'daily'
 		);
 
 		foreach ( $defaults as $key => $value ) {

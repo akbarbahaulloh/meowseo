@@ -255,6 +255,16 @@ class Admin {
 			array( $this, 'render_404_monitor_page' )
 		);
 
+		// 6. Broken Links - Link Health
+		add_submenu_page(
+			'meowseo',
+			__( 'Broken Links', 'meowseo' ),
+			__( 'Broken Links', 'meowseo' ),
+			'manage_options',
+			'meowseo-broken-links',
+			array( $this, 'render_broken_links_page' )
+		);
+
 		// 6. Import - Migration
 		$import_page = add_submenu_page(
 			'meowseo',
@@ -372,6 +382,29 @@ class Admin {
 		<?php
 	}
 
+	/**
+	 * Render broken links page
+	 *
+	 * Outputs the broken links management UI.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function render_broken_links_page(): void {
+		// Verify user has manage_options capability.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'meowseo' ) );
+		}
+
+		$internal_links = $this->module_manager->get_module( 'internal_links' );
+		if ( $internal_links ) {
+			if ( ! class_exists( 'MeowSEO\Modules\Internal_Links\Broken_Links_Admin' ) ) {
+				require_once MEOWSEO_PATH . 'includes/modules/internal_links/class-broken-links-admin.php';
+			}
+			$admin = new \MeowSEO\Modules\Internal_Links\Broken_Links_Admin( $this->options );
+			$admin->render_page();
+		}
+	}
 	/**
 	 * Render search console page
 	 *

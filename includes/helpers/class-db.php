@@ -351,10 +351,16 @@ class DB {
 			'target_url_hash' => $url_hash,
 			'anchor_text'     => $row['anchor_text'] ?? null,
 			'http_status'     => isset( $row['http_status'] ) ? absint( $row['http_status'] ) : null,
+			'is_broken'       => isset( $row['is_broken'] ) ? (int) $row['is_broken'] : 0,
+			'is_external'     => isset( $row['is_external'] ) ? (int) $row['is_external'] : 0,
+			'redirect_url'    => $row['redirect_url'] ?? null,
+			'error_log'       => $row['error_log'] ?? null,
+			'check_count'     => isset( $row['check_count'] ) ? absint( $row['check_count'] ) : 0,
 			'last_checked'    => $row['last_checked'] ?? null,
+			'last_success'    => $row['last_success'] ?? null,
 		];
 
-		$format = [ '%d', '%s', '%s', '%s', '%d', '%s' ];
+		$format = [ '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s' ];
 
 		// Check if entry exists.
 		$exists = $wpdb->get_var(
