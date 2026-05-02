@@ -301,7 +301,7 @@ class Meta_Module implements Module {
 	/**
 	 * Register keyword REST routes
 	 *
-	 * Registers REST API endpoints for keyword management.
+	 * Registers REST API endpoints for keyword management and SEO analysis.
 	 *
 	 * @return void
 	 */
@@ -359,7 +359,99 @@ class Meta_Module implements Module {
 				),
 			)
 		);
+
+		// Register SEO + Readability analysis endpoint (used by classic editor panel).
+		register_rest_route(
+			'meowseo/v1',
+			'/analysis/(?P<post_id>\d+)',
+			array(
+				'methods'             => 'GET, POST',
+				'callback'            => array( $this, 'rest_get_analysis' ),
+				'permission_callback' => array( $this, 'check_analysis_permission' ),
+				'args'                => array(
+					'post_id'       => array(
+						'required'          => true,
+						'type'              => 'integer',
+						'sanitize_callback' => 'absint',
+					),
+					'content'       => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'wp_kses_post',
+						'default'           => '',
+					),
+					'focus_keyword' => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+						'default'           => '',
+					),
+				),
+			)
+		);
 	}
+
+	/**
+	 * REST callback: run SEO + Readability analysis
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 * @return \WP_REST_Response
+	 */
+	public function rest_get_analysis( \WP_REST_Request $request ): \WP_REST_Response {
+		$post_id       = (int) $request['post_id'];
+		$content       = (string) ( $request->get_param( 'content' ) ?? '' );
+		$focus_keyword = (string) ( $request->get_param( 'focus_keyword' ) ?? '' );
+
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return new \WP_REST_Response( array( 'error' => 'Post not found.' ), 404 );
+		}
+
+		// Use live editor content if provided, otherwise fall back to saved content.
+		if ( empty( $content ) ) {
+			$content = $post->post_content;
+		}
+
+		// Fall back to saved keyword if none supplied.
+		if ( empty( $focus_keyword ) ) {
+			$focus_keyword = (string) get_post_meta( $post_id, '_meowseo_focus_keyword', true );
+		}
+
+		// Resolve title and description via the resolver.
+		$title       = (string) get_post_meta( $post_id, '_meowseo_title', true ) ?: get_the_title( $post );
+		$description = (string) get_post_meta( $post_id, '_meowseo_description', true );
+		$slug        = $post->post_name;
+
+		$seo_result = \MeowSEO\Modules\Meta\SEO_Analyzer::analyze( array(
+			'title'         => $title,
+			'description'   => $description,
+			'content'       => $content,
+			'slug'          => $slug,
+			'focus_keyword' => $focus_keyword,
+		) );
+
+		$readability_result = \MeowSEO\Modules\Meta\Readability::analyze( $content );
+
+		return new \WP_REST_Response(
+			array(
+				'seo'         => $seo_result,
+				'readability' => $readability_result,
+			),
+			200
+		);
+	}
+
+	/**
+	 * Permission callback for analysis endpoint
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 * @return bool
+	 */
+	public function check_analysis_permission( \WP_REST_Request $request ): bool {
+		$post_id = (int) $request['post_id'];
+		return current_user_can( 'edit_post', $post_id );
+	}
+
 
 	/**
 	 * REST endpoint callback for updating keywords
