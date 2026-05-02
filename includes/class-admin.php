@@ -255,7 +255,7 @@ class Admin {
 			array( $this, 'render_404_monitor_page' )
 		);
 
-		// 6. Broken Links - Link Health
+		// Broken Links submenu.
 		add_submenu_page(
 			'meowseo',
 			__( 'Broken Links', 'meowseo' ),
@@ -263,6 +263,16 @@ class Admin {
 			'manage_options',
 			'meowseo-broken-links',
 			array( $this, 'render_broken_links_page' )
+		);
+
+		// Content Refresh submenu.
+		add_submenu_page(
+			'meowseo',
+			__( 'Content Refresh', 'meowseo' ),
+			__( 'Content Refresh', 'meowseo' ),
+			'manage_options',
+			'meowseo-content-refresh',
+			array( $this, 'render_content_refresh_page' )
 		);
 
 		// 6. Import - Migration
@@ -1154,5 +1164,13 @@ class Admin {
 		}
 
 		wp_send_json_success( $results );
+	}
+
+	/**
+	 * Render Content Refresh page.
+	 */
+	public function render_content_refresh_page(): void {
+		$module = new \MeowSEO\Modules\Content_Refresh\Content_Refresh_Admin( $this->options );
+		$module->render_dashboard_page();
 	}
 }

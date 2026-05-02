@@ -132,6 +132,11 @@ class Settings_Manager {
 				'icon'   => 'dashicons-warning',
 				'method' => 'render_broken_links_tab',
 			),
+			'content-refresh' => array(
+				'title'  => __( 'Content Refresh', 'meowseo' ),
+				'icon'   => 'dashicons-update',
+				'method' => 'render_content_refresh_tab',
+			),
 		);
 		
 		$this->tabs = apply_filters( 'meowseo_settings_tabs', $this->tabs );
@@ -1789,6 +1794,35 @@ class Settings_Manager {
 			}
 		}
 		
+		// Validate Content Refresh settings.
+		if ( isset( $settings['content_refresh_enabled'] ) ) {
+			$validated['content_refresh_enabled'] = (bool) $settings['content_refresh_enabled'];
+		}
+		if ( isset( $settings['content_refresh_interval'] ) ) {
+			$validated['content_refresh_interval'] = absint( $settings['content_refresh_interval'] );
+		}
+		if ( isset( $settings['content_refresh_min_age'] ) ) {
+			$validated['content_refresh_min_age'] = absint( $settings['content_refresh_min_age'] );
+		}
+		if ( isset( $settings['content_refresh_post_types'] ) ) {
+			$validated['content_refresh_post_types'] = array_map( 'sanitize_text_field', $settings['content_refresh_post_types'] );
+		}
+		if ( isset( $settings['content_refresh_method'] ) ) {
+			$validated['content_refresh_method'] = sanitize_text_field( $settings['content_refresh_method'] );
+		}
+		if ( isset( $settings['content_refresh_auto_redirect'] ) ) {
+			$validated['content_refresh_auto_redirect'] = (bool) $settings['content_refresh_auto_redirect'];
+		}
+		if ( isset( $settings['content_refresh_add_notice'] ) ) {
+			$validated['content_refresh_add_notice'] = (bool) $settings['content_refresh_add_notice'];
+		}
+		if ( isset( $settings['content_refresh_included_categories'] ) ) {
+			$validated['content_refresh_included_categories'] = array_map( 'absint', $settings['content_refresh_included_categories'] );
+		}
+		if ( isset( $settings['content_refresh_included_tags'] ) ) {
+			$validated['content_refresh_included_tags'] = array_map( 'absint', $settings['content_refresh_included_tags'] );
+		}
+
 		// Validate organization logo URL.
 		if ( isset( $settings['organization_logo_url'] ) && ! empty( $settings['organization_logo_url'] ) ) {
 			$logo_url = esc_url_raw( trim( $settings['organization_logo_url'] ) );
@@ -3462,5 +3496,15 @@ class Settings_Manager {
 			</table>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render Content Refresh tab.
+	 *
+	 * @return void
+	 */
+	public function render_content_refresh_tab(): void {
+		$module = new \MeowSEO\Modules\Content_Refresh\Content_Refresh_Admin( $this->options );
+		$module->render_settings_tab();
 	}
 }

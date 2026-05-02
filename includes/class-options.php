@@ -60,7 +60,7 @@ class Options {
 	 */
 	private function set_defaults(): void {
 		$defaults = array(
-			'enabled_modules'        => array( 'meta', 'schema', 'sitemap', 'redirects', 'monitor_404', 'internal_links', 'gsc', 'social', 'ai', 'import', 'image_seo', 'meowindex', 'roles', 'multilingual', 'multisite', 'locations', 'bulk', 'analytics', 'admin-bar', 'orphaned', 'synonyms' ), // Core modules enabled by default.
+			'enabled_modules'        => array( 'meta', 'schema', 'sitemap', 'redirects', 'monitor_404', 'internal_links', 'gsc', 'social', 'ai', 'import', 'image_seo', 'meowindex', 'roles', 'multilingual', 'multisite', 'locations', 'bulk', 'analytics', 'admin-bar', 'orphaned', 'synonyms', 'content_refresh' ), // Core modules enabled by default.
 			'separator'              => '|',
 			'default_social_image'   => '',
 			'delete_on_uninstall'    => false,
@@ -74,6 +74,19 @@ class Options {
 			'broken_links_notifications'    => false,
 			'broken_links_notification_email' => get_option( 'admin_email' ),
 			'broken_links_notification_type'  => 'daily', // 'immediate' or 'daily'
+			'broken_links_resource_usage'   => 25,
+			'broken_links_load_limit'       => '11.00',
+			
+			// Content Refresh (Safe Re-publishing).
+			'content_refresh_enabled'       => false,
+			'content_refresh_interval'      => 24, // hours
+			'content_refresh_min_age'       => 30, // days
+			'content_refresh_post_types'    => array( 'post' ),
+			'content_refresh_method'        => 'modified', // 'republish' or 'modified'
+			'content_refresh_auto_redirect' => true,
+			'content_refresh_add_notice'    => true,
+			'content_refresh_included_categories' => array(),
+			'content_refresh_included_tags'       => array(),
 		);
 
 		foreach ( $defaults as $key => $value ) {
@@ -143,6 +156,7 @@ class Options {
 			'admin-bar',
 			'orphaned',
 			'synonyms',
+			'content_refresh',
 		);
 	}
 

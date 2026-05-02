@@ -61,6 +61,7 @@ class Module_Manager {
 		'admin-bar'     => 'Modules\Admin_Bar\Admin_Bar_Module',
 		'orphaned'      => 'Modules\Orphaned\Orphaned_Module',
 		'synonyms'      => 'Modules\Synonyms\Synonym_Module',
+		'content_refresh' => 'Modules\Content_Refresh\Content_Refresh',
 	);
 
 	/**
