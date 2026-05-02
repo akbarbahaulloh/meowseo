@@ -313,7 +313,7 @@ class AI_Module implements Module {
 		$tabs['ai'] = [
 			'title'    => __( 'AI', 'meowseo' ),
 			'callback' => [ $this, 'render_settings_tab' ],
-			'icon'     => 'dashicons-sparkles',
+			'icon'     => 'dashicons-admin-generic',
 		];
 
 		return $tabs;

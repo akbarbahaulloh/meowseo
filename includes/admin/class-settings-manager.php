@@ -94,7 +94,7 @@ class Settings_Manager {
 			),
 			'ai'              => array(
 				'title'    => __( 'AI', 'meowseo' ),
-				'icon'     => 'dashicons-admin-appearance',
+				'icon'     => 'dashicons-admin-generic',
 				'callback' => array( $this->module_manager->get_module( 'ai' ), 'render_settings_tab' ),
 			),
 			'writing_styles'  => array(
@@ -198,6 +198,13 @@ class Settings_Manager {
 						});
 						this.classList.add('active');
 						this.setAttribute('aria-selected', 'true');
+						
+						// Update hidden input for tab persistence.
+						var hiddenInput = document.querySelector('input[name="meowseo_active_tab"]');
+						if (hiddenInput) {
+							hiddenInput.value = targetTab;
+						}
+
 						panels.forEach(function(panel) {
 							if (panel.getAttribute('data-tab') === targetTab) {
 								panel.classList.add('active');
