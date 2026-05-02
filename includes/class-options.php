@@ -87,6 +87,7 @@ class Options {
 			'content_refresh_add_notice'    => true,
 			'content_refresh_included_categories' => array(),
 			'content_refresh_included_tags'       => array(),
+			'content_refresh_auto_index'          => true,
 		);
 
 		foreach ( $defaults as $key => $value ) {

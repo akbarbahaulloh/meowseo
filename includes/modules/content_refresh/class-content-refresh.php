@@ -161,11 +161,16 @@ class Content_Refresh implements Module {
 			
 			wp_update_post( $update_data );
 			
-			$new_link = get_permalink( $post_id );
+			$new_permalink = get_permalink( $post_id );
 
 			// Auto-redirect if URL changed (e.g. /2022/ link becomes /2026/).
-			if ( $old_link !== $new_link && $this->options->get( 'content_refresh_auto_redirect', true ) ) {
-				$this->create_301_redirect( $old_link, $new_link );
+			if ( $this->options->get( 'content_refresh_auto_redirect', true ) && $old_link !== $new_permalink ) {
+				$this->create_301_redirect( $old_link, $new_permalink );
+			}
+
+			// Auto-Submit to Search Engines (Requirement: Immediate SEO impact).
+			if ( $this->options->get( 'content_refresh_auto_index', true ) ) {
+				$this->submit_to_index( $new_permalink );
 			}
 
 		} else {
@@ -176,6 +181,11 @@ class Content_Refresh implements Module {
 				'post_modified_gmt' => $gmt_time,
 			);
 			wp_update_post( $update_data );
+
+			// Also submit to index for modified date updates.
+			if ( $this->options->get( 'content_refresh_auto_index', true ) ) {
+				$this->submit_to_index( get_permalink( $post_id ) );
+			}
 		}
 
 		// Store refresh meta.
@@ -197,6 +207,16 @@ class Content_Refresh implements Module {
 		$path = wp_make_link_relative( $old_url );
 		$redirects[ $path ] = $new_url;
 		update_option( 'meowseo_content_refresh_redirects', $redirects );
+	}
+
+	/**
+	 * Submit URL to search engines via MeowIndex.
+	 *
+	 * @param string $url The URL to submit.
+	 */
+	private function submit_to_index( string $url ): void {
+		// Trigger the MeowIndex hook.
+		do_action( 'meowseo_submit_to_index', $url );
 	}
 
 	/**

@@ -137,6 +137,11 @@ class Settings_Manager {
 				'icon'   => 'dashicons-update',
 				'method' => 'render_content_refresh_tab',
 			),
+			'cron'            => array(
+				'title'  => __( 'Cron Manager', 'meowseo' ),
+				'icon'   => 'dashicons-clock',
+				'method' => 'render_cron_tab',
+			),
 		);
 		
 		$this->tabs = apply_filters( 'meowseo_settings_tabs', $this->tabs );
@@ -302,6 +307,10 @@ class Settings_Manager {
 	private function render_admin_notices(): void {
 		if ( isset( $_GET['meowseo_settings_saved'] ) && '1' === $_GET['meowseo_settings_saved'] ) {
 			echo '<div class="notice notice-success is-dismissible" role="alert"><p>' . esc_html__( 'Settings saved successfully.', 'meowseo' ) . '</p></div>';
+		}
+
+		if ( isset( $_GET['meowseo_cron_run'] ) && '1' === $_GET['meowseo_cron_run'] ) {
+			echo '<div class="notice notice-success is-dismissible" role="alert"><p>' . esc_html__( 'Task executed successfully.', 'meowseo' ) . '</p></div>';
 		}
 
 		if ( isset( $_GET['meowseo_settings_error'] ) ) {
@@ -2684,6 +2693,16 @@ class Settings_Manager {
 			wp_safe_redirect( add_query_arg( 'meowseo_settings_error', urlencode( __( 'Failed to save settings. Please try again.', 'meowseo' ) ), $redirect_url ) );
 		}
 
+		// Handle manual cron execution.
+		if ( isset( $_POST['meowseo_run_cron'] ) ) {
+			$hook = sanitize_key( $_POST['meowseo_run_cron'] );
+			$cron_manager = new \MeowSEO\Admin\Cron_Manager( $this->options );
+			if ( $cron_manager->run_task( $hook ) ) {
+				wp_safe_redirect( add_query_arg( 'meowseo_cron_run', '1', $redirect_url ) );
+				exit;
+			}
+		}
+
 		exit;
 	}
 
@@ -3513,5 +3532,13 @@ class Settings_Manager {
 	public function render_content_refresh_tab(): void {
 		$module = new \MeowSEO\Modules\Content_Refresh\Content_Refresh_Admin( $this->options );
 		$module->render_settings_tab();
+	}
+
+	/**
+	 * Render Cron Manager tab.
+	 */
+	public function render_cron_tab(): void {
+		$module = new \MeowSEO\Admin\Cron_Manager( $this->options );
+		$module->render_tab();
 	}
 }
