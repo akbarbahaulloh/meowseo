@@ -68,12 +68,10 @@
 }
 
 /* Column Widths */
-.column-seo_score {
-	width: 90px;
-}
-
+.column-seo_score,
 .column-readability_score {
-	width: 90px;
+	width: 50px;
+	text-align: center;
 }
 
 .column-outbound_links,

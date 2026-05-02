@@ -100,8 +100,8 @@ class List_Table_Columns {
 
 			// Insert SEO columns after Title.
 			if ( 'title' === $key ) {
-				$new_columns['seo_score']         = __( 'SEO Score', 'meowseo' );
-				$new_columns['readability_score'] = __( 'Readability', 'meowseo' );
+				$new_columns['seo_score']         = '<span class="dashicons dashicons-admin-site-alt3" title="' . esc_attr__( 'SEO Score', 'meowseo' ) . '"></span>';
+				$new_columns['readability_score'] = '<span class="dashicons dashicons-media-text" title="' . esc_attr__( 'Readability Score', 'meowseo' ) . '"></span>';
 				$new_columns['outbound_links']    = '<span class="dashicons dashicons-external" title="' . esc_attr__( 'Outbound Links', 'meowseo' ) . '"></span>';
 				$new_columns['internal_links']    = '<span class="dashicons dashicons-admin-links" title="' . esc_attr__( 'Internal Links', 'meowseo' ) . '"></span>';
 				$new_columns['inbound_links']     = '<span class="dashicons dashicons-share-alt" title="' . esc_attr__( 'Inbound Links', 'meowseo' ) . '"></span>';
