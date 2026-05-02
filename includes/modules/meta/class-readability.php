@@ -119,6 +119,15 @@ class Readability {
 			'pass'  => $passive_percentage <= 10,
 		);
 
+		// Check 5: Flesch Reading Ease score ≥ 60 (standard or easier).
+		$flesch_score = self::get_flesch_reading_ease( $text );
+		$checks[] = array(
+			'id'    => 'flesch_reading_ease',
+			'label' => __( 'Flesch Reading Ease score ≥ 60', 'meowseo' ),
+			'pass'  => $flesch_score >= 60,
+			'value' => round( $flesch_score, 1 ),
+		);
+
 		// Calculate score.
 		$passing_checks = count( array_filter( $checks, fn( $check ) => $check['pass'] ) );
 		$total_checks = count( $checks );
@@ -356,5 +365,81 @@ class Readability {
 		} else {
 			return 'red';
 		}
+	}
+
+	/**
+	 * Calculate Flesch Reading Ease score
+	 *
+	 * Formula: 206.835 − 1.015×(words/sentences) − 84.6×(syllables/words)
+	 * Interpretation:
+	 *   90-100  Very easy
+	 *   80-90   Easy
+	 *   70-80   Fairly easy
+	 *   60-70   Standard ← threshold
+	 *   50-60   Fairly difficult
+	 *   30-50   Difficult
+	 *   0-30    Very confusing
+	 *
+	 * @since 1.0.0
+	 * @param string $text Plain text.
+	 * @return float Flesch score (0-100, clamped).
+	 */
+	private static function get_flesch_reading_ease( string $text ): float {
+		$sentences = self::split_into_sentences( $text );
+		$words     = preg_split( '/\s+/', trim( $text ), -1, PREG_SPLIT_NO_EMPTY );
+
+		$sentence_count = max( 1, count( $sentences ) );
+		$word_count     = max( 1, count( $words ) );
+
+		$syllable_count = 0;
+		foreach ( $words as $word ) {
+			$syllable_count += self::count_syllables( $word );
+		}
+
+		$asl   = $word_count / $sentence_count;         // Average sentence length.
+		$asw   = $syllable_count / $word_count;          // Average syllables per word.
+		$score = 206.835 - ( 1.015 * $asl ) - ( 84.6 * $asw );
+
+		// Clamp to 0-100.
+		return max( 0.0, min( 100.0, $score ) );
+	}
+
+	/**
+	 * Count syllables in a single word using vowel-group heuristic
+	 *
+	 * Based on the CMU Pronouncing Dictionary approach adapted for PHP:
+	 * - Count vowel groups (aeiou + y after consonant)
+	 * - Subtract silent 'e' at end
+	 * - Minimum 1 syllable per word
+	 *
+	 * @since 1.0.0
+	 * @param string $word Word to count syllables for.
+	 * @return int Syllable count.
+	 */
+	private static function count_syllables( string $word ): int {
+		$word = mb_strtolower( preg_replace( '/[^a-zA-Z]/', '', $word ) );
+
+		if ( empty( $word ) ) {
+			return 0;
+		}
+
+		// Count vowel groups.
+		$syllables = preg_match_all( '/[aeiouy]+/', $word );
+
+		// Subtract silent 'e' at end of word (e.g. "make", "face").
+		if ( mb_strlen( $word ) > 2 && mb_substr( $word, -1 ) === 'e' ) {
+			$syllables--;
+		}
+
+		// Subtract silent 'le' if preceded by consonant (e.g. "table" is 2, not 3).
+		if ( mb_strlen( $word ) > 2 && mb_substr( $word, -2 ) === 'le' ) {
+			$preceding = mb_substr( $word, -3, 1 );
+			if ( $preceding && ! preg_match( '/[aeiouy]/', $preceding ) ) {
+				$syllables++; // already subtracted 'e', now add back for 'le'.
+			}
+		}
+
+		// Every word has at least 1 syllable.
+		return max( 1, (int) $syllables );
 	}
 }

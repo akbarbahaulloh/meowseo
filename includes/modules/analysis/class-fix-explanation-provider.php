@@ -63,6 +63,26 @@ class Fix_Explanation_Provider {
 			'issue' => 'Your URL slug doesn\'t include the focus keyword.',
 			'fix' => 'Edit the permalink to include "{keyword}". Keep it short and readable. Example: /your-site/{keyword_slug}/',
 		),
+		'keyword_density' => array(
+			'issue' => 'Your keyword density for "{keyword}" is outside the ideal 0.5%–3% range.',
+			'fix' => 'Use "{keyword}" naturally throughout your content. Aim for 1–2 occurrences per 100 words. Avoid keyword stuffing.',
+		),
+		'internal_links_missing' => array(
+			'issue' => 'Your content has no internal links.',
+			'fix' => 'Add at least one link to another page on your site. This improves navigation and distributes link equity.',
+		),
+		'outbound_links_missing' => array(
+			'issue' => 'Your content has no outbound (external) links.',
+			'fix' => 'Link to at least one authoritative external source to add credibility and context to your content.',
+		),
+		'image_alt_missing' => array(
+			'issue' => 'One or more images in your content are missing alt text.',
+			'fix' => 'Add descriptive alt text to every image. Include "{keyword}" where relevant. Alt text improves accessibility and helps images rank in Google Image Search.',
+		),
+		'flesch_score_low' => array(
+			'issue' => 'Your content has a low Flesch Reading Ease score — it may be difficult to read.',
+			'fix' => 'Use shorter sentences (aim for ≤20 words), simpler vocabulary, and break long paragraphs into smaller ones. The target score is 60 or above.',
+		),
 	);
 
 	/**

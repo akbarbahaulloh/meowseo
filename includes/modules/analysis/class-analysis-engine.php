@@ -91,11 +91,11 @@ class Analysis_Engine {
 			$seo_result['checks'] ?? array(),
 			'seo',
 			array(
-				'keyword' => $focus_keyword,
-				'title_length' => mb_strlen( $title ),
+				'keyword'            => $focus_keyword,
+				'title_length'       => mb_strlen( $title ),
 				'description_length' => mb_strlen( $description ),
-				'content_length' => mb_strlen( wp_strip_all_tags( $content ) ),
-				'word_count' => $this->count_words( $content ),
+				'content_length'     => mb_strlen( wp_strip_all_tags( $content ) ),
+				'word_count'         => $this->count_words( $content ),
 			)
 		);
 
@@ -185,6 +185,21 @@ class Analysis_Engine {
 
 			case 'keyword_in_slug':
 				return 'slug_not_optimized';
+
+			case 'keyword_density':
+				return 'keyword_density';
+
+			case 'internal_links':
+				return 'internal_links_missing';
+
+			case 'outbound_links':
+				return 'outbound_links_missing';
+
+			case 'image_alt_text':
+				return 'image_alt_missing';
+
+			case 'flesch_reading_ease':
+				return 'flesch_score_low';
 
 			default:
 				return $check_id;

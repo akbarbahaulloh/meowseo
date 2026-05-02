@@ -115,6 +115,42 @@ class SEO_Analyzer {
 			'pass'  => $title_length >= 30 && $title_length <= 60,
 		);
 
+		// Check 8: Keyword density (0.5%-3%).
+		$density = self::get_keyword_density( $content, $focus_keyword );
+		$checks[] = array(
+			'id'    => 'keyword_density',
+			'label' => __( 'Focus keyword density (0.5%–3%)', 'meowseo' ),
+			'pass'  => ! empty( $focus_keyword ) && $density >= 0.5 && $density <= 3.0,
+			'value' => round( $density, 2 ),
+		);
+
+		// Check 9: Internal links.
+		$internal_count = self::count_internal_links( $content );
+		$checks[] = array(
+			'id'    => 'internal_links',
+			'label' => __( 'At least one internal link', 'meowseo' ),
+			'pass'  => $internal_count >= 1,
+			'value' => $internal_count,
+		);
+
+		// Check 10: Outbound links.
+		$outbound_count = self::count_outbound_links( $content );
+		$checks[] = array(
+			'id'    => 'outbound_links',
+			'label' => __( 'At least one outbound (external) link', 'meowseo' ),
+			'pass'  => $outbound_count >= 1,
+			'value' => $outbound_count,
+		);
+
+		// Check 11: Image alt text.
+		$images_without_alt = self::count_images_missing_alt( $content );
+		$checks[] = array(
+			'id'    => 'image_alt_text',
+			'label' => __( 'All images have alt text', 'meowseo' ),
+			'pass'  => 0 === $images_without_alt,
+			'value' => $images_without_alt,
+		);
+
 		// Calculate score.
 		$passing_checks = count( array_filter( $checks, fn( $check ) => $check['pass'] ) );
 		$total_checks = count( $checks );
@@ -239,5 +275,131 @@ class SEO_Analyzer {
 		} else {
 			return 'red';
 		}
+	}
+	/**
+	 * Get focus keyword density in content
+	 *
+	 * @since 1.0.0
+	 * @param string $content  HTML content.
+	 * @param string $keyword  Focus keyword.
+	 * @return float Density percentage (0-100).
+	 */
+	private static function get_keyword_density( string $content, string $keyword ): float {
+		if ( empty( $keyword ) || empty( $content ) ) {
+			return 0.0;
+		}
+
+		$text       = wp_strip_all_tags( $content );
+		$word_count = count( preg_split( '/\s+/', trim( $text ), -1, PREG_SPLIT_NO_EMPTY ) );
+
+		if ( 0 === $word_count ) {
+			return 0.0;
+		}
+
+		$keyword_count = (int) preg_match_all(
+			'/\b' . preg_quote( mb_strtolower( $keyword ), '/' ) . '\b/iu',
+			mb_strtolower( $text )
+		);
+
+		$keyword_words = count( preg_split( '/\s+/', trim( $keyword ), -1, PREG_SPLIT_NO_EMPTY ) );
+
+		return ( $keyword_count * $keyword_words / $word_count ) * 100;
+	}
+
+	/**
+	 * Count internal links in content
+	 *
+	 * Counts anchor tags pointing to the same domain or relative URLs.
+	 *
+	 * @since 1.0.0
+	 * @param string $content HTML content.
+	 * @return int Number of internal links.
+	 */
+	private static function count_internal_links( string $content ): int {
+		if ( empty( $content ) ) {
+			return 0;
+		}
+
+		$home_host = wp_parse_url( home_url(), PHP_URL_HOST );
+		$count     = 0;
+
+		if ( preg_match_all( '/href=["\']([^"\']+)["\']/i', $content, $matches ) ) {
+			foreach ( $matches[1] as $href ) {
+				$href = trim( $href );
+				// Relative URLs are internal.
+				if ( ! preg_match( '/^https?:\/\//i', $href ) ) {
+					if ( ! preg_match( '/^(mailto:|tel:|#)/i', $href ) ) {
+						$count++;
+					}
+					continue;
+				}
+				// Same-domain URLs.
+				$link_host = wp_parse_url( $href, PHP_URL_HOST );
+				if ( $link_host && $link_host === $home_host ) {
+					$count++;
+				}
+			}
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Count outbound (external) links in content
+	 *
+	 * Counts anchor tags pointing to a different domain.
+	 *
+	 * @since 1.0.0
+	 * @param string $content HTML content.
+	 * @return int Number of outbound links.
+	 */
+	private static function count_outbound_links( string $content ): int {
+		if ( empty( $content ) ) {
+			return 0;
+		}
+
+		$home_host = wp_parse_url( home_url(), PHP_URL_HOST );
+		$count     = 0;
+
+		if ( preg_match_all( '/href=["\']([^"\']+)["\']/i', $content, $matches ) ) {
+			foreach ( $matches[1] as $href ) {
+				$href = trim( $href );
+				if ( ! preg_match( '/^https?:\/\//i', $href ) ) {
+					continue;
+				}
+				$link_host = wp_parse_url( $href, PHP_URL_HOST );
+				if ( $link_host && $link_host !== $home_host ) {
+					$count++;
+				}
+			}
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Count images missing alt text
+	 *
+	 * @since 1.0.0
+	 * @param string $content HTML content.
+	 * @return int Number of images without meaningful alt text.
+	 */
+	private static function count_images_missing_alt( string $content ): int {
+		if ( empty( $content ) ) {
+			return 0;
+		}
+
+		$missing = 0;
+
+		if ( preg_match_all( '/<img[^>]+>/i', $content, $matches ) ) {
+			foreach ( $matches[0] as $img_tag ) {
+				// Check for alt attribute with non-empty value.
+				if ( ! preg_match( '/alt=["\']([^"\'][^"\']*)["\']/i', $img_tag ) ) {
+					$missing++;
+				}
+			}
+		}
+
+		return $missing;
 	}
 }
