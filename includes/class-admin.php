@@ -153,6 +153,10 @@ class Admin {
 		add_action( 'admin_post_meowseo_bulk_descriptions', array( $this, 'handle_bulk_descriptions' ) );
 		add_action( 'admin_post_meowseo_scan_missing', array( $this, 'handle_scan_missing' ) );
 
+		// MeowIndex AJAX handlers.
+		add_action( 'wp_ajax_meowseo_meowindex_regenerate_key', array( $this, 'ajax_meowindex_regenerate_key' ) );
+		add_action( 'wp_ajax_meowseo_meowindex_console', array( $this, 'ajax_meowindex_console' ) );
+
 		// Plugin action links (Requirements: matched MeowPack aesthetic).
 		add_filter( 'plugin_action_links_' . plugin_basename( \MEOWSEO_FILE ), array( $this, 'add_plugin_action_links' ) );
 
@@ -1027,5 +1031,95 @@ class Admin {
 		}
 
 		$submenu['meowseo'] = $new_submenu;
+	}
+
+	/**
+	 * AJAX: Regenerate IndexNow API key
+	 *
+	 * @return void
+	 */
+	public function ajax_meowindex_regenerate_key(): void {
+		check_ajax_referer( 'meowseo_meowindex_regenerate_key', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'meowseo' ) ) );
+		}
+
+		$meowindex_module = $this->module_manager->get_module( 'meowindex' );
+		if ( ! $meowindex_module ) {
+			wp_send_json_error( array( 'message' => __( 'MeowIndex module is not active.', 'meowseo' ) ) );
+		}
+
+		$new_key = $meowindex_module->get_client()->generate_api_key();
+		// Also clear any cached Google tokens.
+		delete_transient( 'meowseo_google_indexing_token' );
+
+		wp_send_json_success( array( 'key' => $new_key ) );
+	}
+
+	/**
+	 * AJAX: Manual URL submission console
+	 *
+	 * Handles console submissions for IndexNow submit, Google update,
+	 * Google delete, and Google URL status check.
+	 *
+	 * @return void
+	 */
+	public function ajax_meowindex_console(): void {
+		check_ajax_referer( 'meowseo_meowindex_console', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'meowseo' ) ) );
+		}
+
+		$meowindex_module = $this->module_manager->get_module( 'meowindex' );
+		if ( ! $meowindex_module ) {
+			wp_send_json_error( array( 'message' => __( 'MeowIndex module is not active.', 'meowseo' ) ) );
+		}
+
+		$client     = $meowindex_module->get_client();
+		$raw_urls   = isset( $_POST['urls'] ) ? sanitize_textarea_field( wp_unslash( $_POST['urls'] ) ) : '';
+		$api_action = isset( $_POST['api_action'] ) ? sanitize_key( $_POST['api_action'] ) : '';
+
+		// Parse URLs — one per line, skip empty.
+		$urls = array_filter(
+			array_map( 'trim', explode( "\n", $raw_urls ) ),
+			fn( $u ) => ! empty( $u ) && filter_var( $u, FILTER_VALIDATE_URL )
+		);
+
+		if ( empty( $urls ) ) {
+			wp_send_json_error( array( 'message' => __( 'No valid URLs found.', 'meowseo' ) ) );
+		}
+
+		$urls    = array_values( $urls );
+		$results = array();
+
+		switch ( $api_action ) {
+			case 'indexnow_submit':
+				$results = $client->submit_urls( $urls, 'URL_UPDATED' );
+				break;
+
+			case 'google_update':
+				$results = $client->submit_urls( $urls, 'URL_UPDATED' );
+				break;
+
+			case 'google_delete':
+				$results = $client->submit_urls( $urls, 'URL_DELETED' );
+				break;
+
+			case 'google_status':
+				foreach ( $urls as $url ) {
+					$status = $client->get_url_status( $url );
+					$results[ $url ] = is_wp_error( $status )
+						? array( 'error' => $status->get_error_message() )
+						: $status;
+				}
+				break;
+
+			default:
+				wp_send_json_error( array( 'message' => __( 'Unknown action.', 'meowseo' ) ) );
+		}
+
+		wp_send_json_success( $results );
 	}
 }

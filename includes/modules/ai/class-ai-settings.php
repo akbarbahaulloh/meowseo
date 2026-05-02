@@ -607,6 +607,12 @@ class AI_Settings {
 								<option value="gemini-1.5-flash-8b">Gemini 1.5 Flash-8B</option>
 								<option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
 							</optgroup>
+							<optgroup label="Gemma 3 (Latest)">
+								<option value="gemma-3-1b-it">Gemma 3 1B</option>
+								<option value="gemma-3-4b-it">Gemma 3 4B</option>
+								<option value="gemma-3-12b-it">Gemma 3 12B</option>
+								<option value="gemma-3-27b-it">Gemma 3 27B</option>
+							</optgroup>
 							<optgroup label="Gemma 2">
 								<option value="gemma-2-2b-it">Gemma 2 2B</option>
 								<option value="gemma-2-9b-it">Gemma 2 9B</option>
@@ -755,6 +761,12 @@ class AI_Settings {
 								'gemini-1.5-flash'    => 'Gemini 1.5 Flash',
 								'gemini-1.5-flash-8b' => 'Gemini 1.5 Flash-8B',
 								'gemini-1.5-pro'      => 'Gemini 1.5 Pro',
+							),
+							__( 'Gemma 3 (Latest)', 'meowseo' ) => array(
+								'gemma-3-1b-it'  => 'Gemma 3 1B',
+								'gemma-3-4b-it'  => 'Gemma 3 4B',
+								'gemma-3-12b-it' => 'Gemma 3 12B',
+								'gemma-3-27b-it' => 'Gemma 3 27B',
 							),
 							__( 'Gemma 2', 'meowseo' ) => array(
 								'gemma-2-2b-it'  => 'Gemma 2 2B',

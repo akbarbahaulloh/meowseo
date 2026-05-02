@@ -997,78 +997,208 @@ class Settings_Manager {
 	 * @return void
 	 */
 	public function render_meowindex_tab(): void {
+		$meowindex_enabled        = $this->options->get( 'meowindex_enabled', false );
+		$meowindex_api_key        = $this->options->get( 'meowindex_api_key', '' );
+		$meowindex_post_types     = (array) $this->options->get( 'meowindex_post_types', array() );
+		$meowindex_google_enabled = $this->options->get( 'meowindex_google_enabled', false );
+		$meowindex_google_pt      = (array) $this->options->get( 'meowindex_google_post_types', array() );
+		$meowindex_google_json    = $this->options->get( 'meowindex_google_json_key', '' );
+		$all_post_types           = get_post_types( array( 'public' => true ), 'objects' );
+		$key_location             = $meowindex_api_key ? home_url( '/' . $meowindex_api_key . '.txt' ) : '';
+
+		// Quota tracking from option log.
+		$requests_log       = get_option( 'meowseo_meowindex_quota_log', array( 'update' => array(), 'delete' => array() ) );
+		$ts_day_ago         = strtotime( '-1 day' );
+		$ts_min_ago         = strtotime( '-1 minute' );
+		$publish_day        = count( array_filter( $requests_log['update'] ?? array(), fn( $t ) => $t > $ts_day_ago ) );
+		$all_min            = count( array_filter( array_merge( $requests_log['update'] ?? array(), $requests_log['delete'] ?? array() ), fn( $t ) => $t > $ts_min_ago ) );
+		$limit_day          = apply_filters( 'meowseo/indexing_api/limit_day', 200 );
+		$limit_min          = apply_filters( 'meowseo/indexing_api/limit_min', 380 );
 		?>
 		<h2><?php esc_html_e( 'MeowIndex Settings', 'meowseo' ); ?></h2>
 		<p class="description"><?php esc_html_e( 'Configure instant URL indexing for Google, Bing, Yandex, and other search engines.', 'meowseo' ); ?></p>
 
+		<!-- ===== IndexNow (Bing/Yandex) ===== -->
 		<table class="form-table" role="presentation">
-			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'MeowIndex', 'meowseo' ); ?></h3></th></tr>
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'IndexNow (Bing / Yandex / Seznam)', 'meowseo' ); ?></h3></th></tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Enable MeowIndex', 'meowseo' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Enable IndexNow', 'meowseo' ); ?></th>
 				<td>
-					<?php
-					$meowindex_enabled = $this->options->get( 'meowindex_enabled', false );
-					?>
 					<label>
 						<input type="checkbox" name="meowindex_enabled" value="1" <?php checked( $meowindex_enabled ); ?>>
-						<?php esc_html_e( 'Enable instant URL indexing for Bing, Yandex, and Seznam', 'meowseo' ); ?>
+						<?php esc_html_e( 'Automatically submit published/updated posts to Bing, Yandex, and Seznam via IndexNow.', 'meowseo' ); ?>
 					</label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="meowindex_api_key"><?php esc_html_e( 'IndexNow API Key', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="text" id="meowindex_api_key" name="meowindex_api_key" value="<?php echo esc_attr( $meowindex_api_key ); ?>" class="regular-text" readonly>
+					<button type="button" id="meowindex-regenerate-key" class="button button-secondary" style="margin-left:8px;" data-nonce="<?php echo esc_attr( wp_create_nonce( 'meowseo_meowindex_regenerate_key' ) ); ?>">
+						<span class="dashicons dashicons-update" style="vertical-align:middle;margin-top:3px;"></span>
+						<?php esc_html_e( 'Regenerate Key', 'meowseo' ); ?>
+					</button>
+					<?php if ( $key_location ) : ?>
+						<a href="<?php echo esc_url( $key_location ); ?>" class="button button-secondary" target="_blank" style="margin-left:4px;">
+							<span class="dashicons dashicons-search" style="vertical-align:middle;margin-top:3px;"></span>
+							<?php esc_html_e( 'Check Key', 'meowseo' ); ?>
+						</a>
+					<?php endif; ?>
 					<p class="description">
-						<?php esc_html_e( 'When enabled, published and updated posts will be automatically submitted via MeowIndex.', 'meowseo' ); ?>
+						<?php esc_html_e( 'Auto-generated key proving site ownership. MeowSEO serves the verification file automatically.', 'meowseo' ); ?>
+						<?php if ( $key_location ) : ?>
+							<?php esc_html_e( 'Key location:', 'meowseo' ); ?> <code><?php echo esc_url( $key_location ); ?></code>
+						<?php endif; ?>
 					</p>
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><label for="meowindex_api_key"><?php esc_html_e( 'MeowIndex API Key', 'meowseo' ); ?></label></th>
+				<th scope="row"><?php esc_html_e( 'Submit Post Types (IndexNow)', 'meowseo' ); ?></th>
 				<td>
-					<?php
-					$meowindex_api_key = $this->options->get( 'meowindex_api_key', '' );
-					?>
-					<input type="text" id="meowindex_api_key" name="meowindex_api_key" value="<?php echo esc_attr( $meowindex_api_key ); ?>" class="regular-text" readonly>
-					<p class="description">
-						<?php esc_html_e( 'Your unique MeowIndex API key. This is used to verify site ownership for indexing services.', 'meowseo' ); ?>
-						<br><strong><?php esc_html_e( 'Note:', 'meowseo' ); ?></strong> <?php esc_html_e( 'MeowSEO automatically serves the verification file for you. You can test it by visiting:', 'meowseo' ); ?>
-						<code><?php echo esc_url( home_url( '/' . $meowindex_api_key . '.txt' ) ); ?></code>
-					</p>
+					<p class="description" style="margin-bottom:8px;"><?php esc_html_e( 'Submit posts from these post types automatically when published or updated. Leave all unchecked to submit all public post types.', 'meowseo' ); ?></p>
+					<?php foreach ( $all_post_types as $pt ) : ?>
+						<label style="display:block;margin-bottom:4px;">
+							<input type="checkbox" name="meowindex_post_types[]" value="<?php echo esc_attr( $pt->name ); ?>" <?php checked( empty( $meowindex_post_types ) || in_array( $pt->name, $meowindex_post_types, true ) ); ?>>
+							<?php echo esc_html( $pt->label ); ?> <code style="font-size:11px;"><?php echo esc_html( $pt->name ); ?></code>
+						</label>
+					<?php endforeach; ?>
 				</td>
 			</tr>
 
+			<!-- ===== Google Indexing API ===== -->
 			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Google Indexing API', 'meowseo' ); ?></h3></th></tr>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Enable Google Indexing', 'meowseo' ); ?></th>
 				<td>
-					<?php
-					$meowindex_google_enabled = $this->options->get( 'meowindex_google_enabled', false );
-					?>
 					<label>
 						<input type="checkbox" name="meowindex_google_enabled" value="1" <?php checked( $meowindex_google_enabled ); ?>>
-						<?php esc_html_e( 'Enable instant URL indexing for Google', 'meowseo' ); ?>
+						<?php esc_html_e( 'Automatically submit published/updated posts to Google via the Indexing API.', 'meowseo' ); ?>
 					</label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Submit Post Types (Google)', 'meowseo' ); ?></th>
+				<td>
+					<p class="description" style="margin-bottom:8px;"><?php esc_html_e( 'Leave all unchecked to submit all public post types.', 'meowseo' ); ?></p>
+					<?php foreach ( $all_post_types as $pt ) : ?>
+						<label style="display:block;margin-bottom:4px;">
+							<input type="checkbox" name="meowindex_google_post_types[]" value="<?php echo esc_attr( $pt->name ); ?>" <?php checked( empty( $meowindex_google_pt ) || in_array( $pt->name, $meowindex_google_pt, true ) ); ?>>
+							<?php echo esc_html( $pt->label ); ?> <code style="font-size:11px;"><?php echo esc_html( $pt->name ); ?></code>
+						</label>
+					<?php endforeach; ?>
 				</td>
 			</tr>
 			<tr>
 				<th scope="row"><label for="meowindex_google_json_key"><?php esc_html_e( 'Google Service Account JSON', 'meowseo' ); ?></label></th>
 				<td>
-					<?php
-					$meowindex_google_json_key = $this->options->get( 'meowindex_google_json_key', '' );
-					?>
-					<textarea id="meowindex_google_json_key" name="meowindex_google_json_key" rows="10" class="large-text code" placeholder='{"type": "service_account", ...}'><?php echo esc_textarea( $meowindex_google_json_key ); ?></textarea>
-					<div class="meowseo-setup-guide" style="margin-top: 15px; padding: 15px; background: #f0f0f1; border-left: 4px solid #2271b1;">
-						<h4 style="margin-top:0;"><?php esc_html_e( 'How to get your Google JSON Key:', 'meowseo' ); ?></h4>
-						<ol style="margin-bottom:0;">
-							<li><?php printf( wp_kses_post( __( 'Go to <a href="%s" target="_blank">Google Cloud Console</a> and create a new project.', 'meowseo' ) ), 'https://console.cloud.google.com/' ); ?></li>
-							<li><?php esc_html_e( 'Enable the "Indexing API" in your project.', 'meowseo' ); ?></li>
-							<li><?php esc_html_e( 'Go to "IAM & Admin > Service Accounts" and create a service account.', 'meowseo' ); ?></li>
-							<li><?php esc_html_e( 'Create a new JSON key for that service account and download it.', 'meowseo' ); ?></li>
-							<li><?php printf( wp_kses_post( __( 'Go to <a href="%s" target="_blank">Search Console</a> and add the service account email as an <strong>Owner</strong> to your property.', 'meowseo' ) ), 'https://search.google.com/search-console' ); ?></li>
-							<li><?php esc_html_e( 'Paste the content of the downloaded JSON file into the box above.', 'meowseo' ); ?></li>
+					<textarea id="meowindex_google_json_key" name="meowindex_google_json_key" rows="8" class="large-text code" placeholder='{"type": "service_account", ...}'><?php echo esc_textarea( $meowindex_google_json ); ?></textarea>
+					<p class="description" style="margin-top:6px;">
+						<?php esc_html_e( 'Or upload a JSON file:', 'meowseo' ); ?>
+						<input type="file" name="meowindex_json_file" id="meowindex_json_file" accept=".json" style="margin-left:6px;">
+					</p>
+					<div style="margin-top:12px;padding:12px;background:#f0f0f1;border-left:4px solid #2271b1;">
+						<strong><?php esc_html_e( 'Setup steps:', 'meowseo' ); ?></strong>
+						<ol style="margin:8px 0 0 18px;">
+							<li><?php printf( wp_kses_post( __( 'Go to <a href="%s" target="_blank">Google Cloud Console</a> → create/select a project.', 'meowseo' ) ), 'https://console.cloud.google.com/' ); ?></li>
+							<li><?php esc_html_e( 'Enable the "Indexing API".', 'meowseo' ); ?></li>
+							<li><?php esc_html_e( 'Create a Service Account → create a JSON key → download it.', 'meowseo' ); ?></li>
+							<li><?php printf( wp_kses_post( __( 'In <a href="%s" target="_blank">Search Console</a> add the service account email as <strong>Owner</strong>.', 'meowseo' ) ), 'https://search.google.com/search-console' ); ?></li>
+							<li><?php esc_html_e( 'Paste the JSON content above or upload the file.', 'meowseo' ); ?></li>
 						</ol>
 					</div>
+					<?php if ( $meowindex_google_enabled ) : ?>
+						<div style="margin-top:12px;padding:10px 14px;background:#f6f7f7;border:1px solid #c3c4c7;border-radius:3px;">
+							<strong><?php esc_html_e( 'Google API Remaining Quota:', 'meowseo' ); ?></strong><br>
+							<a href="https://developers.google.com/search/apis/indexing-api/v3/quota-pricing" target="_blank" style="font-size:11px;"><?php esc_html_e( 'View quota documentation', 'meowseo' ); ?></a><br><br>
+							<code>PublishRequestsPerDayPerProject = <strong><?php echo absint( $limit_day - $publish_day ); ?></strong> / <?php echo absint( $limit_day ); ?></code><br>
+							<code>RequestsPerMinutePerProject = <strong><?php echo absint( $limit_min - $all_min ); ?></strong> / <?php echo absint( $limit_min ); ?></code>
+						</div>
+					<?php endif; ?>
 				</td>
 			</tr>
 		</table>
+
+		<!-- ===== Manual Console ===== -->
+		<h3><?php esc_html_e( 'Manual URL Submission Console', 'meowseo' ); ?></h3>
+		<p class="description"><?php esc_html_e( 'Manually submit or check URLs. Does not require saving settings first.', 'meowseo' ); ?></p>
+		<div id="meowindex-console" style="background:#fff;border:1px solid #c3c4c7;padding:16px;border-radius:3px;max-width:700px;">
+			<label for="meowindex-console-urls"><strong><?php esc_html_e( 'URLs (one per line):', 'meowseo' ); ?></strong></label><br>
+			<textarea id="meowindex-console-urls" rows="4" class="large-text code" style="margin-top:6px;" placeholder="<?php echo esc_attr( home_url( '/' ) ); ?>"></textarea>
+			<br><br>
+			<strong><?php esc_html_e( 'Action:', 'meowseo' ); ?></strong><br>
+			<?php if ( $meowindex_enabled ) : ?>
+				<label><input type="radio" name="meowindex_console_action" value="indexnow_submit" checked> <?php esc_html_e( 'IndexNow: Submit URL', 'meowseo' ); ?></label><br>
+			<?php endif; ?>
+			<?php if ( $meowindex_google_enabled ) : ?>
+				<label><input type="radio" name="meowindex_console_action" value="google_update" <?php checked( ! $meowindex_enabled ); ?>> <?php esc_html_e( 'Google: Publish / Update URL', 'meowseo' ); ?></label><br>
+				<label><input type="radio" name="meowindex_console_action" value="google_delete"> <?php esc_html_e( 'Google: Remove URL', 'meowseo' ); ?></label><br>
+				<label><input type="radio" name="meowindex_console_action" value="google_status"> <?php esc_html_e( 'Google: Get URL Status', 'meowseo' ); ?></label><br>
+			<?php endif; ?>
+			<?php if ( ! $meowindex_enabled && ! $meowindex_google_enabled ) : ?>
+				<p style="color:#d63638;"><?php esc_html_e( 'Enable IndexNow or Google Indexing above and save settings to use the console.', 'meowseo' ); ?></p>
+			<?php else : ?>
+				<br>
+				<button type="button" id="meowindex-console-submit" class="button button-primary" data-nonce="<?php echo esc_attr( wp_create_nonce( 'meowseo_meowindex_console' ) ); ?>">
+					<?php esc_html_e( 'Send to API', 'meowseo' ); ?>
+				</button>
+				<span id="meowindex-console-spinner" class="spinner" style="float:none;vertical-align:middle;display:none;"></span>
+				<div id="meowindex-console-response" style="margin-top:12px;display:none;">
+					<textarea id="meowindex-console-output" rows="6" class="large-text code" readonly></textarea>
+				</div>
+			<?php endif; ?>
+		</div>
+
+		<script>
+		(function($) {
+			// Regenerate key.
+			$('#meowindex-regenerate-key').on('click', function() {
+				if ( ! confirm('<?php esc_attr_e( 'Regenerate the IndexNow API key? The old verification file will no longer work until search engines re-crawl the new key.', 'meowseo' ); ?>') ) return;
+				var $btn = $(this);
+				$btn.prop('disabled', true);
+				$.post(ajaxurl, {
+					action: 'meowseo_meowindex_regenerate_key',
+					nonce: $btn.data('nonce')
+				}, function(res) {
+					if (res.success) {
+						$('#meowindex_api_key').val(res.data.key);
+						location.reload();
+					} else {
+						alert(res.data.message || '<?php esc_attr_e( 'Failed to regenerate key.', 'meowseo' ); ?>');
+					}
+				}).always(function(){ $btn.prop('disabled', false); });
+			});
+
+			// Console submit.
+			$('#meowindex-console-submit').on('click', function() {
+				var urls = $('#meowindex-console-urls').val().trim();
+				var action = $('input[name="meowindex_console_action"]:checked').val();
+				if (!urls) { alert('<?php esc_attr_e( 'Please enter at least one URL.', 'meowseo' ); ?>'); return; }
+				var $btn = $(this), $spin = $('#meowindex-console-spinner'), $out = $('#meowindex-console-response');
+				$btn.prop('disabled', true); $spin.show(); $out.hide();
+				$.post(ajaxurl, {
+					action: 'meowseo_meowindex_console',
+					nonce: $btn.data('nonce'),
+					urls: urls,
+					api_action: action
+				}, function(res) {
+					$('#meowindex-console-output').val(JSON.stringify(res, null, 2));
+					$out.show();
+				}).always(function(){ $btn.prop('disabled', false); $spin.hide(); });
+			});
+
+			// JSON file upload reader.
+			$('#meowindex_json_file').on('change', function() {
+				var file = this.files[0];
+				if (!file) return;
+				var reader = new FileReader();
+				reader.onload = function(e) { $('#meowindex_google_json_key').val(e.target.result); };
+				reader.readAsText(file);
+			});
+		}(jQuery));
+		</script>
 		<?php
 	}
+
 
 	public function render_advanced_tab(): void {
 		$noindex_post_types     = $this->options->get( 'noindex_post_types', array() );
@@ -1878,6 +2008,19 @@ class Settings_Manager {
 				} elseif ( ! isset( $json['private_key'], $json['client_email'] ) ) {
 					$this->errors['meowindex_google_json_key'] = __( 'Google JSON key is missing private_key or client_email.', 'meowseo' );
 				}
+			}
+		}
+
+		// Validate MeowIndex post type selections.
+		$all_public_pt = array_keys( get_post_types( array( 'public' => true ) ) );
+		foreach ( array( 'meowindex_post_types', 'meowindex_google_post_types' ) as $pt_field ) {
+			if ( isset( $settings[ $pt_field ] ) && is_array( $settings[ $pt_field ] ) ) {
+				$validated[ $pt_field ] = array_values(
+					array_intersect( array_map( 'sanitize_key', $settings[ $pt_field ] ), $all_public_pt )
+				);
+			} else {
+				// Unchecked = empty = all post types allowed (default behaviour).
+				$validated[ $pt_field ] = array();
 			}
 		}
 

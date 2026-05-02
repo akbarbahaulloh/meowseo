@@ -101,6 +101,16 @@ class MeowIndex implements Module {
 
 		// Boot the MeowIndexClient.
 		$this->client->boot();
+
+		// Register post row actions and bulk actions (admin only).
+		if ( is_admin() ) {
+			$post_actions = new MeowIndex_Post_Actions(
+				$this->options,
+				$this->client,
+				$this->logger
+			);
+			$post_actions->register();
+		}
 	}
 
 	/**

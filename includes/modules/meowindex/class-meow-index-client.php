@@ -100,6 +100,11 @@ class MeowIndexClient {
 		// Hook into post publish/update.
 		add_action( 'transition_post_status', array( $this, 'handle_post_transition' ), 10, 3 );
 
+		// Hook into post trash/delete → send URL_DELETED to Google.
+		if ( $this->is_google_enabled() ) {
+			add_action( 'wp_trash_post', array( $this, 'handle_post_delete' ), 10, 1 );
+		}
+
 		// Process queued submissions.
 		add_action( 'meowseo_process_meowindex_queue', array( $this, 'process_queue' ) );
 
@@ -125,6 +130,11 @@ class MeowIndexClient {
 			return;
 		}
 
+		// Skip revisions and autosaves.
+		if ( wp_is_post_revision( $post->ID ) || wp_is_post_autosave( $post->ID ) ) {
+			return;
+		}
+
 		// Skip if post type is not public.
 		if ( ! is_post_type_viewable( $post->post_type ) ) {
 			return;
@@ -136,8 +146,50 @@ class MeowIndexClient {
 			return;
 		}
 
+		// Check post type whitelists before queueing.
+		$in_indexnow = $this->is_enabled() && $this->is_post_type_allowed( $post->post_type, 'indexnow' );
+		$in_google   = $this->is_google_enabled() && $this->is_post_type_allowed( $post->post_type, 'google' );
+
+		if ( ! $in_indexnow && ! $in_google ) {
+			return;
+		}
+
 		// Add to queue instead of immediate submission.
 		$this->queue->add( $url );
+	}
+
+	/**
+	 * Handle post trash / deletion
+	 *
+	 * When a post from a watched post type is trashed, notifies Google
+	 * Indexing API with URL_DELETED action.
+	 *
+	 * @param int $post_id Post ID being trashed.
+	 * @return void
+	 */
+	public function handle_post_delete( int $post_id ): void {
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return;
+		}
+
+		// Only act on published posts.
+		if ( 'publish' !== $post->post_status ) {
+			return;
+		}
+
+		// Check post type whitelist.
+		if ( ! $this->is_post_type_allowed( $post->post_type, 'google' ) ) {
+			return;
+		}
+
+		$url = get_permalink( $post );
+		if ( ! $url ) {
+			return;
+		}
+
+		$result = $this->make_google_request( $url, 'URL_DELETED' );
+		$this->logger->log( array( $url ), $result, 'google_delete' );
 	}
 
 	/**
@@ -166,7 +218,7 @@ class MeowIndexClient {
 	 * @param array $urls URLs to submit.
 	 * @return array Submission results.
 	 */
-	public function submit_urls( array $urls ): array {
+	public function submit_urls( array $urls, string $action = 'URL_UPDATED' ): array {
 		if ( empty( $urls ) ) {
 			return array( 'success' => false, 'error' => __( 'No URLs provided', 'meowseo' ) );
 		}
@@ -182,13 +234,60 @@ class MeowIndexClient {
 		// Submit to Google if enabled.
 		if ( $this->is_google_enabled() ) {
 			foreach ( $urls as $url ) {
-				$res = $this->make_google_request( $url );
+				$res = $this->make_google_request( $url, $action );
 				$results['google'][] = $res;
 				$this->logger->log( array( $url ), $res, 'google' );
 			}
 		}
 
 		return $results;
+	}
+
+	/**
+	 * Get Google Indexing API status for a URL
+	 *
+	 * Queries the Google Indexing API for the indexing status of a URL.
+	 *
+	 * @param string $url URL to check.
+	 * @return array|WP_Error Status data or error.
+	 */
+	public function get_url_status( string $url ) {
+		$token = $this->get_google_access_token();
+
+		if ( is_wp_error( $token ) ) {
+			return $token;
+		}
+
+		$endpoint = 'https://indexing.googleapis.com/v3/urlNotifications/metadata?url=' . rawurlencode( $url );
+
+		$response = wp_remote_get(
+			$endpoint,
+			array(
+				'headers' => array(
+					'Content-Type'  => 'application/json',
+					'Authorization' => 'Bearer ' . $token,
+				),
+				'timeout' => 15,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$status_code = wp_remote_retrieve_response_code( $response );
+		$body        = wp_remote_retrieve_body( $response );
+		$data        = json_decode( $body, true );
+
+		if ( 200 !== $status_code ) {
+			$msg = isset( $data['error']['message'] ) ? $data['error']['message'] : 'Unknown error';
+			return new WP_Error(
+				'google_status_failed',
+				sprintf( __( 'Google URL status check failed (%d): %s', 'meowseo' ), $status_code, $msg )
+			);
+		}
+
+		return $data;
 	}
 
 	/**
@@ -239,7 +338,7 @@ class MeowIndexClient {
 	 * @param string $url URL to submit.
 	 * @return bool|WP_Error
 	 */
-	private function make_google_request( string $url ) {
+	private function make_google_request( string $url, string $type = 'URL_UPDATED' ) {
 		$token = $this->get_google_access_token();
 
 		if ( is_wp_error( $token ) ) {
@@ -248,7 +347,7 @@ class MeowIndexClient {
 
 		$body = array(
 			'url'  => $url,
-			'type' => 'URL_UPDATED',
+			'type' => $type,
 		);
 
 		$response = wp_remote_post(
@@ -386,11 +485,21 @@ class MeowIndexClient {
 		$api_key = $this->options->get( 'meowindex_api_key', '' );
 
 		if ( empty( $api_key ) ) {
-			$api_key = bin2hex( random_bytes( 16 ) );
-			$this->options->set( 'meowindex_api_key', $api_key );
-			$this->options->save();
+			$api_key = $this->generate_api_key();
 		}
 
+		return $api_key;
+	}
+
+	/**
+	 * Generate and persist a new random IndexNow API key
+	 *
+	 * @return string New API key.
+	 */
+	public function generate_api_key(): string {
+		$api_key = bin2hex( random_bytes( 16 ) );
+		$this->options->set( 'meowindex_api_key', $api_key );
+		$this->options->save();
 		return $api_key;
 	}
 
@@ -410,5 +519,51 @@ class MeowIndexClient {
 	 */
 	public function is_google_enabled(): bool {
 		return (bool) $this->options->get( 'meowindex_google_enabled', false );
+	}
+
+	/**
+	 * Get allowed post types for IndexNow submissions
+	 *
+	 * Returns configured post types, defaulting to all public post types if none configured.
+	 *
+	 * @return array Array of allowed post type slugs.
+	 */
+	public function get_indexnow_post_types(): array {
+		$configured = $this->options->get( 'meowindex_post_types', array() );
+		if ( empty( $configured ) ) {
+			// Default: all public post types.
+			return array_keys( get_post_types( array( 'public' => true ) ) );
+		}
+		return (array) $configured;
+	}
+
+	/**
+	 * Get allowed post types for Google Indexing API submissions
+	 *
+	 * Returns configured post types, defaulting to all public post types if none configured.
+	 *
+	 * @return array Array of allowed post type slugs.
+	 */
+	public function get_google_post_types(): array {
+		$configured = $this->options->get( 'meowindex_google_post_types', array() );
+		if ( empty( $configured ) ) {
+			// Default: all public post types.
+			return array_keys( get_post_types( array( 'public' => true ) ) );
+		}
+		return (array) $configured;
+	}
+
+	/**
+	 * Check if a post type is allowed for a given API
+	 *
+	 * @param string $post_type Post type slug.
+	 * @param string $api       'indexnow' or 'google'.
+	 * @return bool
+	 */
+	public function is_post_type_allowed( string $post_type, string $api = 'indexnow' ): bool {
+		$allowed = 'google' === $api
+			? $this->get_google_post_types()
+			: $this->get_indexnow_post_types();
+		return in_array( $post_type, $allowed, true );
 	}
 }
