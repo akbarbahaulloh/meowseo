@@ -201,6 +201,27 @@ class Analysis_Engine {
 			case 'flesch_reading_ease':
 				return 'flesch_score_low';
 
+			case 'content_length':
+				return 'content_too_short';
+
+			case 'keyword_in_image_alt':
+				return 'keyword_not_in_image_alt';
+
+			case 'keyword_at_start_of_title':
+				return 'keyword_not_at_start';
+
+			case 'title_power_word':
+				return 'title_no_power_word';
+
+			case 'title_has_number':
+				return 'title_no_number';
+
+			case 'subheading_distribution':
+				return 'subheading_distribution_poor';
+
+			case 'consecutive_sentences':
+				return 'consecutive_sentences_found';
+
 			default:
 				return $check_id;
 		}

@@ -151,6 +151,50 @@ class SEO_Analyzer {
 			'value' => $images_without_alt,
 		);
 
+		// Check 12: Content length ≥ 600 words.
+		$word_count = self::count_words( $content );
+		$checks[] = array(
+			'id'    => 'content_length',
+			'label' => __( 'Content length (≥ 600 words)', 'meowseo' ),
+			'pass'  => $word_count >= 600,
+			'value' => $word_count,
+		);
+
+		// Check 13: Keyword in at least one image alt text.
+		$checks[] = array(
+			'id'    => 'keyword_in_image_alt',
+			'label' => __( 'Focus keyword in at least one image alt text', 'meowseo' ),
+			'pass'  => ! empty( $focus_keyword ) && self::keyword_in_image_alt( $content, $focus_keyword ),
+		);
+
+		// Check 14: Keyword near beginning of title (first third of characters).
+		$checks[] = array(
+			'id'    => 'keyword_at_start_of_title',
+			'label' => __( 'Focus keyword near the beginning of SEO title', 'meowseo' ),
+			'pass'  => ! empty( $focus_keyword ) && self::keyword_at_start_of_title( $title, $focus_keyword ),
+		);
+
+		// Check 15: Title contains a power word.
+		$checks[] = array(
+			'id'    => 'title_power_word',
+			'label' => __( 'SEO title contains a power word', 'meowseo' ),
+			'pass'  => self::title_has_power_word( $title ),
+		);
+
+		// Check 16: Title contains a number.
+		$checks[] = array(
+			'id'    => 'title_has_number',
+			'label' => __( 'SEO title contains a number', 'meowseo' ),
+			'pass'  => self::title_has_number( $title ),
+		);
+
+		// Check 17: Subheading distribution (≤ 300 words per section).
+		$checks[] = array(
+			'id'    => 'subheading_distribution',
+			'label' => __( 'Subheadings break up content every ≤ 300 words', 'meowseo' ),
+			'pass'  => self::has_good_subheading_distribution( $content ),
+		);
+
 		// Calculate score.
 		$passing_checks = count( array_filter( $checks, fn( $check ) => $check['pass'] ) );
 		$total_checks = count( $checks );
@@ -401,5 +445,142 @@ class SEO_Analyzer {
 		}
 
 		return $missing;
+	}
+	/**
+	 * Count words in HTML content
+	 *
+	 * @param string $content HTML content.
+	 * @return int Word count.
+	 */
+	private static function count_words( string $content ): int {
+		$text = wp_strip_all_tags( strip_shortcodes( $content ) );
+		$text = trim( $text );
+		if ( empty( $text ) ) {
+			return 0;
+		}
+		return count( preg_split( '/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY ) );
+	}
+
+	/**
+	 * Check if focus keyword appears in at least one image alt text
+	 *
+	 * @param string $content HTML content.
+	 * @param string $keyword Focus keyword.
+	 * @return bool True if keyword found in any alt text.
+	 */
+	private static function keyword_in_image_alt( string $content, string $keyword ): bool {
+		if ( empty( $content ) || empty( $keyword ) ) {
+			return false;
+		}
+		if ( preg_match_all( '/<img[^>]+>/i', $content, $img_matches ) ) {
+			foreach ( $img_matches[0] as $img_tag ) {
+				if ( preg_match( '/alt=["\']([^"\']*)["\']/', $img_tag, $alt_match ) ) {
+					if ( mb_stripos( $alt_match[1], $keyword ) !== false ) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Check if focus keyword appears within first third of title
+	 *
+	 * @param string $title   SEO title.
+	 * @param string $keyword Focus keyword.
+	 * @return bool
+	 */
+	private static function keyword_at_start_of_title( string $title, string $keyword ): bool {
+		if ( empty( $title ) || empty( $keyword ) ) {
+			return false;
+		}
+		$pos = mb_stripos( $title, $keyword );
+		if ( false === $pos ) {
+			return false;
+		}
+		return $pos <= (int) ( mb_strlen( $title ) / 3 );
+	}
+
+	/**
+	 * Check if title contains at least one power word
+	 *
+	 * Power words are emotionally charged words proven to improve CTR.
+	 *
+	 * @param string $title SEO title.
+	 * @return bool
+	 */
+	private static function title_has_power_word( string $title ): bool {
+		if ( empty( $title ) ) {
+			return false;
+		}
+		$power_words = array(
+			'best', 'ultimate', 'complete', 'definitive', 'essential', 'incredible',
+			'amazing', 'powerful', 'proven', 'secret', 'free', 'new', 'top', 'great',
+			'perfect', 'easy', 'simple', 'quick', 'fast', 'effective', 'guide', 'tips',
+			'tricks', 'ways', 'steps', 'strategies', 'methods', 'ideas', 'examples',
+			'reasons', 'facts', 'benefits', 'avoid', 'mistakes', 'warning', 'important',
+			'surprising', 'critical', 'exclusive', 'boost', 'increase', 'improve',
+			'guaranteed', 'instant', 'massive', 'epic', 'insane', 'genius', 'hack',
+			'discover', 'revealed', 'blueprint', 'cheatsheet', 'checklist', 'review',
+		);
+		$title_lower = mb_strtolower( $title );
+		foreach ( $power_words as $word ) {
+			if ( preg_match( '/\b' . preg_quote( $word, '/' ) . '\b/', $title_lower ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Check if title contains a number
+	 *
+	 * Numbers in titles improve click-through rates (e.g. "10 Ways to...")
+	 *
+	 * @param string $title SEO title.
+	 * @return bool
+	 */
+	private static function title_has_number( string $title ): bool {
+		return (bool) preg_match( '/\d+/', $title );
+	}
+
+	/**
+	 * Check subheading distribution
+	 *
+	 * For content over 300 words, verifies no section between headings
+	 * exceeds 300 words. Short content always passes.
+	 *
+	 * @param string $content HTML content.
+	 * @return bool True if distribution is good.
+	 */
+	private static function has_good_subheading_distribution( string $content ): bool {
+		if ( empty( $content ) ) {
+			return true;
+		}
+		$text        = wp_strip_all_tags( $content );
+		$total_words = count( preg_split( '/\s+/', trim( $text ), -1, PREG_SPLIT_NO_EMPTY ) );
+
+		// Short content: not applicable, auto-pass.
+		if ( $total_words <= 300 ) {
+			return true;
+		}
+
+		// Split on any heading tag to isolate sections between headings.
+		$sections = preg_split( '/<h[1-6][^>]*>.*?<\/h[1-6]>/is', $content );
+
+		if ( ! $sections ) {
+			return false; // Has lots of content but no headings at all.
+		}
+
+		foreach ( $sections as $section ) {
+			$section_text  = wp_strip_all_tags( $section );
+			$section_words = count( preg_split( '/\s+/', trim( $section_text ), -1, PREG_SPLIT_NO_EMPTY ) );
+			if ( $section_words > 300 ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 }

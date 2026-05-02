@@ -83,6 +83,34 @@ class Fix_Explanation_Provider {
 			'issue' => 'Your content has a low Flesch Reading Ease score — it may be difficult to read.',
 			'fix' => 'Use shorter sentences (aim for ≤20 words), simpler vocabulary, and break long paragraphs into smaller ones. The target score is 60 or above.',
 		),
+		'content_too_short' => array(
+			'issue' => 'Your content is too short ({value} words). Search engines prefer comprehensive articles.',
+			'fix' => 'Aim for at least 600 words. Add more depth, examples, FAQs, or subheadings to cover the topic of "{keyword}" thoroughly.',
+		),
+		'keyword_not_in_image_alt' => array(
+			'issue' => 'Your focus keyword "{keyword}" doesn\'t appear in any image alt text.',
+			'fix' => 'Add "{keyword}" to the alt text of the most relevant image in your content. This helps Google Images and provides context for screen readers.',
+		),
+		'keyword_not_at_start' => array(
+			'issue' => 'Your focus keyword "{keyword}" doesn\'t appear near the beginning of your SEO title.',
+			'fix' => 'Move "{keyword}" to the first third of your title. Titles that lead with the keyword tend to rank better and get more clicks.',
+		),
+		'title_no_power_word' => array(
+			'issue' => 'Your SEO title doesn\'t contain a power word.',
+			'fix' => 'Add a compelling word like "Best", "Ultimate", "Complete", "Essential", "Tips", "Guide", or "Proven" to boost emotional impact and click-through rate.',
+		),
+		'title_no_number' => array(
+			'issue' => 'Your SEO title doesn\'t include a number.',
+			'fix' => 'Add a number to make your title more specific and clickable. Example: "10 Best Ways to..." or "7 Essential Tips for...". Numbered titles consistently outperform non-numbered ones.',
+		),
+		'subheading_distribution_poor' => array(
+			'issue' => 'Your content has sections longer than 300 words without a subheading.',
+			'fix' => 'Add H2 or H3 subheadings every 250–300 words. This improves readability, helps readers scan the content, and signals structure to search engines.',
+		),
+		'consecutive_sentences_found' => array(
+			'issue' => 'Three or more consecutive sentences in your content start with the same word.',
+			'fix' => 'Vary the opening words of your sentences to improve flow and engagement. Try using transition words like "However", "Additionally", or "Meanwhile" to start some sentences.',
+		),
 	);
 
 	/**
@@ -129,8 +157,9 @@ class Fix_Explanation_Provider {
 			'{current_density}' => isset( $context['current_density'] ) ? (string) $context['current_density'] : '',
 			'{target_min}' => isset( $context['target_min'] ) ? (string) $context['target_min'] : '',
 			'{target_max}' => isset( $context['target_max'] ) ? (string) $context['target_max'] : '',
-			'{count}' => isset( $context['count'] ) ? (string) $context['count'] : '',
-			'{keyword_slug}' => isset( $context['keyword'] ) ? sanitize_title( $context['keyword'] ) : '',
+			'{count}'         => isset( $context['count'] ) ? (string) $context['count'] : '',
+			'{keyword_slug}'  => isset( $context['keyword'] ) ? sanitize_title( $context['keyword'] ) : '',
+			'{value}'         => isset( $context['value'] ) ? (string) $context['value'] : '',
 		);
 
 		return str_replace( array_keys( $replacements ), array_values( $replacements ), $text );

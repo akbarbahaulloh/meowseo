@@ -128,6 +128,14 @@ class Readability {
 			'value' => round( $flesch_score, 1 ),
 		);
 
+		// Check 6: No 3+ consecutive sentences starting with the same word.
+		$has_consecutive = self::has_consecutive_same_start( $text );
+		$checks[] = array(
+			'id'    => 'consecutive_sentences',
+			'label' => __( 'No 3+ consecutive sentences start with the same word', 'meowseo' ),
+			'pass'  => ! $has_consecutive,
+		);
+
 		// Calculate score.
 		$passing_checks = count( array_filter( $checks, fn( $check ) => $check['pass'] ) );
 		$total_checks = count( $checks );
@@ -441,5 +449,43 @@ class Readability {
 
 		// Every word has at least 1 syllable.
 		return max( 1, (int) $syllables );
+	}
+
+	/**
+	 * Check if 3 or more consecutive sentences start with the same word
+	 *
+	 * Detecting this pattern helps writers vary their sentence openings
+	 * for a more engaging reading experience.
+	 *
+	 * @since 1.0.0
+	 * @param string $text Plain text.
+	 * @return bool True if 3+ consecutive same-start sentences found.
+	 */
+	private static function has_consecutive_same_start( string $text ): bool {
+		$sentences = self::split_into_sentences( $text );
+
+		if ( count( $sentences ) < 3 ) {
+			return false;
+		}
+
+		$consecutive = 1;
+		$prev_start  = '';
+
+		foreach ( $sentences as $sentence ) {
+			$words      = preg_split( '/\s+/', trim( $sentence ), -1, PREG_SPLIT_NO_EMPTY );
+			$first_word = mb_strtolower( $words[0] ?? '' );
+
+			if ( $first_word && $first_word === $prev_start ) {
+				$consecutive++;
+				if ( $consecutive >= 3 ) {
+					return true;
+				}
+			} else {
+				$consecutive = 1;
+				$prev_start  = $first_word;
+			}
+		}
+
+		return false;
 	}
 }
