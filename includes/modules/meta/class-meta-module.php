@@ -295,7 +295,43 @@ class Meta_Module implements Module {
 		);
 
 		// Run keyword analysis.
-		$this->keyword_analyzer->analyze_all_keywords( $post_id, $content, $context );
+		$results = $this->keyword_analyzer->analyze_all_keywords( $post_id, $content, $context );
+
+		// Extract and save primary SEO score.
+		$keywords = $this->keyword_manager->get_keywords( $post_id );
+		if ( ! empty( $keywords['primary'] ) && isset( $results[ $keywords['primary'] ] ) ) {
+			$seo_score = $results[ $keywords['primary'] ]['overall_score'];
+			update_post_meta( $post_id, '_meowseo_seo_score', $seo_score );
+		}
+
+		// Run and save readability analysis.
+		$readability_result = Readability::analyze( $content );
+		update_post_meta( $post_id, '_meowseo_readability_score', $readability_result['score'] );
+
+		// Run SEO analysis to get link counts (SEO_Analyzer is a pure class).
+		$seo_data = array(
+			'title'         => $context['title'],
+			'description'   => $context['description'],
+			'content'       => $content,
+			'slug'          => $context['slug'],
+			'focus_keyword' => $keywords['primary'] ?? '',
+		);
+		$seo_analysis = SEO_Analyzer::analyze( $seo_data );
+
+		// Extract link counts from checks.
+		$internal_links = 0;
+		$outbound_links = 0;
+
+		foreach ( $seo_analysis['checks'] as $check ) {
+			if ( 'internal_links' === $check['id'] ) {
+				$internal_links = $check['value'] ?? 0;
+			} elseif ( 'outbound_links' === $check['id'] ) {
+				$outbound_links = $check['value'] ?? 0;
+			}
+		}
+
+		update_post_meta( $post_id, '_meowseo_internal_links', $internal_links );
+		update_post_meta( $post_id, '_meowseo_outbound_links', $outbound_links );
 	}
 
 	/**

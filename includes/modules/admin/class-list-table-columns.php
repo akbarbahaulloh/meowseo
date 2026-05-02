@@ -11,6 +11,7 @@
 namespace MeowSEO\Modules\Admin;
 
 use MeowSEO\Options;
+use MeowSEO\Helpers\DB;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -70,14 +71,14 @@ class List_Table_Columns {
 			add_filter( "manage_{$post_type}_posts_columns", array( $this, 'add_seo_score_column' ) );
 
 			// Render column content.
-			add_action( "manage_{$post_type}_posts_custom_column", array( $this, 'render_seo_score_column' ), 10, 2 );
+			add_action( "manage_{$post_type}_posts_custom_column", array( $this, 'render_custom_columns' ), 10, 2 );
 
 			// Register sortable column.
 			add_filter( "manage_edit-{$post_type}_sortable_columns", array( $this, 'register_sortable_column' ) );
 		}
 
 		// Handle sorting query modification.
-		add_action( 'pre_get_posts', array( $this, 'handle_seo_score_sorting' ) );
+		add_action( 'pre_get_posts', array( $this, 'handle_column_sorting' ) );
 
 		// Enqueue admin styles.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_styles' ) );
@@ -97,9 +98,13 @@ class List_Table_Columns {
 		foreach ( $columns as $key => $value ) {
 			$new_columns[ $key ] = $value;
 
-			// Insert SEO Score column after Title.
+			// Insert SEO columns after Title.
 			if ( 'title' === $key ) {
-				$new_columns['seo_score'] = __( 'SEO Score', 'meowseo' );
+				$new_columns['seo_score']         = __( 'SEO Score', 'meowseo' );
+				$new_columns['readability_score'] = __( 'Readability', 'meowseo' );
+				$new_columns['outbound_links']    = '<span class="dashicons dashicons-external" title="' . esc_attr__( 'Outbound Links', 'meowseo' ) . '"></span>';
+				$new_columns['internal_links']    = '<span class="dashicons dashicons-admin-links" title="' . esc_attr__( 'Internal Links', 'meowseo' ) . '"></span>';
+				$new_columns['inbound_links']     = '<span class="dashicons dashicons-share-alt" title="' . esc_attr__( 'Inbound Links', 'meowseo' ) . '"></span>';
 			}
 		}
 
@@ -107,23 +112,44 @@ class List_Table_Columns {
 	}
 
 	/**
-	 * Render SEO Score column content.
-	 *
-	 * Displays a colored indicator based on score range.
+	 * Render custom column content.
 	 *
 	 * @param string $column_name Column name.
 	 * @param int    $post_id     Post ID.
 	 * @return void
 	 */
-	public function render_seo_score_column( string $column_name, int $post_id ): void {
-		if ( 'seo_score' !== $column_name ) {
-			return;
+	public function render_custom_columns( string $column_name, int $post_id ): void {
+		switch ( $column_name ) {
+			case 'seo_score':
+				$this->render_seo_score_indicator( $post_id );
+				break;
+			case 'readability_score':
+				$this->render_readability_score_indicator( $post_id );
+				break;
+			case 'outbound_links':
+				$count = get_post_meta( $post_id, '_meowseo_outbound_links', true );
+				echo ( '' === $count ) ? '0' : esc_html( $count );
+				break;
+			case 'internal_links':
+				$count = get_post_meta( $post_id, '_meowseo_internal_links', true );
+				echo ( '' === $count ) ? '0' : esc_html( $count );
+				break;
+			case 'inbound_links':
+				$count = DB::get_inbound_link_count( $post_id );
+				echo esc_html( $count );
+				break;
 		}
+	}
 
-		// Retrieve SEO score from postmeta.
+	/**
+	 * Render SEO Score indicator.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	private function render_seo_score_indicator( int $post_id ): void {
 		$score = get_post_meta( $post_id, '_meowseo_seo_score', true );
 
-		// Handle null/empty scores.
 		if ( '' === $score || null === $score ) {
 			echo '<span class="meowseo-score-indicator meowseo-score-none" '
 				. 'title="' . esc_attr__( 'No SEO Score', 'meowseo' ) . '" '
@@ -133,18 +159,37 @@ class List_Table_Columns {
 			return;
 		}
 
-		// Convert to integer.
 		$score = (int) $score;
-
-		// Determine color class based on score range.
 		$color_class = $this->get_score_color_class( $score );
 
-		// Render score indicator.
 		echo '<span class="meowseo-score-indicator ' . esc_attr( $color_class ) . '" '
 			. 'title="' . esc_attr( sprintf( __( 'SEO Score: %d/100', 'meowseo' ), $score ) ) . '" '
 			. 'aria-label="' . esc_attr( sprintf( __( 'SEO Score: %d out of 100', 'meowseo' ), $score ) ) . '">'
 			. '<span class="meowseo-score-circle"></span>'
 			. '<span class="meowseo-score-text">' . esc_html( $score ) . '</span>'
+			. '</span>';
+	}
+
+	/**
+	 * Render Readability Score indicator.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	private function render_readability_score_indicator( int $post_id ): void {
+		$score = get_post_meta( $post_id, '_meowseo_readability_score', true );
+
+		if ( '' === $score || null === $score ) {
+			echo '—';
+			return;
+		}
+
+		$score = (int) $score;
+		$color_class = $this->get_score_color_class( $score );
+
+		echo '<span class="meowseo-score-indicator ' . esc_attr( $color_class ) . '" '
+			. 'title="' . esc_attr( sprintf( __( 'Readability Score: %d/100', 'meowseo' ), $score ) ) . '">'
+			. '<span class="meowseo-score-circle"></span>'
 			. '</span>';
 	}
 
@@ -171,33 +216,45 @@ class List_Table_Columns {
 	 * @return array Modified sortable columns.
 	 */
 	public function register_sortable_column( array $columns ): array {
-		$columns['seo_score'] = 'seo_score';
+		$columns['seo_score']         = 'seo_score';
+		$columns['readability_score'] = 'readability_score';
+		$columns['outbound_links']    = 'outbound_links';
+		$columns['internal_links']    = 'internal_links';
 		return $columns;
 	}
 
 	/**
-	 * Handle SEO Score sorting query modification.
-	 *
-	 * Modifies the query to sort by _meowseo_seo_score postmeta.
+	 * Handle column sorting query modification.
 	 *
 	 * @param \WP_Query $query WordPress query object.
 	 * @return void
 	 */
-	public function handle_seo_score_sorting( \WP_Query $query ): void {
+	public function handle_column_sorting( \WP_Query $query ): void {
 		// Only modify admin queries.
 		if ( ! is_admin() || ! $query->is_main_query() ) {
 			return;
 		}
 
-		// Check if sorting by SEO score.
 		$orderby = $query->get( 'orderby' );
-		if ( 'seo_score' !== $orderby ) {
-			return;
-		}
 
-		// Set meta query for sorting.
-		$query->set( 'meta_key', '_meowseo_seo_score' );
-		$query->set( 'orderby', 'meta_value_num' );
+		switch ( $orderby ) {
+			case 'seo_score':
+				$query->set( 'meta_key', '_meowseo_seo_score' );
+				$query->set( 'orderby', 'meta_value_num' );
+				break;
+			case 'readability_score':
+				$query->set( 'meta_key', '_meowseo_readability_score' );
+				$query->set( 'orderby', 'meta_value_num' );
+				break;
+			case 'outbound_links':
+				$query->set( 'meta_key', '_meowseo_outbound_links' );
+				$query->set( 'orderby', 'meta_value_num' );
+				break;
+			case 'internal_links':
+				$query->set( 'meta_key', '_meowseo_internal_links' );
+				$query->set( 'orderby', 'meta_value_num' );
+				break;
+		}
 	}
 
 	/**

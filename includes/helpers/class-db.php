@@ -379,4 +379,36 @@ class DB {
 			$wpdb->insert( $table, $data, $format );
 		}
 	}
+
+	/**
+	 * Get inbound link count for a post.
+	 *
+	 * Counts how many internal links point to the given post ID by matching
+	 * the target URL with the post's permalink.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return int Inbound link count.
+	 */
+	public static function get_inbound_link_count( int $post_id ): int {
+		global $wpdb;
+
+		if ( ! isset( $wpdb ) || ! $wpdb->ready ) {
+			return 0;
+		}
+
+		$permalink = get_permalink( $post_id );
+		if ( ! $permalink ) {
+			return 0;
+		}
+
+		$table    = $wpdb->prefix . 'meowseo_link_checks';
+		$url_hash = hash( 'sha256', $permalink );
+
+		$query = $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$table} WHERE target_url_hash = %s",
+			$url_hash
+		);
+
+		return (int) $wpdb->get_var( $query );
+	}
 }

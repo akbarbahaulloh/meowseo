@@ -67,9 +67,28 @@
 	background-color: #a7aaad;
 }
 
-/* Sortable Column Header */
+/* Column Widths */
 .column-seo_score {
-	width: 100px;
+	width: 90px;
+}
+
+.column-readability_score {
+	width: 90px;
+}
+
+.column-outbound_links,
+.column-internal_links,
+.column-inbound_links {
+	width: 50px;
+	text-align: center;
+}
+
+/* Header Dashicons */
+.manage-column .dashicons {
+	vertical-align: middle;
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
 }
 
 /* Responsive adjustments */
@@ -81,5 +100,13 @@
 	.meowseo-score-circle {
 		width: 10px;
 		height: 10px;
+	}
+
+	.column-seo_score,
+	.column-readability_score,
+	.column-outbound_links,
+	.column-internal_links,
+	.column-inbound_links {
+		width: auto;
 	}
 }
