@@ -107,7 +107,7 @@ class Cron_Manager {
 									} else {
 										esc_html_e( 'Pending...', 'meowseo' );
 									}
-									echo ' (' . date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $cron['next_run'] ) . ')';
+									echo ' (' . date_i18n( get_option( 'date_format' ) . ' H:i:s', $cron['next_run'] ) . ')';
 									?>
 								</td>
 								<td>

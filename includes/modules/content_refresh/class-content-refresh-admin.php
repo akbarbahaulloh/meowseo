@@ -209,7 +209,7 @@ class Content_Refresh_Admin {
 					<span class="dashicons dashicons-clock" style="font-size: 30px; width: 30px; height: 30px; color: #46b450;"></span>
 					<h3 style="margin: 10px 0;"><?php esc_html_e( 'Last Pulse', 'meowseo' ); ?></h3>
 					<div style="font-size: 16px;">
-						<?php echo $last_run ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $last_run ) : __( 'Never', 'meowseo' ); ?>
+						<?php echo $last_run ? date_i18n( get_option( 'date_format' ) . ' H:i:s', $last_run ) : __( 'Never', 'meowseo' ); ?>
 					</div>
 				</div>
 				<div class="meowseo-stat-card" style="padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 8px;">
@@ -244,7 +244,7 @@ class Content_Refresh_Admin {
 								<tr>
 									<td><strong><a href="<?php echo get_edit_post_link( $row->ID ); ?>"><?php echo esc_html( $row->post_title ); ?></a></strong></td>
 									<td><?php echo date_i18n( get_option( 'date_format' ), strtotime( $row->post_date ) ); ?></td>
-									<td><?php echo date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $row->refreshed_at ); ?></td>
+									<td><?php echo date_i18n( get_option( 'date_format' ) . ' H:i:s', (int) $row->refreshed_at ); ?></td>
 									<td>
 										<a href="<?php echo get_permalink( $row->ID ); ?>" class="button button-small" target="_blank"><?php esc_html_e( 'View', 'meowseo' ); ?></a>
 									</td>
