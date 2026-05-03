@@ -111,6 +111,15 @@ class Classic_Editor {
 		$title               = (string) get_post_meta( $post->ID, '_meowseo_title', true );
 		$description         = (string) get_post_meta( $post->ID, '_meowseo_description', true );
 		$focus_keyword       = (string) get_post_meta( $post->ID, '_meowseo_focus_keyword', true );
+		$secondary_keywords_raw = (string) get_post_meta( $post->ID, '_meowseo_secondary_keywords', true );
+		$secondary_keywords  = $secondary_keywords_raw ? json_decode( $secondary_keywords_raw, true ) : array();
+		if ( ! is_array( $secondary_keywords ) ) {
+			$secondary_keywords = array();
+		}
+		$sk_1 = $secondary_keywords[0] ?? '';
+		$sk_2 = $secondary_keywords[1] ?? '';
+		$sk_3 = $secondary_keywords[2] ?? '';
+		$lsi_keywords        = (string) get_post_meta( $post->ID, '_meowseo_lsi_keywords', true );
 		$direct_answer       = (string) get_post_meta( $post->ID, '_meowseo_direct_answer', true );
 		$canonical           = (string) get_post_meta( $post->ID, '_meowseo_canonical', true );
 		$noindex             = (bool) get_post_meta( $post->ID, '_meowseo_robots_noindex', true );
@@ -122,7 +131,8 @@ class Classic_Editor {
 		$twitter_desc        = (string) get_post_meta( $post->ID, '_meowseo_twitter_description', true );
 		$twitter_image_id    = (int) get_post_meta( $post->ID, '_meowseo_twitter_image_id', true );
 		$use_og_for_twitter  = (bool) get_post_meta( $post->ID, '_meowseo_use_og_for_twitter', true );
-		$schema_type         = (string) get_post_meta( $post->ID, '_meowseo_schema_type', true );
+		$schema_page_type    = (string) get_post_meta( $post->ID, '_meowseo_schema_page_type', true );
+		$schema_article_type = (string) get_post_meta( $post->ID, '_meowseo_schema_article_type', true );
 		$schema_config_raw   = (string) get_post_meta( $post->ID, '_meowseo_schema_config', true );
 		$schema_config       = $schema_config_raw ? json_decode( $schema_config_raw, true ) : array();
 		$gsc_last_submit     = (int) get_post_meta( $post->ID, '_meowseo_gsc_last_submit', true );
@@ -289,7 +299,29 @@ class Classic_Editor {
 				<div class="meowseo-field">
 					<label for="meowseo_focus_keyword"><?php esc_html_e( 'Focus Keyword', 'meowseo' ); ?></label>
 					<input type="text" id="meowseo_focus_keyword" name="meowseo_focus_keyword"
-						value="<?php echo esc_attr( $focus_keyword ); ?>" />
+						value="<?php echo esc_attr( $focus_keyword ); ?>" placeholder="<?php esc_attr_e( 'Primary focus keyword...', 'meowseo' ); ?>" />
+				</div>
+
+				<!-- Secondary Keywords -->
+				<div class="meowseo-field">
+					<label><?php esc_html_e( 'Secondary Keywords', 'meowseo' ); ?></label>
+					<div style="display:flex;gap:10px;margin-top:5px;">
+						<input type="text" id="meowseo_secondary_keyword_1" name="meowseo_secondary_keyword[]"
+							value="<?php echo esc_attr( $sk_1 ); ?>" placeholder="<?php esc_attr_e( 'Secondary keyword 1...', 'meowseo' ); ?>" />
+						<input type="text" id="meowseo_secondary_keyword_2" name="meowseo_secondary_keyword[]"
+							value="<?php echo esc_attr( $sk_2 ); ?>" placeholder="<?php esc_attr_e( 'Secondary keyword 2...', 'meowseo' ); ?>" />
+						<input type="text" id="meowseo_secondary_keyword_3" name="meowseo_secondary_keyword[]"
+							value="<?php echo esc_attr( $sk_3 ); ?>" placeholder="<?php esc_attr_e( 'Secondary keyword 3...', 'meowseo' ); ?>" />
+					</div>
+					<p class="description" style="margin-top:5px;font-size:12px;color:#646970;"><?php esc_html_e( 'Target up to 4 keywords per post. Included for free!', 'meowseo' ); ?></p>
+				</div>
+
+				<!-- LSI Keywords -->
+				<div class="meowseo-field">
+					<label for="meowseo_lsi_keywords"><?php esc_html_e( 'LSI Keywords / Synonyms', 'meowseo' ); ?></label>
+					<input type="text" id="meowseo_lsi_keywords" name="meowseo_lsi_keywords"
+						value="<?php echo esc_attr( $lsi_keywords ); ?>" placeholder="e.g. synonym 1, synonym 2" />
+					<p class="description" style="margin-top:5px;font-size:12px;color:#646970;"><?php esc_html_e( 'Separate multiple keywords with commas. Helps with semantic SEO scoring.', 'meowseo' ); ?></p>
 				</div>
 
 				<!-- Direct Answer -->
@@ -301,10 +333,11 @@ class Classic_Editor {
 
 				<!-- SEO Analysis -->
 				<div class="meowseo-section-heading"><?php esc_html_e( 'SEO Analysis', 'meowseo' ); ?></div>
-				<button type="button" class="button" id="meowseo-run-analysis"><?php esc_html_e( 'Run Analysis', 'meowseo' ); ?></button>
 				<div id="meowseo-analysis-panel" style="margin-top:10px">
-					<p style="color:#50575e;font-size:13px"><?php esc_html_e( 'Save the post, then click Run Analysis.', 'meowseo' ); ?></p>
+					<p style="color:#50575e;font-size:13px"><?php esc_html_e( 'Initializing analysis...', 'meowseo' ); ?></p>
 				</div>
+
+			</div> <!-- END meowseo-tab-general -->
 
 			<!-- ============================================================ -->
 			<!-- TAB: Social                                                   -->
@@ -391,141 +424,16 @@ class Classic_Editor {
 			<!-- TAB: Schema                                                   -->
 			<!-- ============================================================ -->
 			<div id="meowseo-tab-schema" class="meowseo-tab-panel">
-
-				<div class="meowseo-field">
-					<label for="meowseo_schema_type"><?php esc_html_e( 'Schema Type', 'meowseo' ); ?></label>
-					<select id="meowseo_schema_type" name="meowseo_schema_type">
-						<option value=""><?php esc_html_e( '— None —', 'meowseo' ); ?></option>
-						<option value="Article"       <?php selected( $schema_type, 'Article' ); ?>><?php esc_html_e( 'Article', 'meowseo' ); ?></option>
-						<option value="FAQPage"       <?php selected( $schema_type, 'FAQPage' ); ?>><?php esc_html_e( 'FAQ Page', 'meowseo' ); ?></option>
-						<option value="HowTo"         <?php selected( $schema_type, 'HowTo' ); ?>><?php esc_html_e( 'HowTo', 'meowseo' ); ?></option>
-						<option value="LocalBusiness" <?php selected( $schema_type, 'LocalBusiness' ); ?>><?php esc_html_e( 'Local Business', 'meowseo' ); ?></option>
-						<option value="Product"       <?php selected( $schema_type, 'Product' ); ?>><?php esc_html_e( 'Product', 'meowseo' ); ?></option>
-					</select>
-				</div>
-
-				<!-- Article -->
-				<div class="meowseo-schema-fields" data-type="Article" style="display:none">
-					<div class="meowseo-section-heading"><?php esc_html_e( 'Article', 'meowseo' ); ?></div>
-					<div class="meowseo-field">
-						<label for="meowseo_schema_article_type"><?php esc_html_e( 'Article Type', 'meowseo' ); ?></label>
-						<select id="meowseo_schema_article_type" name="meowseo_schema_article_type">
-							<option value="Article"     <?php selected( $schema_config['article_type'] ?? '', 'Article' ); ?>>Article</option>
-							<option value="NewsArticle" <?php selected( $schema_config['article_type'] ?? '', 'NewsArticle' ); ?>>NewsArticle</option>
-							<option value="BlogPosting" <?php selected( $schema_config['article_type'] ?? '', 'BlogPosting' ); ?>>BlogPosting</option>
-						</select>
+				<?php wp_nonce_field( 'meowseo_schema_metabox', 'meowseo_schema_nonce' ); ?>
+				<div id="meowseo-schema-builder" data-post-id="<?php echo esc_attr( $post->ID ); ?>">
+					<div class="meowseo-loading-spinner" style="padding:40px;text-align:center">
+						<span class="dashicons dashicons-update spin"></span>
+						<p><?php esc_html_e( 'Loading Schema Builder...', 'meowseo' ); ?></p>
 					</div>
 				</div>
-
-				<!-- FAQ -->
-				<div class="meowseo-schema-fields" data-type="FAQPage" style="display:none">
-					<div class="meowseo-section-heading"><?php esc_html_e( 'FAQ Items', 'meowseo' ); ?></div>
-					<div id="meowseo-faq-items">
-						<?php
-						$faq_items = $schema_config['faq_items'] ?? array();
-						foreach ( $faq_items as $i => $item ) :
-							?>
-							<div class="meowseo-faq-item" style="border:1px solid #dcdcde;padding:10px;margin-bottom:8px;border-radius:4px">
-								<div class="meowseo-field">
-									<label><?php esc_html_e( 'Question', 'meowseo' ); ?></label>
-									<input type="text" name="meowseo_faq_question[]"
-										value="<?php echo esc_attr( $item['question'] ?? '' ); ?>" />
-								</div>
-								<div class="meowseo-field">
-									<label><?php esc_html_e( 'Answer', 'meowseo' ); ?></label>
-									<textarea name="meowseo_faq_answer[]"><?php echo esc_textarea( $item['answer'] ?? '' ); ?></textarea>
-								</div>
-								<button type="button" class="button meowseo-remove-faq"><?php esc_html_e( 'Remove', 'meowseo' ); ?></button>
-							</div>
-						<?php endforeach; ?>
-					</div>
-					<button type="button" class="button" id="meowseo-add-faq"><?php esc_html_e( '+ Add Question', 'meowseo' ); ?></button>
-				</div>
-
-				<!-- HowTo -->
-				<div class="meowseo-schema-fields" data-type="HowTo" style="display:none">
-					<div class="meowseo-section-heading"><?php esc_html_e( 'HowTo', 'meowseo' ); ?></div>
-					<div class="meowseo-field">
-						<label for="meowseo_schema_howto_name"><?php esc_html_e( 'Name', 'meowseo' ); ?></label>
-						<input type="text" id="meowseo_schema_howto_name" name="meowseo_schema_howto_name"
-							value="<?php echo esc_attr( $schema_config['howto_name'] ?? '' ); ?>" />
-					</div>
-					<div class="meowseo-field">
-						<label for="meowseo_schema_howto_description"><?php esc_html_e( 'Description', 'meowseo' ); ?></label>
-						<textarea id="meowseo_schema_howto_description" name="meowseo_schema_howto_description"><?php echo esc_textarea( $schema_config['howto_description'] ?? '' ); ?></textarea>
-					</div>
-					<div class="meowseo-section-heading"><?php esc_html_e( 'Steps', 'meowseo' ); ?></div>
-					<div id="meowseo-howto-steps">
-						<?php
-						$steps = $schema_config['howto_steps'] ?? array();
-						foreach ( $steps as $step ) :
-							?>
-							<div class="meowseo-howto-step" style="border:1px solid #dcdcde;padding:10px;margin-bottom:8px;border-radius:4px">
-								<div class="meowseo-field">
-									<label><?php esc_html_e( 'Step Name', 'meowseo' ); ?></label>
-									<input type="text" name="meowseo_howto_step_name[]"
-										value="<?php echo esc_attr( $step['name'] ?? '' ); ?>" />
-								</div>
-								<div class="meowseo-field">
-									<label><?php esc_html_e( 'Step Text', 'meowseo' ); ?></label>
-									<textarea name="meowseo_howto_step_text[]"><?php echo esc_textarea( $step['text'] ?? '' ); ?></textarea>
-								</div>
-								<button type="button" class="button meowseo-remove-step"><?php esc_html_e( 'Remove', 'meowseo' ); ?></button>
-							</div>
-						<?php endforeach; ?>
-					</div>
-					<button type="button" class="button" id="meowseo-add-step"><?php esc_html_e( '+ Add Step', 'meowseo' ); ?></button>
-				</div>
-
-				<!-- LocalBusiness -->
-				<div class="meowseo-schema-fields" data-type="LocalBusiness" style="display:none">
-					<div class="meowseo-section-heading"><?php esc_html_e( 'Local Business', 'meowseo' ); ?></div>
-					<?php
-					$lb_fields = array(
-						'lb_name'    => __( 'Business Name', 'meowseo' ),
-						'lb_type'    => __( 'Business Type', 'meowseo' ),
-						'lb_address' => __( 'Address', 'meowseo' ),
-						'lb_phone'   => __( 'Phone', 'meowseo' ),
-						'lb_hours'   => __( 'Opening Hours (e.g. Mo-Fr 09:00-17:00)', 'meowseo' ),
-					);
-					foreach ( $lb_fields as $field_key => $label ) :
-						?>
-						<div class="meowseo-field">
-							<label for="meowseo_schema_<?php echo esc_attr( $field_key ); ?>"><?php echo esc_html( $label ); ?></label>
-							<input type="text" id="meowseo_schema_<?php echo esc_attr( $field_key ); ?>"
-								name="meowseo_schema_<?php echo esc_attr( $field_key ); ?>"
-								value="<?php echo esc_attr( $schema_config[ $field_key ] ?? '' ); ?>" />
-						</div>
-					<?php endforeach; ?>
-				</div>
-
-				<!-- Product -->
-				<div class="meowseo-schema-fields" data-type="Product" style="display:none">
-					<div class="meowseo-section-heading"><?php esc_html_e( 'Product', 'meowseo' ); ?></div>
-					<?php
-					$product_fields = array(
-						'product_name'         => __( 'Product Name', 'meowseo' ),
-						'product_description'  => __( 'Description', 'meowseo' ),
-						'product_sku'          => __( 'SKU', 'meowseo' ),
-						'product_price'        => __( 'Price', 'meowseo' ),
-						'product_currency'     => __( 'Currency (e.g. USD)', 'meowseo' ),
-						'product_availability' => __( 'Availability', 'meowseo' ),
-					);
-					foreach ( $product_fields as $field_key => $label ) :
-						?>
-						<div class="meowseo-field">
-							<label for="meowseo_schema_<?php echo esc_attr( $field_key ); ?>"><?php echo esc_html( $label ); ?></label>
-							<input type="text" id="meowseo_schema_<?php echo esc_attr( $field_key ); ?>"
-								name="meowseo_schema_<?php echo esc_attr( $field_key ); ?>"
-								value="<?php echo esc_attr( $schema_config[ $field_key ] ?? '' ); ?>" />
-						</div>
-					<?php endforeach; ?>
-				</div>
-
-				<!-- Hidden JSON storage for schema_config -->
-				<input type="hidden" id="meowseo_schema_config" name="meowseo_schema_config"
-					value="<?php echo esc_attr( $schema_config_raw ); ?>" />
-
+				<p class="description" style="margin-top:15px">
+					<?php esc_html_e( 'The visual Schema Builder allows you to add multiple structured data types to your content.', 'meowseo' ); ?>
+				</p>
 			</div>
 
 			<!-- ============================================================ -->
@@ -637,6 +545,7 @@ class Classic_Editor {
 		$text_fields = array(
 			'meowseo_title'         => '_meowseo_title',
 			'meowseo_focus_keyword' => '_meowseo_focus_keyword',
+			'meowseo_lsi_keywords'  => '_meowseo_lsi_keywords',
 			'meowseo_og_title'      => '_meowseo_og_title',
 			'meowseo_twitter_title' => '_meowseo_twitter_title',
 		);
@@ -644,6 +553,14 @@ class Classic_Editor {
 		foreach ( $text_fields as $post_key => $meta_key ) {
 			$value = isset( $_POST[ $post_key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $post_key ] ) ) : '';
 			update_post_meta( $post_id, $meta_key, $value );
+		}
+
+		// Secondary keywords
+		if ( isset( $_POST['meowseo_secondary_keyword'] ) && is_array( $_POST['meowseo_secondary_keyword'] ) ) {
+			$s_kws = array_filter( array_map( 'sanitize_text_field', wp_unslash( $_POST['meowseo_secondary_keyword'] ) ) );
+			update_post_meta( $post_id, '_meowseo_secondary_keywords', wp_json_encode( array_values( $s_kws ) ) );
+		} else {
+			delete_post_meta( $post_id, '_meowseo_secondary_keywords' );
 		}
 
 		// New Content Type fields
@@ -686,9 +603,12 @@ class Classic_Editor {
 		update_post_meta( $post_id, '_meowseo_og_image_id', $og_image_id );
 		update_post_meta( $post_id, '_meowseo_twitter_image_id', $twitter_image_id );
 
-		// Schema type.
-		$schema_type = isset( $_POST['meowseo_schema_type'] ) ? sanitize_text_field( wp_unslash( $_POST['meowseo_schema_type'] ) ) : '';
-		update_post_meta( $post_id, '_meowseo_schema_type', $schema_type );
+		// Schema types.
+		$schema_page_type = isset( $_POST['meowseo_schema_page_type'] ) ? sanitize_text_field( wp_unslash( $_POST['meowseo_schema_page_type'] ) ) : '';
+		update_post_meta( $post_id, '_meowseo_schema_page_type', $schema_page_type );
+
+		$schema_article_type = isset( $_POST['meowseo_schema_article_type'] ) ? sanitize_text_field( wp_unslash( $_POST['meowseo_schema_article_type'] ) ) : '';
+		update_post_meta( $post_id, '_meowseo_schema_article_type', $schema_article_type );
 
 		// Schema config JSON (built by JS before submit; stored as-is after decode/re-encode for safety).
 		if ( isset( $_POST['meowseo_schema_config'] ) ) {
@@ -697,5 +617,19 @@ class Classic_Editor {
 			$safe    = $decoded ? wp_json_encode( $decoded ) : '';
 			update_post_meta( $post_id, '_meowseo_schema_config', $safe );
 		}
+
+		// Review / AggregateRating fields.
+		$review_product_name = isset( $_POST['meowseo_review_product_name'] ) ? sanitize_text_field( wp_unslash( $_POST['meowseo_review_product_name'] ) ) : '';
+		update_post_meta( $post_id, '_meowseo_review_product_name', $review_product_name );
+
+		$review_rating = isset( $_POST['meowseo_review_rating'] ) ? absint( $_POST['meowseo_review_rating'] ) : 0;
+		if ( $review_rating >= 1 && $review_rating <= 5 ) {
+			update_post_meta( $post_id, '_meowseo_review_rating', $review_rating );
+		} else {
+			delete_post_meta( $post_id, '_meowseo_review_rating' );
+		}
+
+		$review_count = isset( $_POST['meowseo_review_count'] ) ? absint( $_POST['meowseo_review_count'] ) : 1;
+		update_post_meta( $post_id, '_meowseo_review_count', max( 1, $review_count ) );
 	}
 }

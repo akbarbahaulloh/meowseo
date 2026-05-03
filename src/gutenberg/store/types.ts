@@ -40,6 +40,7 @@ export interface ContentSnapshot {
 	content: string;
 	excerpt: string;
 	focusKeyword: string;
+	lsiKeywords: string;
 	postType: string;
 	permalink: string;
 }

@@ -16,6 +16,7 @@ import SERPPreview from '../SERPPreview';
 import CharacterCounter from '../CharacterCounter';
 import FocusKeywordInput from './FocusKeywordInput';
 import SecondaryKeywordsInput from './SecondaryKeywordsInput';
+import { LsiKeywordInput } from '../LsiKeywordInput';
 import SynonymInput from './SynonymInput';
 import DirectAnswerField from './DirectAnswerField';
 import InternalLinkSuggestions from './InternalLinkSuggestions';
@@ -141,6 +142,7 @@ const GeneralTabContent: React.FC = () => {
 
 			<FocusKeywordInput />
 			<SecondaryKeywordsInput />
+			<LsiKeywordInput />
 			<SynonymInput />
 			<KeywordAnalysisPanel />
 			<SynonymAnalysisPanel />

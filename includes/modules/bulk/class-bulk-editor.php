@@ -52,6 +52,7 @@ class Bulk_Editor implements Module {
 		'meowseo_remove_canonical' => 'Remove canonical URL',
 		'meowseo_set_schema_article' => 'Set schema to Article',
 		'meowseo_set_schema_none' => 'Set schema to None',
+		'meowseo_generate_ai_meta' => 'MeowSEO: Generate SEO Meta via AI',
 	);
 
 	/**
@@ -80,6 +81,42 @@ class Bulk_Editor implements Module {
 
 		// Register CSV export functionality.
 		add_action( 'admin_init', array( $this, 'handle_csv_export' ) );
+
+		// Enqueue JS for bulk AI generation.
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_bulk_scripts' ) );
+	}
+
+	/**
+	 * Enqueue scripts for the bulk editor.
+	 *
+	 * @param string $hook_suffix Hook suffix.
+	 */
+	public function enqueue_bulk_scripts( string $hook_suffix ): void {
+		if ( 'edit.php' !== $hook_suffix ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'meowseo-bulk-editor',
+			\MEOWSEO_URL . 'assets/js/bulk-editor.js',
+			array( 'jquery', 'wp-api-fetch' ),
+			\MEOWSEO_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'meowseo-bulk-editor',
+			'meowseoBulk',
+			array(
+				'restUrl' => esc_url_raw( rest_url( 'meowseo/v1' ) ),
+				'nonce'   => wp_create_nonce( 'wp_rest' ),
+				'strings' => array(
+					'processing' => __( 'Generating AI Meta... Please do not close this page.', 'meowseo' ),
+					'completed'  => __( 'Bulk AI generation completed!', 'meowseo' ),
+					'failed'     => __( 'Failed to generate meta for some posts.', 'meowseo' ),
+				),
+			)
+		);
 	}
 
 	/**
@@ -101,7 +138,7 @@ class Bulk_Editor implements Module {
 	 */
 	public function register_bulk_actions( array $bulk_actions ): array {
 		// Check user capability.
-		if ( ! current_user_can( 'meowseo_bulk_edit' ) ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			return $bulk_actions;
 		}
 
@@ -126,7 +163,7 @@ class Bulk_Editor implements Module {
 		}
 
 		// Check user capability.
-		if ( ! current_user_can( 'meowseo_bulk_edit' ) ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			return $redirect_url;
 		}
 
@@ -227,7 +264,7 @@ class Bulk_Editor implements Module {
 		}
 
 		// Verify nonce (WordPress adds this automatically for bulk actions).
-		if ( ! current_user_can( 'meowseo_bulk_edit' ) ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
@@ -274,7 +311,7 @@ class Bulk_Editor implements Module {
 		}
 
 		// Check user capability.
-		if ( ! current_user_can( 'meowseo_bulk_edit' ) ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( 'Unauthorized' );
 		}
 

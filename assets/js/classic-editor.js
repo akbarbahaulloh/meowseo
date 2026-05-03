@@ -84,6 +84,30 @@
 			runAnalysis();
 		} );
 
+		// Auto-trigger analysis on SEO input changes
+		$( '#meowseo_focus_keyword, #meowseo_secondary_keyword_1, #meowseo_secondary_keyword_2, #meowseo_secondary_keyword_3, #meowseo_lsi_keywords, #meowseo_direct_answer' ).on( 'input', function() {
+			runAnalysis();
+		} );
+
+		// Auto-trigger analysis on content changes
+		$( '#content' ).on( 'input', function() {
+			runAnalysis();
+		} );
+
+		// Hook into TinyMCE if available
+		if ( typeof tinyMCE !== 'undefined' ) {
+			tinyMCE.on( 'AddEditor', function( e ) {
+				e.editor.on( 'change keyup', function() {
+					runAnalysis();
+				} );
+			} );
+		}
+
+		// Initial analysis run
+		setTimeout( function() {
+			runAnalysis();
+		}, 500 );
+
 		// Init on load.
 		updateCounter( $titleInput, $titleCounter, TITLE_THRESHOLDS );
 		updateCounter( $descInput, $descCounter, DESC_THRESHOLDS );
@@ -196,7 +220,7 @@
 	// Schema conditional fields
 	// -------------------------------------------------------------------------
 	function initSchemaFields() {
-		var $select = $( '#meowseo_schema_type' );
+		var $select = $( '#meowseo_schema_page_type' );
 		var $groups = $( '.meowseo-schema-fields' );
 
 		function syncSchema() {
@@ -255,16 +279,14 @@
 
 		// Build schema_config JSON before form submit
 		$( '#post' ).on( 'submit', function () {
-			var type = $( '#meowseo_schema_type' ).val();
+			var type = $( '#meowseo_schema_page_type' ).val();
 			if ( ! type ) {
 				$( '#meowseo_schema_config' ).val( '' );
 				return;
 			}
 
 			var config = {};
-			if ( type === 'Article' ) {
-				config.article_type = $( '#meowseo_schema_article_type' ).val();
-			} else if ( type === 'FAQPage' ) {
+			if ( type === 'FAQPage' ) {
 				config.faq_items = [];
 				$( '#meowseo-faq-items .meowseo-faq-item' ).each( function () {
 					config.faq_items.push( {
@@ -310,6 +332,7 @@
 	// Analysis via REST
 	// -------------------------------------------------------------------------
 	var analysisTimer = null;
+	var lastAnalysisResult = null;
 
 	function runAnalysis() {
 		clearTimeout( analysisTimer );
@@ -332,12 +355,22 @@
 				return;
 			}
 
+			// Gather secondary keywords
+			var secondaryKeywords = [];
+			[1, 2, 3].forEach(function(i) {
+				var val = $( '#meowseo_secondary_keyword_' + i ).val();
+				if ( val ) secondaryKeywords.push( val );
+			});
+
 			$.ajax( {
 				url: meowseoClassic.restUrl + '/analysis/' + postId,
 				method: 'POST',
 				data: JSON.stringify( {
 					content: content,
-					focus_keyword: $( '#meowseo_focus_keyword' ).val() || ''
+					focus_keyword: $( '#meowseo_focus_keyword' ).val() || '',
+					secondary_keywords: secondaryKeywords,
+					lsi_keywords: $( '#meowseo_lsi_keywords' ).val() || '',
+					direct_answer: $( '#meowseo_direct_answer' ).val() || ''
 				} ),
 				beforeSend: function ( xhr ) {
 					xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
@@ -345,6 +378,7 @@
 				},
 				success: function ( data ) {
 					try {
+						lastAnalysisResult = data;
 						renderAnalysis( $panel, data );
 					} catch ( e ) {
 						console.error( 'MeowSEO Analysis Render Error:', e );
@@ -375,56 +409,107 @@
 	function renderAnalysis( $panel, data ) {
 		var html = '';
 
-		// SEO Analysis Section
+		// ── SEO Score ──────────────────────────────────────────────────────────
 		if ( data.seo ) {
-			html += '<div style="margin-bottom:16px">';
-			html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
-			html += '<strong style="font-size:14px">SEO Analysis</strong>';
-			html += renderScoreBadge( data.seo.score, data.seo.color );
+			var score     = data.seo.score || 0;
+			var scoreColor = score >= 80 ? '#46b450' : ( score >= 50 ? '#f0b849' : '#d63638' );
+			var scoreBg   = score >= 80 ? '#edfaee' : ( score >= 50 ? '#fcf9e8' : '#fce8e8' );
+			var scoreLabel = score >= 80 ? 'Baik' : ( score >= 50 ? 'Perlu Ditingkatkan' : 'Buruk' );
+
+			// Circular score indicator
+			html += '<div class="meowseo-score-panel">';
+			html += '<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">';
+			html += '<div style="width:60px;height:60px;border-radius:50%;background:' + scoreBg + ';border:3px solid ' + scoreColor + ';display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">';
+			html += '<span style="font-size:18px;font-weight:700;color:' + scoreColor + ';line-height:1;">' + score + '</span>';
+			html += '<span style="font-size:9px;color:' + scoreColor + ';line-height:1;margin-top:2px;">/ 100</span>';
+			html += '</div>';
+			html += '<div>';
+			html += '<strong style="font-size:13px;display:block;">SEO Score</strong>';
+			html += '<span style="font-size:12px;color:' + scoreColor + ';font-weight:600;">' + escHtml( scoreLabel ) + '</span>';
+			// Score progress bar
+			html += '<div style="width:120px;height:5px;background:#e0e0e0;border-radius:3px;margin-top:5px;">';
+			html += '<div style="width:' + score + '%;height:5px;background:' + scoreColor + ';border-radius:3px;transition:width .3s;"></div>';
+			html += '</div>';
+			html += '</div>';
 			html += '</div>';
 
+			// Checklist items
 			if ( data.seo.checks && data.seo.checks.length ) {
-				html += '<div style="margin-left:0">';
+				html += '<div style="display:grid;gap:5px;">';
 				data.seo.checks.forEach( function ( check ) {
-					var color = check.pass ? '#155724' : '#721c24';
-					var dot   = check.pass ? '✓' : '✕';
-					html += '<div style="margin-bottom:6px;color:' + color + ';font-size:13px">' + dot + ' ' + escHtml( check.label ) + '</div>';
+					var icon   = check.pass ? '✓' : '✕';
+					var color  = check.pass ? '#46b450' : '#d63638';
+					var bgChk  = check.pass ? '#edfaee' : '#fce8e8';
+					html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;background:' + bgChk + ';border-radius:4px;font-size:12px;">';
+					html += '<span style="color:' + color + ';font-weight:700;flex-shrink:0;width:14px;">' + icon + '</span>';
+					html += '<span style="color:#1e1e1e;">' + escHtml( check.label ) + '</span>';
+					html += '</div>';
 				} );
 				html += '</div>';
 			}
-			html += '</div>';
+			if ( score < 100 ) {
+				html += '<div style="margin-top:15px;padding-top:10px;border-top:1px dashed #c3c4c7;">';
+				html += '<button type="button" class="button button-secondary meowseo-ai-explain-btn">';
+				html += '<span class="dashicons dashicons-lightbulb" style="color:#f0b849;margin-top:4px;"></span> Tanya AI Cara Memperbaiki';
+				html += '</button>';
+				html += '<div class="meowseo-ai-explain-result" style="display:none;margin-top:10px;padding:12px;background:#fff;border-left:4px solid #f0b849;border-radius:4px;font-size:13px;color:#3c434a;box-shadow:0 1px 3px rgba(0,0,0,0.05);"></div>';
+				html += '</div>';
+			}
+
+			html += '</div>'; // .meowseo-score-panel
+
+			// Divider
+			html += '<hr style="margin:14px 0;border-top:1px solid #e0e0e0;">';
 		}
 
-		// Readability Analysis Section
+		// ── Readability Score ──────────────────────────────────────────────────
 		if ( data.readability ) {
-			html += '<div style="margin-bottom:16px">';
-			html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
-			html += '<strong style="font-size:14px">Readability Analysis</strong>';
-			html += renderScoreBadge( data.readability.score, data.readability.color );
+			var rScore     = data.readability.score || 0;
+			var rColor     = rScore >= 70 ? '#46b450' : ( rScore >= 40 ? '#f0b849' : '#d63638' );
+			var rBg        = rScore >= 70 ? '#edfaee' : ( rScore >= 40 ? '#fcf9e8' : '#fce8e8' );
+			var rLabel     = rScore >= 70 ? 'Mudah Dibaca' : ( rScore >= 40 ? 'Cukup' : 'Sulit Dibaca' );
+
+			html += '<div class="meowseo-score-panel">';
+			html += '<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">';
+			html += '<div style="width:60px;height:60px;border-radius:50%;background:' + rBg + ';border:3px solid ' + rColor + ';display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">';
+			html += '<span style="font-size:18px;font-weight:700;color:' + rColor + ';line-height:1;">' + rScore + '</span>';
+			html += '<span style="font-size:9px;color:' + rColor + ';line-height:1;margin-top:2px;">/ 100</span>';
+			html += '</div>';
+			html += '<div>';
+			html += '<strong style="font-size:13px;display:block;">Keterbacaan</strong>';
+			html += '<span style="font-size:12px;color:' + rColor + ';font-weight:600;">' + escHtml( rLabel ) + '</span>';
+			html += '<div style="width:120px;height:5px;background:#e0e0e0;border-radius:3px;margin-top:5px;">';
+			html += '<div style="width:' + rScore + '%;height:5px;background:' + rColor + ';border-radius:3px;"></div>';
+			html += '</div>';
+			html += '</div>';
 			html += '</div>';
 
 			if ( data.readability.checks && data.readability.checks.length ) {
-				html += '<div style="margin-left:0">';
+				html += '<div style="display:grid;gap:5px;">';
 				data.readability.checks.forEach( function ( check ) {
-					var color = check.pass ? '#155724' : '#721c24';
-					var dot   = check.pass ? '✓' : '✕';
-					html += '<div style="margin-bottom:6px;color:' + color + ';font-size:13px">' + dot + ' ' + escHtml( check.label ) + '</div>';
+					var icon  = check.pass ? '✓' : '✕';
+					var color = check.pass ? '#46b450' : '#d63638';
+					var bgChk = check.pass ? '#edfaee' : '#fce8e8';
+					html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;background:' + bgChk + ';border-radius:4px;font-size:12px;">';
+					html += '<span style="color:' + color + ';font-weight:700;flex-shrink:0;width:14px;">' + icon + '</span>';
+					html += '<span style="color:#1e1e1e;">' + escHtml( check.label ) + '</span>';
+					html += '</div>';
 				} );
 				html += '</div>';
 			}
-			html += '</div>';
+			html += '</div>'; // .meowseo-score-panel
 		}
 
 		if ( ! html ) {
-			html = '<p style="color:#50575e;font-size:13px">No analysis data available. Save the post first.</p>';
+			html = '<p style="color:#50575e;font-size:13px;">Tidak ada data analisis. Simpan post terlebih dahulu.</p>';
 		}
 
 		$panel.html( html );
 	}
 
 	function renderScoreBadge( score, color ) {
-		var bgColor = color === 'green' ? '#d4edda' : ( color === 'orange' ? '#fff3cd' : '#f8d7da' );
-		var textColor = color === 'green' ? '#155724' : ( color === 'orange' ? '#856404' : '#721c24' );
+		var bgColor   = color === 'green' ? '#edfaee' : ( color === 'orange' ? '#fcf9e8' : '#fce8e8' );
+		var textColor = color === 'green' ? '#46b450' : ( color === 'orange' ? '#f0b849' : '#d63638' );
 		return '<span style="background:' + bgColor + ';color:' + textColor + ';padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600">' + score + '</span>';
 	}
 
@@ -496,6 +581,76 @@
 				complete: function () {
 					$btn.prop( 'disabled', false ).text( origText );
 				},
+			} );
+		} );
+
+		// Handle AI Explainer
+		$( document ).on( 'click', '.meowseo-ai-explain-btn', function() {
+			var $btn = $( this );
+			var $result = $btn.siblings( '.meowseo-ai-explain-result' );
+			
+			// Gather failed checks
+			var failedChecks = [];
+			if ( lastAnalysisResult && lastAnalysisResult.seo && lastAnalysisResult.seo.checks ) {
+				lastAnalysisResult.seo.checks.forEach( function( check ) {
+					if ( ! check.pass ) {
+						failedChecks.push( check.label );
+					}
+				} );
+			}
+
+			var content = '';
+			if ( typeof tinyMCE !== 'undefined' && tinyMCE.activeEditor && ! tinyMCE.activeEditor.isHidden() ) {
+				content = tinyMCE.activeEditor.getContent();
+			} else {
+				content = $( '#content' ).val() || '';
+			}
+
+			$btn.prop( 'disabled', true ).html( '<span class="dashicons dashicons-update-alt" style="margin-top:4px;"></span> Menganalisis...' );
+			$result.html( '<em>AI sedang membaca konten Anda dan menyusun saran...</em>' ).slideDown();
+
+			$.ajax( {
+				url: meowseoClassic.restUrl + '/ai/explain-seo-score',
+				method: 'POST',
+				beforeSend: function ( xhr ) {
+					xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
+					xhr.setRequestHeader( 'Content-Type', 'application/json' );
+				},
+				data: JSON.stringify( {
+					post_id: meowseoClassic.postId || $( '#post_ID' ).val(),
+					failed_checks: failedChecks,
+					focus_keyword: $( '#meowseo_focus_keyword' ).val() || '',
+					content: content
+				} ),
+				success: function ( response ) {
+					if ( response && response.success && response.data ) {
+						// Simple markdown to HTML conversion for the response
+						var formattedHtml = response.data
+							.replace( /\n\n/g, '</p><p>' )
+							.replace( /\n/g, '<br>' )
+							.replace( /\*\*(.*?)\*\*/g, '<strong>$1</strong>' )
+							.replace( /\*(.*?)\*/g, '<em>$1</em>' )
+							.replace( /^- (.*)$/gm, '<li>$1</li>' )
+							.replace( /<\/li><br><li>/g, '</li><li>' );
+							
+						// Wrap lists
+						if ( formattedHtml.indexOf( '<li>' ) !== -1 ) {
+							formattedHtml = formattedHtml.replace( /(<li>.*<\/li>)/g, '<ul style="margin-left:20px;list-style-type:disc;">$1</ul>' );
+						}
+
+						$result.html( '<p>' + formattedHtml + '</p>' );
+					} else {
+						$result.html( '<span style="color:#d63638;">Gagal mendapatkan saran. Silakan coba lagi.</span>' );
+					}
+				},
+				error: function ( xhr, status, error ) {
+					var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : error;
+					$result.html( '<span style="color:#d63638;">Error: ' + escHtml( msg ) + '</span>' );
+					console.error( 'MeowSEO AI Explainer Error:', msg );
+				},
+				complete: function() {
+					$btn.prop( 'disabled', false ).html( '<span class="dashicons dashicons-lightbulb" style="color:#f0b849;margin-top:4px;"></span> Tanya AI Cara Memperbaiki' );
+				}
 			} );
 		} );
 	}
@@ -612,6 +767,51 @@
 					$btn.prop( 'disabled', false ).html( origText );
 					addLog( 'Process finished.', '#569cd6' );
 				},
+			} );
+		} );
+	}
+
+	// -------------------------------------------------------------------------
+	// Schema Preview
+	// -------------------------------------------------------------------------
+	function initSchemaPreview() {
+		$( '#meowseo-schema-preview-btn' ).on( 'click', function () {
+			var $btn = $( this );
+			var $container = $( '#meowseo-schema-preview-container' );
+			var $code = $( '#meowseo-schema-preview-code' );
+			var postId = meowseoClassic.postId || $( '#post_ID' ).val();
+
+			if ( ! postId || postId === '0' ) {
+				alert( 'Please save the post first before previewing schema.' );
+				return;
+			}
+
+			$btn.prop( 'disabled', true ).text( 'Loading Preview…' );
+			$container.show();
+			$code.text( 'Loading...' );
+
+			$.ajax( {
+				url: meowseoClassic.restUrl + '/schema/preview/' + postId,
+				method: 'POST',
+				beforeSend: function ( xhr ) {
+					xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
+				},
+				success: function ( response ) {
+					if ( response && response.success && response.data ) {
+						// Format the JSON with 2 spaces indentation
+						var formattedJson = JSON.stringify( response.data, null, 2 );
+						$code.text( formattedJson );
+					} else {
+						$code.text( 'No schema data generated or error occurred.' );
+					}
+				},
+				error: function ( xhr, status, error ) {
+					console.error( 'Schema Preview Error:', error );
+					$code.text( 'Failed to load schema preview. Error: ' + status );
+				},
+				complete: function () {
+					$btn.prop( 'disabled', false ).html( '<span class="dashicons dashicons-visibility" style="margin-top:4px"></span> Preview JSON-LD Schema' );
+				}
 			} );
 		} );
 	}
@@ -776,7 +976,23 @@
 						}
 					}
 
-					addLog( '[Phase 4/4] Writing conclusion...', '#dcdcaa' );
+					addLog( '[Phase 4/5] Generating FAQs for AI Overviews & Schema...', '#dcdcaa' );
+					const faqRes = await $.ajax( {
+						url: meowseoClassic.restUrl + '/ai/write/faq',
+						method: 'POST',
+						beforeSend: function ( xhr ) { xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce ); xhr.setRequestHeader( 'Content-Type', 'application/json' ); },
+						data: JSON.stringify( { topic: topic, outline: outline, style_id: styleId, post_id: meowseoClassic.postId || 0 } )
+					} );
+
+					if ( faqRes && faqRes.success && faqRes.data && faqRes.data.html ) {
+						fullContent += faqRes.data.html + '\n\n';
+						var faqCount = ( faqRes.data.items && faqRes.data.items.length ) ? faqRes.data.items.length : '?';
+						addLog( '✓ ' + faqCount + ' FAQs generated & saved to Schema.', '#b5cea8' );
+					} else {
+						addLog( '⚠ FAQ generation returned no content. Skipping.', '#ce9178' );
+					}
+
+					addLog( '[Phase 5/5] Writing conclusion...', '#dcdcaa' );
 					const concRes = await $.ajax( {
 						url: meowseoClassic.restUrl + '/ai/write/conclusion',
 						method: 'POST',
@@ -867,6 +1083,12 @@
 		}
 
 		try {
+			initSchemaPreview();
+		} catch ( e ) {
+			console.error( 'MeowSEO Schema Preview Initialization Error:', e );
+		}
+
+		try {
 			initAiWriter();
 		} catch ( e ) {
 			console.error( 'MeowSEO AI Writer Initialization Error:', e );
@@ -884,11 +1106,6 @@
 			console.error( 'MeowSEO Content Type Toggle Initialization Error:', e );
 		}
 
-		// Analysis button click handler (delegated to survive DOM updates)
-		$( document ).on( 'click', '#meowseo-run-analysis', function ( e ) {
-			e.preventDefault();
-			runAnalysis();
-		} );
 	} );
 
 } )( jQuery );

@@ -50,6 +50,10 @@ export const getContentSnapshot = ( state: MeowSEOState ): ContentSnapshot => {
 	return state.contentSnapshot;
 };
 
+export const getLsiKeywords = ( state: MeowSEOState ): string => {
+	return state.contentSnapshot.lsiKeywords || '';
+};
+
 /**
  * Get word count
  * Requirements: 3.3

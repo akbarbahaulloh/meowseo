@@ -372,6 +372,34 @@ function renderGscSummaryWidget( data ) {
 	const startDate = dateRange.start || 'N/A';
 	const endDate = dateRange.end || 'N/A';
 
+	const topQueries = data.top_queries || [];
+	const opportunities = data.opportunities || [];
+
+	let queriesHtml = '';
+	if (topQueries.length > 0) {
+		queriesHtml += '<div style="margin-top: 15px;">';
+		queriesHtml += '<h4>Top Queries</h4>';
+		queriesHtml += '<table class="meowseo-table">';
+		queriesHtml += '<thead><tr><th>Query</th><th>Clicks</th><th>Impressions</th></tr></thead><tbody>';
+		topQueries.forEach(q => {
+			queriesHtml += `<tr><td>${escapeHtml(q.query)}</td><td>${Number(q.total_clicks).toLocaleString()}</td><td>${Number(q.total_impressions).toLocaleString()}</td></tr>`;
+		});
+		queriesHtml += '</tbody></table></div>';
+	}
+
+	let opportunitiesHtml = '';
+	if (opportunities.length > 0) {
+		opportunitiesHtml += '<div style="margin-top: 15px;">';
+		opportunitiesHtml += '<h4>Peluang Optimasi (High Imp, Low CTR)</h4>';
+		opportunitiesHtml += '<table class="meowseo-table">';
+		opportunitiesHtml += '<thead><tr><th>Page</th><th>Imps</th><th>CTR</th><th>Pos</th></tr></thead><tbody>';
+		opportunities.forEach(o => {
+			const shortPage = escapeHtml(o.page).replace(/^https?:\/\/[^\/]+/, '');
+			opportunitiesHtml += `<tr><td><a href="${escapeHtml(o.page)}" target="_blank" title="${escapeHtml(o.page)}">${shortPage || '/'}</a></td><td>${Number(o.total_impressions).toLocaleString()}</td><td>${(Number(o.avg_ctr) * 100).toFixed(2)}%</td><td>${Number(o.avg_position).toFixed(1)}</td></tr>`;
+		});
+		opportunitiesHtml += '</tbody></table></div>';
+	}
+
 	return `
 		<div class="meowseo-gsc-summary">
 			<div class="meowseo-metric-grid">
@@ -392,7 +420,9 @@ function renderGscSummaryWidget( data ) {
 					<span class="meowseo-metric-value">${ position.toFixed( 1 ) }</span>
 				</div>
 			</div>
-			<div class="meowseo-gsc-meta">
+			${queriesHtml}
+			${opportunitiesHtml}
+			<div class="meowseo-gsc-meta" style="margin-top: 15px; border-top: 1px solid #e2e4e7; padding-top: 10px;">
 				<p><strong>Date Range:</strong> ${ escapeHtml( startDate ) } to ${ escapeHtml(
 					endDate
 				) }</p>

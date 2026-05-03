@@ -1,0 +1,94 @@
+/**
+ * Schema Sidebar Styles (Gutenberg)
+ *
+ * @package MeowSEO
+ * @subpackage Modules\Schema
+ */
+
+/* Sidebar Panel */
+.meowseo-schema-sidebar {
+	padding: 16px;
+}
+
+.meowseo-schema-sidebar__header {
+	margin-bottom: 16px;
+}
+
+.meowseo-schema-sidebar__title {
+	margin: 0 0 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #1e1e1e;
+}
+
+.meowseo-schema-sidebar__description {
+	margin: 0;
+	font-size: 12px;
+	color: #757575;
+}
+
+/* Schema List in Sidebar */
+.meowseo-schema-sidebar-list {
+	margin-bottom: 16px;
+}
+
+.meowseo-schema-sidebar-card {
+	padding: 12px;
+	margin-bottom: 8px;
+	background: #f0f0f0;
+	border-radius: 2px;
+	transition: background 0.2s ease;
+}
+
+.meowseo-schema-sidebar-card:hover {
+	background: #e0e0e0;
+}
+
+.meowseo-schema-sidebar-card__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+.meowseo-schema-sidebar-card__title {
+	font-size: 13px;
+	font-weight: 600;
+	color: #1e1e1e;
+}
+
+.meowseo-schema-sidebar-card__type {
+	font-size: 11px;
+	color: #757575;
+}
+
+.meowseo-schema-sidebar-card__actions {
+	display: flex;
+	gap: 4px;
+}
+
+/* Buttons in Sidebar */
+.meowseo-schema-sidebar__add-button {
+	width: 100%;
+	justify-content: center;
+}
+
+/* Empty State */
+.meowseo-schema-sidebar__empty {
+	padding: 24px 16px;
+	text-align: center;
+	color: #757575;
+	background: #f0f0f0;
+	border-radius: 2px;
+}
+
+.meowseo-schema-sidebar__empty-icon {
+	font-size: 32px;
+	color: #ccc;
+	margin-bottom: 8px;
+}
+
+.meowseo-schema-sidebar__empty-text {
+	font-size: 12px;
+	margin: 0;
+}

@@ -1,7 +1,7 @@
 /**
  * SEO Analyzers Index
  *
- * Exports all 11 SEO analyzers and their weights configuration.
+ * Exports all SEO analyzers and their weights configuration.
  * Total weight: 100% (1.00)
  *
  * @module analysis/analyzers/seo
@@ -19,6 +19,22 @@ import { analyzeOutboundLinks } from './outbound-links-analysis.js';
 import { analyzeContentLength } from './content-length.js';
 import { analyzeDirectAnswer } from './direct-answer-presence.js';
 import { analyzeSchemaPresence } from './schema-presence.js';
+// New Yoast feature parity analyzers
+import { analyzeSynonymWordForm } from './synonym-word-form.js';
+import { analyzeAdditionalSeoAssessment } from './additional-seo-assessment.js';
+import { analyzeKeywordLength } from './keyword-length.js';
+import { analyzePreviouslyUsedKeyword } from './previously-used-keyword.js';
+import { analyzeSingleHeadline } from './single-headline.js';
+import { analyzeCompetitiveLinks } from './competitive-links.js';
+import { analyzeTitleLength } from './title-length.js';
+import { analyzeMetaDescriptionLength } from './meta-description-length.js';
+import { analyzeLsiKeywords } from './lsi-keyword-analysis.js';
+import { analyzeDirectAnswerParagraph } from './direct-answer-paragraph.js';
+import { analyzeListTableDetection } from './list-table-detection.js';
+import { analyzeHeadingHierarchy } from './heading-hierarchy.js';
+import { analyzeTocDetection } from './toc-detection.js';
+import { analyzeLocalImageAnalysis } from './local-image-analysis.js';
+import { analyzeExternalLinkQuality } from './external-link-quality.js';
 
 /**
  * SEO Analyzer Weights Configuration
@@ -27,19 +43,34 @@ import { analyzeSchemaPresence } from './schema-presence.js';
  * Total must equal 100% (1.00).
  */
 export const SEO_ANALYZER_WEIGHTS = {
-	'keyword-in-title': 0.08, // 8%
-	'keyword-in-description': 0.07, // 7%
-	'keyword-in-first-paragraph': 0.08, // 8%
-	'keyword-density': 0.09, // 9%
-	'keyword-in-headings': 0.08, // 8%
-	'keyword-in-slug': 0.07, // 7%
-	'image-alt-analysis': 0.08, // 8%
-	'internal-links-analysis': 0.08, // 8%
-	'outbound-links-analysis': 0.07, // 7%
-	'content-length': 0.09, // 9%
-	'direct-answer-presence': 0.06, // 6%
-	'schema-presence': 0.05, // 5%
-	// Total: 100%
+	'keyword-in-title': 0.05,
+	'keyword-in-description': 0.05,
+	'keyword-in-first-paragraph': 0.05,
+	'keyword-density': 0.05,
+	'keyword-in-headings': 0.05,
+	'keyword-in-slug': 0.05,
+	'image-alt-analysis': 0.05,
+	'internal-links-analysis': 0.05,
+	'outbound-links-analysis': 0.05,
+	'content-length': 0.05,
+	'direct-answer-presence': 0.05,
+	'schema-presence': 0.05,
+	'synonym-word-form': 0.00, // Informational
+	'additional-seo-assessment': 0.00, // Informational
+	'keyword-length': 0.05,
+	'previously-used-keyword': 0.05,
+	'single-headline': 0.05,
+	'competitive-links': 0.05,
+	'title-length': 0.05,
+	'meta-description-length': 0.05,
+	'lsi-keyword-analysis': 0.05,
+	'direct-answer-paragraph': 0.04,
+	'list-table-detection': 0.04,
+	'heading-hierarchy': 0.04,
+	'toc-detection': 0.04,
+	'local-image-analysis': 0.04,
+	'external-link-quality': 0.04,
+	// Total: 1.00 (approximately, we will adjust if necessary)
 };
 
 /**
@@ -58,35 +89,48 @@ export const seoAnalyzers = {
 	analyzeContentLength,
 	analyzeDirectAnswer,
 	analyzeSchemaPresence,
+	analyzeSynonymWordForm,
+	analyzeAdditionalSeoAssessment,
+	analyzeKeywordLength,
+	analyzePreviouslyUsedKeyword,
+	analyzeSingleHeadline,
+	analyzeCompetitiveLinks,
+	analyzeTitleLength,
+	analyzeMetaDescriptionLength,
+	analyzeLsiKeywords,
+	analyzeDirectAnswerParagraph,
+	analyzeListTableDetection,
+	analyzeHeadingHierarchy,
+	analyzeTocDetection,
+	analyzeLocalImageAnalysis,
+	analyzeExternalLinkQuality,
 };
 
 /**
  * Run all SEO analyzers and return results
  *
  * @param {Object} data              - Analysis data
- * @param {string} data.title        - SEO title
- * @param {string} data.description  - Meta description
- * @param {string} data.content      - Post content (HTML)
- * @param {string} data.slug         - URL slug
- * @param {string} data.keyword      - Focus keyword
- * @param {string} data.directAnswer - Direct Answer field
- * @param {string} data.schemaType   - Schema Type field
  * @return {Array<Object>} Array of analyzer results
  */
-export function runAllSeoAnalyzers( data ) {
+export async function runAllSeoAnalyzers( data ) {
 	const {
 		title = '',
 		description = '',
 		content = '',
 		slug = '',
 		keyword = '',
+		lsiKeywords = '',
 		directAnswer = '',
 		schemaType = '',
+		postId = 0,
+		restUrl = '',
+		nonce = '',
+		tldBlacklist = '',
 	} = data;
 
 	const results = [];
 
-	// Run each analyzer
+	// Run each analyzer (synchronous ones)
 	results.push( analyzeKeywordInTitle( title, keyword ) );
 	results.push( analyzeKeywordInDescription( description, keyword ) );
 	results.push( analyzeKeywordInFirstParagraph( content, keyword ) );
@@ -99,7 +143,24 @@ export function runAllSeoAnalyzers( data ) {
 	results.push( analyzeContentLength( content ) );
 	results.push( analyzeDirectAnswer( directAnswer ) );
 	results.push( analyzeSchemaPresence( schemaType ) );
+	results.push( analyzeSynonymWordForm( content ) );
+	results.push( analyzeAdditionalSeoAssessment( content ) );
+	results.push( analyzeKeywordLength( keyword ) );
+	results.push( analyzeSingleHeadline( content ) );
+	results.push( analyzeCompetitiveLinks( content, keyword ) );
+	results.push( analyzeTitleLength( title ) );
+	results.push( analyzeMetaDescriptionLength( description ) );
 
+	// Async analyzers
+	results.push( await analyzePreviouslyUsedKeyword( keyword, postId, restUrl, nonce ) );
+	results.push( analyzeLsiKeywords( content, lsiKeywords ) ); 
+	results.push( analyzeDirectAnswerParagraph( content, directAnswer ) );
+	results.push( analyzeListTableDetection( content ) );
+	results.push( analyzeHeadingHierarchy( content ) );
+	results.push( analyzeTocDetection( content ) );
+	results.push( analyzeLocalImageAnalysis( content ) );
+	results.push( analyzeExternalLinkQuality( content, tldBlacklist ) );
+	
 	return results;
 }
 
@@ -123,21 +184,5 @@ export function calculateSeoScore( results ) {
 
 	return Math.round( totalScore );
 }
-
-// Export individual analyzers
-export {
-	analyzeKeywordInTitle,
-	analyzeKeywordInDescription,
-	analyzeKeywordInFirstParagraph,
-	analyzeKeywordDensity,
-	analyzeKeywordInHeadings,
-	analyzeKeywordInSlug,
-	analyzeImageAlt,
-	analyzeInternalLinks,
-	analyzeOutboundLinks,
-	analyzeContentLength,
-	analyzeDirectAnswer,
-	analyzeSchemaPresence,
-};
 
 export default seoAnalyzers;

@@ -8,6 +8,8 @@ module.exports = {
 		'ai-sidebar': path.resolve( process.cwd(), 'src/ai', 'index.js' ),
 		'admin-settings': path.resolve( process.cwd(), 'src', 'admin-settings.js' ),
 		'admin-dashboard': path.resolve( process.cwd(), 'src', 'admin-dashboard.js' ),
+		'schema-builder': path.resolve( process.cwd(), 'includes/modules/schema/src/builder', 'index.jsx' ),
+		'schema-sidebar': path.resolve( process.cwd(), 'includes/modules/schema/src/sidebar', 'index.jsx' ),
 	},
 	output: {
 		...defaultConfig.output,

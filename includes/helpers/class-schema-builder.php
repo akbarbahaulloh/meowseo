@@ -108,6 +108,9 @@ class Schema_Builder {
 		// Assemble @graph array.
 		$graph = $this->assemble_graph( $nodes );
 
+		// Resolve %variable% placeholders in all schema fields (Rank Math style).
+		$graph = $this->resolve_variables( $graph );
+
 		return array(
 			'@context' => 'https://schema.org',
 			'@graph'   => $graph,
@@ -137,14 +140,21 @@ class Schema_Builder {
 
 		// Conditional nodes based on post type and schema type.
 		$content_type = get_post_meta( $this->post_id, '_meowseo_content_type', true );
+		$schema_page_type = get_post_meta( $this->post_id, '_meowseo_schema_page_type', true );
+		$schema_article_type = get_post_meta( $this->post_id, '_meowseo_schema_article_type', true );
+		
 		if ( $this->should_include_article() ) {
-			$article_type = 'Article';
-			if ( 'news' === $content_type ) {
-				$article_type = 'NewsArticle';
-			} elseif ( 'journal' === $content_type ) {
-				$article_type = 'ScholarlyArticle';
-			} elseif ( 'education' === $content_type ) {
-				$article_type = 'EducationalResource';
+			$article_type = $schema_article_type ? $schema_article_type : 'Article';
+			
+			// Fallback for older data or empty article type
+			if ( empty( $schema_article_type ) ) {
+				if ( 'news' === $content_type ) {
+					$article_type = 'NewsArticle';
+				} elseif ( 'journal' === $content_type ) {
+					$article_type = 'ScholarlyArticle';
+				} elseif ( 'education' === $content_type ) {
+					$article_type = 'EducationalResource';
+				}
 			}
 			$nodes[] = $this->build_article( $this->post, $article_type );
 		}
@@ -158,15 +168,50 @@ class Schema_Builder {
 		}
 
 		if ( $this->should_include_faq() ) {
-			$schema_type = get_post_meta( $this->post_id, 'meowseo_schema_type', true );
-			if ( 'FAQPage' === $schema_type ) {
+			$schema_page_type = get_post_meta( $this->post_id, '_meowseo_schema_page_type', true );
+			// Support both underscore-prefixed (new) and non-prefixed (legacy) meta keys.
+			$faq_items = get_post_meta( $this->post_id, '_meowseo_faq_items', true );
+			if ( empty( $faq_items ) ) {
 				$faq_items = get_post_meta( $this->post_id, 'meowseo_faq_items', true );
-				if ( ! empty( $faq_items ) ) {
-					$items = json_decode( $faq_items, true );
-					if ( is_array( $items ) && ! empty( $items ) ) {
-						$nodes[] = $this->build_faq( $items );
+			}
+			$items = array();
+
+			if ( ! empty( $faq_items ) ) {
+				$decoded_items = json_decode( $faq_items, true );
+				if ( is_array( $decoded_items ) ) {
+					$items = $decoded_items;
+				}
+			}
+
+			// If no explicit items, auto-extract from content.
+			if ( empty( $items ) && $this->post && ! empty( $this->post->post_content ) ) {
+				$content = $this->post->post_content;
+				if ( preg_match_all( '/<h[23][^>]*>([^<]+\?)\s*<\/h[23]>\s*<p[^>]*>(.*?)<\/p>/is', $content, $matches, PREG_SET_ORDER ) ) {
+					foreach ( $matches as $match ) {
+						$items[] = array(
+							'question' => wp_strip_all_tags( $match[1] ),
+							'answer'   => wp_kses_post( $match[2] ),
+						);
 					}
 				}
+			}
+
+			if ( ! empty( $items ) ) {
+				$nodes[] = $this->build_faq( $items );
+			}
+		}
+
+		// Auto-detect HowTo schema from numbered lists in content (zero-delay, on-the-fly).
+		$howto_items = $this->detect_howto_steps( $this->post->post_content );
+		if ( ! empty( $howto_items ) ) {
+			$nodes[] = $this->build_howto( get_the_title( $this->post ), $howto_items );
+		}
+
+		// Auto-detect LocalBusiness schema from post categories (zero-delay, on-the-fly).
+		if ( $this->should_include_local_business() ) {
+			$local_business_node = $this->build_local_business( $this->post );
+			if ( ! empty( $local_business_node ) ) {
+				$nodes[] = $local_business_node;
 			}
 		}
 
@@ -313,12 +358,80 @@ class Schema_Builder {
 		return array(
 			'post_id'     => $this->post_id,
 			'post_type'   => $this->post->post_type,
-			'schema_type' => get_post_meta( $this->post_id, '_meowseo_schema_type', true ),
+			'schema_page_type' => get_post_meta( $this->post_id, '_meowseo_schema_page_type', true ),
+			'schema_article_type' => get_post_meta( $this->post_id, '_meowseo_schema_article_type', true ),
 			'is_front_page' => is_front_page(),
 			'is_archive'    => is_archive(),
 			'is_search'     => is_search(),
 			'breadcrumbs'   => $this->breadcrumbs,
 		);
+	}
+
+	/**
+	 * Resolve %variable% placeholders in schema fields.
+	 *
+	 * Walks the entire @graph array recursively and replaces known
+	 * %variable% tokens with live post data. Modeled after Rank Math's
+	 * replace_variables() approach.
+	 *
+	 * Supported variables:
+	 *   %title%       - SEO title or post title
+	 *   %sitename%    - WordPress site name
+	 *   %post_author% - Display name of the post author
+	 *   %date%        - Post publish date (ISO 8601)
+	 *   %modified%    - Post modified date (ISO 8601)
+	 *   %excerpt%     - Post excerpt (stripped of tags)
+	 *   %category%    - Primary category name
+	 *   %url%         - Post permalink
+	 *
+	 * @since 1.0.0
+	 * @param array $graph The assembled @graph array.
+	 * @return array Graph with variables resolved.
+	 */
+	private function resolve_variables( array $graph ): array {
+		if ( ! $this->post ) {
+			return $graph;
+		}
+
+		// Build variable map.
+		$seo_title    = (string) get_post_meta( $this->post_id, '_meowseo_title', true );
+		$title        = ! empty( $seo_title ) ? $seo_title : get_the_title( $this->post );
+		$category_obj = get_the_category( $this->post_id );
+		$category     = ! empty( $category_obj ) ? $category_obj[0]->name : '';
+		$excerpt      = wp_strip_all_tags( get_the_excerpt( $this->post ) );
+
+		$vars = array(
+			'%title%'       => esc_html( $title ),
+			'%sitename%'    => esc_html( get_bloginfo( 'name' ) ),
+			'%post_author%' => esc_html( get_the_author_meta( 'display_name', $this->post->post_author ) ),
+			'%date%'        => get_post_time( 'c', false, $this->post, false ),
+			'%modified%'    => get_post_modified_time( 'c', false, $this->post, false ),
+			'%excerpt%'     => esc_html( $excerpt ),
+			'%category%'    => esc_html( $category ),
+			'%url%'         => esc_url( get_permalink( $this->post ) ),
+		);
+
+		/**
+		 * Filter the variable map used in schema field resolution.
+		 *
+		 * @since 1.0.0
+		 * @param array    $vars    Variable map (token => value).
+		 * @param WP_Post  $post    Current post object.
+		 * @param int      $post_id Current post ID.
+		 */
+		$vars = apply_filters( 'meowseo_schema_variables', $vars, $this->post, $this->post_id );
+
+		// Walk entire graph array recursively, replacing variables in string values.
+		array_walk_recursive(
+			$graph,
+			function ( &$value ) use ( $vars ) {
+				if ( is_string( $value ) && strpos( $value, '%' ) !== false ) {
+					$value = strtr( $value, $vars );
+				}
+			}
+		);
+
+		return $graph;
 	}
 
 	/**
@@ -330,21 +443,37 @@ class Schema_Builder {
 	 * @return bool True if Article node should be included.
 	 */
 	private function should_include_article(): bool {
-		$schema_type = get_post_meta( $this->post_id, '_meowseo_schema_type', true );
+		$schema_article_type = get_post_meta( $this->post_id, '_meowseo_schema_article_type', true );
 		
 		/**
-		 * Filter schema type detection
+		 * Filter schema article type detection
 		 *
-		 * Allows customization of schema type for a post.
+		 * Allows customization of schema article type for a post.
 		 *
 		 * @since 1.0.0
-		 * @param string $schema_type Current schema type.
+		 * @param string $schema_article_type Current schema article type.
 		 * @param int    $post_id     Post ID.
 		 */
-		$schema_type = apply_filters( 'meowseo_schema_type', $schema_type, $this->post_id );
+		$schema_article_type = apply_filters( 'meowseo_schema_article_type', $schema_article_type, $this->post_id );
 		
-		// Include if post type is 'post' OR schema type is 'Article'.
-		return 'post' === $this->post->post_type || 'Article' === $schema_type;
+		// If explicitly set to None, do not include.
+		if ( 'None' === $schema_article_type ) {
+			return false;
+		}
+
+		// Include if post type is 'post' OR schema article type is an Article type.
+		$allowed_article_types = array(
+			'Article',
+			'BlogPosting',
+			'SocialMediaPosting',
+			'NewsArticle',
+			'AdvertiserContentArticle',
+			'SatiricalArticle',
+			'ScholarlyArticle',
+			'TechArticle',
+			'Report',
+		);
+		return 'post' === $this->post->post_type || in_array( $schema_article_type, $allowed_article_types, true );
 	}
 
 	/**
@@ -369,10 +498,22 @@ class Schema_Builder {
 	 * @return bool True if FAQ node should be included.
 	 */
 	private function should_include_faq(): bool {
-		$schema_type = get_post_meta( $this->post_id, '_meowseo_schema_type', true );
+		$schema_page_type = get_post_meta( $this->post_id, '_meowseo_schema_page_type', true );
 		
-		// Include if schema type is 'FAQPage'.
-		return 'FAQPage' === $schema_type;
+		if ( 'FAQPage' === $schema_page_type ) {
+			return true;
+		}
+
+		// Auto-detect Q&A format in content.
+		if ( $this->post && ! empty( $this->post->post_content ) ) {
+			$content = $this->post->post_content;
+			// Match H2/H3 ending with ? followed by a paragraph
+			if ( preg_match( '/<h[23][^>]*>([^<]+\?)\s*<\/h[23]>\s*<p[^>]*>(.*?)<\/p>/is', $content ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -384,10 +525,10 @@ class Schema_Builder {
 	 * @return bool True if Recipe node should be included.
 	 */
 	private function should_include_recipe(): bool {
-		$schema_type = get_post_meta( $this->post_id, '_meowseo_schema_type', true );
+		$schema_page_type = get_post_meta( $this->post_id, '_meowseo_schema_page_type', true );
 		
-		// Include if schema type is 'Recipe'.
-		return 'Recipe' === $schema_type;
+		// Include if schema page type is 'Recipe'.
+		return 'Recipe' === $schema_page_type;
 	}
 
 	/**
@@ -399,10 +540,10 @@ class Schema_Builder {
 	 * @return bool True if Event node should be included.
 	 */
 	private function should_include_event(): bool {
-		$schema_type = get_post_meta( $this->post_id, '_meowseo_schema_type', true );
+		$schema_page_type = get_post_meta( $this->post_id, '_meowseo_schema_page_type', true );
 		
-		// Include if schema type is 'Event'.
-		return 'Event' === $schema_type;
+		// Include if schema page type is 'Event'.
+		return 'Event' === $schema_page_type;
 	}
 
 	/**
@@ -474,10 +615,10 @@ class Schema_Builder {
 	 * @return bool True if Person node should be included.
 	 */
 	private function should_include_person(): bool {
-		$schema_type = get_post_meta( $this->post_id, '_meowseo_schema_type', true );
+		$schema_page_type = get_post_meta( $this->post_id, '_meowseo_schema_page_type', true );
 		
-		// Include if schema type is 'Person'.
-		return 'Person' === $schema_type;
+		// Include if schema page type is 'Person' or 'ProfilePage'.
+		return in_array( $schema_page_type, array( 'Person', 'ProfilePage' ), true );
 	}
 
 	/**
@@ -547,9 +688,11 @@ class Schema_Builder {
 		$permalink = get_permalink( $post );
 		$title = get_the_title( $post );
 		$site_url = get_site_url();
+		$schema_page_type = get_post_meta( $post->ID, '_meowseo_schema_page_type', true );
+		$page_type = $schema_page_type ? $schema_page_type : 'WebPage';
 
 		$schema = array(
-			'@type'            => 'WebPage',
+			'@type'            => $page_type,
 			'@id'              => $permalink . '#webpage',
 			'url'              => $permalink,
 			'name'             => $title,
@@ -606,9 +749,11 @@ class Schema_Builder {
 				'@id' => $permalink . '#webpage',
 			),
 			'author'           => array(
-				'@type' => 'Person',
-				'name'  => get_the_author_meta( 'display_name', $post->post_author ),
-				'url'   => get_author_posts_url( $post->post_author ),
+				'@type'       => 'Person',
+				'name'        => get_the_author_meta( 'display_name', $post->post_author ),
+				'url'         => get_author_posts_url( $post->post_author ),
+				'description' => get_the_author_meta( 'description', $post->post_author ),
+				'image'       => get_avatar_url( $post->post_author ),
 			),
 			'headline'         => $title,
 			'datePublished'    => $this->format_date_safe( get_the_date( 'c', $post ) ),
@@ -711,10 +856,12 @@ class Schema_Builder {
 	/**
 	 * Build Organization schema.
 	 *
+	 * Enhanced with E-E-A-T signals: contactPoint, address, logo from settings.
+	 *
 	 * @return array Organization schema array.
 	 */
 	public function build_organization(): array {
-		$site_url = get_site_url();
+		$site_url  = get_site_url();
 		$site_name = get_bloginfo( 'name' );
 
 		$schema = array(
@@ -724,7 +871,7 @@ class Schema_Builder {
 			'url'   => $site_url,
 		);
 
-		// Add logo if available (with error handling).
+		// Add logo if available.
 		$custom_logo_id = get_theme_mod( 'custom_logo' );
 		if ( $custom_logo_id ) {
 			$logo_url = $this->get_image_url_safe( $custom_logo_id );
@@ -736,21 +883,173 @@ class Schema_Builder {
 			}
 		}
 
-		// Add social profiles with filter hook.
+		// Add social profiles (sameAs) with filter hook.
 		$social_profiles = $this->options->get( 'meowseo_schema_social_profiles', array() );
-		
-		/**
-		 * Filter social profiles for Organization schema
-		 *
-		 * Allows customization of social media profiles.
-		 *
-		 * @since 1.0.0
-		 * @param array $profiles Array of social profile URLs.
-		 */
 		$social_profiles = apply_filters( 'meowseo_schema_social_profiles', $social_profiles );
-		
 		if ( ! empty( $social_profiles ) && is_array( $social_profiles ) ) {
 			$schema['sameAs'] = array_values( $social_profiles );
+		}
+
+		// E-E-A-T: Add contact point if phone is configured.
+		$org_phone = $this->options->get( 'schema_business_phone', '' );
+		if ( ! empty( $org_phone ) ) {
+			$schema['contactPoint'] = array(
+				'@type'       => 'ContactPoint',
+				'telephone'   => sanitize_text_field( $org_phone ),
+				'contactType' => 'customer service',
+			);
+		}
+
+		// E-E-A-T: Add postal address if configured.
+		$org_address = $this->options->get( 'schema_business_address', '' );
+		if ( ! empty( $org_address ) ) {
+			$schema['address'] = array(
+				'@type'           => 'PostalAddress',
+				'streetAddress'   => sanitize_text_field( $org_address ),
+			);
+		}
+
+		return $schema;
+	}
+
+	/**
+	 * Build HowTo schema from extracted steps.
+	 *
+	 * @param string $name  Article/tutorial title.
+	 * @param array  $steps Array of step strings.
+	 * @return array HowTo schema array.
+	 */
+	public function build_howto( string $name, array $steps ): array {
+		if ( empty( $steps ) ) {
+			return array();
+		}
+
+		$permalink = get_permalink( $this->post );
+		$how_to_steps = array();
+
+		foreach ( $steps as $index => $step_text ) {
+			$how_to_steps[] = array(
+				'@type' => 'HowToStep',
+				'name'  => sanitize_text_field( $step_text ),
+				'url'   => $permalink . '#step-' . ( $index + 1 ),
+			);
+		}
+
+		return array(
+			'@type' => 'HowTo',
+			'@id'   => $permalink . '#howto',
+			'name'  => $name,
+			'step'  => $how_to_steps,
+		);
+	}
+
+	/**
+	 * Detect HowTo steps from post content (zero-delay, on-the-fly).
+	 *
+	 * Uses Regex to find ordered lists or H2/H3 headers containing step numbers.
+	 * Only returns steps if there are 3+ items (enough to be meaningful).
+	 *
+	 * @param string $content Post content HTML.
+	 * @return array Array of step text strings, empty if not detected.
+	 */
+	private function detect_howto_steps( string $content ): array {
+		// Only auto-detect if page type is explicitly set to HowTo.
+		$page_type = get_post_meta( $this->post_id, '_meowseo_schema_page_type', true );
+		if ( 'HowTo' !== $page_type ) {
+			return array();
+		}
+
+		// Extract items from the first ordered list in the content.
+		if ( preg_match( '/<ol[^>]*>(.*?)<\/ol>/is', $content, $ol_match ) ) {
+			if ( preg_match_all( '/<li[^>]*>(.*?)<\/li>/is', $ol_match[1], $li_matches ) ) {
+				$steps = array_map( 'wp_strip_all_tags', $li_matches[1] );
+				$steps = array_filter( array_map( 'trim', $steps ) );
+				if ( count( $steps ) >= 3 ) {
+					return array_values( $steps );
+				}
+			}
+		}
+
+		return array();
+	}
+
+	/**
+	 * Check whether LocalBusiness schema should be included.
+	 *
+	 * Returns true if the post belongs to a category that has been
+	 * configured as a LocalBusiness trigger in MeowSEO settings.
+	 * Zero-delay: uses has_term() which is a simple local DB call.
+	 *
+	 * @return bool
+	 */
+	private function should_include_local_business(): bool {
+		if ( ! $this->post ) {
+			return false;
+		}
+
+		// Only applies to posts in standard taxonomies.
+		$trigger_categories = $this->options->get( 'schema_local_business_categories', array() );
+		if ( empty( $trigger_categories ) || ! is_array( $trigger_categories ) ) {
+			return false;
+		}
+
+		// has_term() accepts term IDs, slugs, or names — all fast local queries.
+		return (bool) has_term( $trigger_categories, 'category', $this->post );
+	}
+
+	/**
+	 * Build LocalBusiness schema.
+	 *
+	 * Pulls business details from MeowSEO settings (name, address, phone, coords).
+	 *
+	 * @param \WP_Post $post Post object.
+	 * @return array LocalBusiness schema array.
+	 */
+	public function build_local_business( \WP_Post $post ): array {
+		$site_url      = get_site_url();
+		$business_name = $this->options->get( 'schema_business_name', get_bloginfo( 'name' ) );
+		$address       = $this->options->get( 'schema_business_address', '' );
+		$phone         = $this->options->get( 'schema_business_phone', '' );
+		$lat           = $this->options->get( 'schema_business_lat', '' );
+		$lng           = $this->options->get( 'schema_business_lng', '' );
+		$permalink     = get_permalink( $post );
+
+		$schema = array(
+			'@type' => 'LocalBusiness',
+			'@id'   => $site_url . '/#localbusiness',
+			'name'  => $business_name,
+			'url'   => $permalink,
+		);
+
+		// Add logo if available.
+		$custom_logo_id = get_theme_mod( 'custom_logo' );
+		if ( $custom_logo_id ) {
+			$logo_url = $this->get_image_url_safe( $custom_logo_id );
+			if ( $logo_url ) {
+				$schema['image'] = $logo_url;
+			}
+		}
+
+		// Add address if configured.
+		if ( ! empty( $address ) ) {
+			$schema['address'] = array(
+				'@type'         => 'PostalAddress',
+				'streetAddress' => sanitize_text_field( $address ),
+			);
+		}
+
+		// Add phone if configured.
+		if ( ! empty( $phone ) ) {
+			$schema['telephone'] = sanitize_text_field( $phone );
+		}
+
+		// Add geographic coordinates if configured.
+		if ( ! empty( $lat ) && ! empty( $lng ) ) {
+			$schema['geo'] = array(
+				'@type'     => 'GeoCoordinates',
+				'latitude'  => (float) $lat,
+				'longitude' => (float) $lng,
+			);
 		}
 
 		return $schema;
@@ -826,8 +1125,10 @@ class Schema_Builder {
 	 * @return array Review/Product schema array.
 	 */
 	public function build_manual_review_schema( \WP_Post $post ): array {
-		$rating = get_post_meta( $post->ID, '_meowseo_review_rating', true );
-		$price  = get_post_meta( $post->ID, '_meowseo_product_price', true );
+		$rating       = get_post_meta( $post->ID, '_meowseo_review_rating', true );
+		$price        = get_post_meta( $post->ID, '_meowseo_product_price', true );
+		$product_name = get_post_meta( $post->ID, '_meowseo_review_product_name', true );
+		$review_count = get_post_meta( $post->ID, '_meowseo_review_count', true );
 
 		if ( ! $rating && ! $price ) {
 			return array();
@@ -838,7 +1139,7 @@ class Schema_Builder {
 		$schema = array(
 			'@type'       => 'Product',
 			'@id'         => $permalink . '#product',
-			'name'        => get_the_title( $post ),
+			'name'        => ! empty( $product_name ) ? $product_name : get_the_title( $post ),
 			'url'         => $permalink,
 			'description' => wp_strip_all_tags( get_the_excerpt( $post ) ),
 		);
@@ -846,10 +1147,10 @@ class Schema_Builder {
 		if ( $rating ) {
 			$schema['aggregateRating'] = array(
 				'@type'       => 'AggregateRating',
-				'ratingValue' => $rating,
+				'ratingValue' => (string) $rating,
 				'bestRating'  => '5',
 				'worstRating' => '1',
-				'ratingCount' => '1', // Default to 1 for manual reviews
+				'ratingCount' => $review_count ? (string) $review_count : '1',
 			);
 		}
 

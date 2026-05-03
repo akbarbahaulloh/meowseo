@@ -40,6 +40,11 @@ class Title_Patterns {
 		'name',
 		'searchphrase',
 		'posttype',
+		'modified',
+		'reading_time',
+		'tags',
+		'word_count',
+		'post_author',
 	);
 
 	/**
@@ -473,6 +478,53 @@ class Title_Patterns {
 				// Post type label.
 				if ( isset( $context['posttype'] ) ) {
 					return $context['posttype'];
+				}
+				return '';
+			
+			case 'post_author':
+			case 'author_name':
+				if ( isset( $context['post_id'] ) ) {
+					$post = get_post( $context['post_id'] );
+					if ( $post ) {
+						return get_the_author_meta( 'display_name', $post->post_author );
+					}
+				}
+				if ( isset( $context['name'] ) ) {
+					return $context['name']; // Fallback for author archives
+				}
+				return '';
+
+			case 'modified':
+				if ( isset( $context['post_id'] ) ) {
+					return get_the_modified_date( '', $context['post_id'] );
+				}
+				return '';
+
+			case 'tags':
+				if ( isset( $context['post_id'] ) ) {
+					$tags = get_the_tags( $context['post_id'] );
+					if ( $tags && ! is_wp_error( $tags ) ) {
+						return implode( ', ', wp_list_pluck( $tags, 'name' ) );
+					}
+				}
+				return '';
+
+			case 'word_count':
+				if ( isset( $context['post_id'] ) ) {
+					$post = get_post( $context['post_id'] );
+					if ( $post ) {
+						return (string) str_word_count( strip_tags( $post->post_content ) );
+					}
+				}
+				return '';
+
+			case 'reading_time':
+				if ( isset( $context['post_id'] ) ) {
+					$post = get_post( $context['post_id'] );
+					if ( $post ) {
+						$words = str_word_count( strip_tags( $post->post_content ) );
+						return (string) max( 1, ceil( $words / 200 ) ) . ' min';
+					}
 				}
 				return '';
 			

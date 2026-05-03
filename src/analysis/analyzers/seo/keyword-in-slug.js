@@ -61,7 +61,7 @@ export function analyzeKeywordInSlug( slug, keyword ) {
 		return {
 			id: 'keyword-in-slug',
 			type: 'good',
-			message: 'Focus keyword found in URL slug',
+			message: 'Keyphrase in Slug: More than half of your keyphrase appears in the slug.',
 			score: 100,
 			weight: 0.07,
 			details: {
@@ -74,7 +74,7 @@ export function analyzeKeywordInSlug( slug, keyword ) {
 	return {
 		id: 'keyword-in-slug',
 		type: 'problem',
-		message: 'Add focus keyword to URL slug',
+		message: 'Keyphrase in Slug: The exact match of the focus keyphrase does not appear in the slug.',
 		score: 0,
 		weight: 0.07,
 		details: {

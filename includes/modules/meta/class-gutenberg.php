@@ -41,15 +41,25 @@ class Gutenberg {
 	private string $plugin_url;
 
 	/**
+	 * Options instance
+	 *
+	 * @since 1.0.0
+	 * @var \MeowSEO\Options
+	 */
+	private \MeowSEO\Options $options;
+
+	/**
 	 * Constructor
 	 *
 	 * @since 1.0.0
-	 * @param string $plugin_dir Plugin root directory path.
-	 * @param string $plugin_url Plugin root URL.
+	 * @param string           $plugin_dir Plugin root directory path.
+	 * @param string           $plugin_url Plugin root URL.
+	 * @param \MeowSEO\Options $options    Options instance.
 	 */
-	public function __construct( string $plugin_dir, string $plugin_url ) {
+	public function __construct( string $plugin_dir, string $plugin_url, \MeowSEO\Options $options ) {
 		$this->plugin_dir = $plugin_dir;
 		$this->plugin_url = $plugin_url;
+		$this->options    = $options;
 	}
 
 	/**
@@ -131,9 +141,10 @@ class Gutenberg {
 			'meowseo-editor',
 			'meowseoData',
 			array(
-				'restUrl'   => rest_url( 'meowseo/v1' ),
-				'nonce'     => wp_create_nonce( 'wp_rest' ),
-				'postTypes' => $this->get_supported_post_types(),
+				'restUrl'      => rest_url( 'meowseo/v1' ),
+				'nonce'        => wp_create_nonce( 'wp_rest' ),
+				'postTypes'    => $this->get_supported_post_types(),
+				'tldBlacklist' => $this->options->get( 'external_link_tld_blacklist', '.xyz,.top,.click,.gq,.cf,.tk,.ml,.ga' ),
 			)
 		);
 	}

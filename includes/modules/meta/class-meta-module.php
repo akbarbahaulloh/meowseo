@@ -70,6 +70,13 @@ class Meta_Module implements Module {
 	private Robots_Txt $robots_txt;
 
 	/**
+	 * LLMS_Txt instance
+	 *
+	 * @var LLMS_Txt
+	 */
+	private LLMS_Txt $llms_txt;
+
+	/**
 	 * Gutenberg_Assets instance
 	 *
 	 * @var Gutenberg_Assets
@@ -125,6 +132,9 @@ class Meta_Module implements Module {
 		// Initialize Robots_Txt for virtual robots.txt management.
 		$this->robots_txt = new Robots_Txt( $this->options );
 
+		// Initialize LLMS_Txt for AI crawler guidance file.
+		$this->llms_txt = new LLMS_Txt( $this->options );
+
 		// Initialize Gutenberg_Assets for editor integration.
 		$this->gutenberg_assets = new Gutenberg_Assets();
 
@@ -151,6 +161,9 @@ class Meta_Module implements Module {
 		
 		// Register Robots_Txt filter hook.
 		$this->robots_txt->register();
+
+		// Register LLMS_Txt rewrite rules and virtual URL handler.
+		$this->llms_txt->register();
 
 		// Initialize Classic_Editor hooks.
 		$this->classic_editor->init();

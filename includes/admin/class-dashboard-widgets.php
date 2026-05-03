@@ -468,7 +468,9 @@ class Dashboard_Widgets {
 					'start' => gmdate( 'Y-m-d', strtotime( '-30 days' ) ),
 					'end'   => gmdate( 'Y-m-d' ),
 				),
-				'last_synced' => null,
+				'last_synced'   => null,
+				'top_queries'   => array(),
+				'opportunities' => array(),
 			);
 
 			// Cache for 5 minutes (300 seconds).
@@ -493,6 +495,37 @@ class Dashboard_Widgets {
 			ARRAY_A
 		);
 
+		// Get Top Queries driving traffic
+		$top_queries = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT query, SUM(clicks) as total_clicks, SUM(impressions) as total_impressions 
+				FROM {$table} 
+				WHERE date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) 
+				AND query IS NOT NULL AND query != ''
+				GROUP BY query 
+				ORDER BY total_clicks DESC 
+				LIMIT 5",
+				null
+			),
+			ARRAY_A
+		);
+
+		// Get Optimization Opportunities (High Impressions, Low CTR)
+		$opportunities = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT page, SUM(impressions) as total_impressions, AVG(ctr) as avg_ctr, AVG(position) as avg_position 
+				FROM {$table} 
+				WHERE date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) 
+				AND page IS NOT NULL AND page != ''
+				GROUP BY page 
+				HAVING total_impressions >= 50 AND avg_ctr < 0.05 
+				ORDER BY total_impressions DESC 
+				LIMIT 5",
+				null
+			),
+			ARRAY_A
+		);
+
 		// Get last sync time from options.
 		$last_synced = $this->options->get( 'meowseo_gsc_last_sync', null );
 		if ( $last_synced ) {
@@ -500,15 +533,17 @@ class Dashboard_Widgets {
 		}
 
 		$data = array(
-			'clicks'      => (int) ( $results['total_clicks'] ?? 0 ),
-			'impressions' => (int) ( $results['total_impressions'] ?? 0 ),
-			'ctr'         => (float) ( $results['avg_ctr'] ?? 0.0 ),
-			'position'    => (float) ( $results['avg_position'] ?? 0.0 ),
-			'date_range'  => array(
+			'clicks'        => (int) ( $results['total_clicks'] ?? 0 ),
+			'impressions'   => (int) ( $results['total_impressions'] ?? 0 ),
+			'ctr'           => (float) ( $results['avg_ctr'] ?? 0.0 ),
+			'position'      => (float) ( $results['avg_position'] ?? 0.0 ),
+			'date_range'    => array(
 				'start' => gmdate( 'Y-m-d', strtotime( '-30 days' ) ),
 				'end'   => gmdate( 'Y-m-d' ),
 			),
-			'last_synced' => $last_synced,
+			'last_synced'   => $last_synced,
+			'top_queries'   => $top_queries ?: array(),
+			'opportunities' => $opportunities ?: array(),
 		);
 
 		// Cache for 5 minutes (300 seconds).

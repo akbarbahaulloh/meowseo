@@ -88,6 +88,20 @@ class Options {
 			'content_refresh_included_categories' => array(),
 			'content_refresh_included_tags'       => array(),
 			'content_refresh_auto_index'          => true,
+
+			// Schema Auto-Detector: Business / LocalBusiness / E-E-A-T.
+			'schema_business_name'                => '',
+			'schema_business_address'             => '',
+			'schema_business_phone'               => '',
+			'schema_business_lat'                 => '',
+			'schema_business_lng'                 => '',
+			'schema_local_business_categories'    => array(),
+
+			// LLMs.txt — AI Crawler Guidance File.
+			'llms_txt_enabled'                    => true,
+			'llms_txt_intro'                      => '',
+			'llms_txt_max_posts'                  => 200,
+			'llms_txt_blocked'                    => '',
 		);
 
 		foreach ( $defaults as $key => $value ) {

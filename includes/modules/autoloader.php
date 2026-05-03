@@ -35,6 +35,7 @@ function register_autoloader_paths() {
 		meowseo_autoloader( 'MeowSEO\\Modules\\AdminBar\\', $modules_dir . '/admin-bar/' );
 		meowseo_autoloader( 'MeowSEO\\Modules\\Orphaned\\', $modules_dir . '/orphaned/' );
 		meowseo_autoloader( 'MeowSEO\\Modules\\Synonyms\\', $modules_dir . '/synonyms/' );
+		meowseo_autoloader( 'MeowSEO\\Modules\\Schema\\', $modules_dir . '/schema/' );
 	}
 }
 

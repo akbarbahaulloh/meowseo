@@ -92,12 +92,25 @@ export function analyzeKeywordInTitle( title, keyword ) {
 	}
 
 	// Build result
-	if ( found ) {
+	if ( found && position === 0 ) {
 		return {
 			id: 'keyword-in-title',
 			type: 'good',
-			message: 'Focus keyword found in title',
+			message: 'Keyphrase in SEO Title: The focus keyphrase appears at the beginning of the SEO title.',
 			score: 100,
+			weight: 0.08,
+			details: {
+				keyword: keyword.trim(),
+				found: true,
+				position,
+			},
+		};
+	} else if ( found ) {
+		return {
+			id: 'keyword-in-title',
+			type: 'ok',
+			message: 'Keyphrase in SEO Title: The exact match of the keyphrase appears in the SEO title, but not at the beginning.',
+			score: 80,
 			weight: 0.08,
 			details: {
 				keyword: keyword.trim(),
@@ -110,7 +123,7 @@ export function analyzeKeywordInTitle( title, keyword ) {
 	return {
 		id: 'keyword-in-title',
 		type: 'problem',
-		message: 'Add focus keyword to title',
+		message: 'Keyphrase in SEO Title: The exact match of the focus keyphrase does not appear in the SEO title.',
 		score: 0,
 		weight: 0.08,
 		details: {

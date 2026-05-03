@@ -86,27 +86,23 @@ export function analyzeImageAlt( content, keyword ) {
 	// Problem: <50% images have alt text
 	let type, message, score;
 
-	if ( normalizedKeyword && keywordCoverage >= 80 ) {
+	if ( normalizedKeyword && keywordCoverage > 80 ) {
+		// Too many images have the keyword
+		type = 'problem';
+		message = `Keyphrase in Image Alt Attribute: Of the ${ totalImages } images on this page, ${ withKeyword } have alt attributes containing words from your keyphrase or synonyms. This is too many. Only include your keyphrase or synonyms if they are truly relevant to the image.`;
+		score = 50;
+	} else if ( normalizedKeyword && withKeyword > 0 ) {
 		type = 'good';
-		message = `All images have descriptive alt text with keyword (${ withKeyword }/${ totalImages })`;
+		message = `Keyphrase in Image Alt Attribute: Images on this page have alt attributes with words from your keyphrase.`;
 		score = 100;
 	} else if ( altCoverage >= 80 ) {
-		type = 'good';
-		message = `Most images have alt text (${ withAlt }/${ totalImages })`;
-		score = 100;
-	} else if ( altCoverage > 50 ) {
 		type = 'ok';
-		message = `Some images missing alt text (${ withAlt }/${ totalImages } have alt)`;
+		message = `Keyphrase in Image Alt Attribute: Images on this page have alt attributes, but none contain your keyphrase or synonyms.`;
 		score = 50;
 	} else {
 		type = 'problem';
-		message = `Add alt text to images (${ withAlt }/${ totalImages } have alt)`;
+		message = `Keyphrase in Image Alt Attribute: Add images with alt text containing your keyphrase or synonyms to this page.`;
 		score = 0;
-	}
-
-	// Add keyword suggestion if keyword is set but not in alt text
-	if ( normalizedKeyword && withKeyword === 0 && withAlt > 0 ) {
-		message += `. Consider adding keyword "${ keyword.trim() }" to image alt text.`;
 	}
 
 	return {

@@ -54,6 +54,9 @@ class Installer {
 		// Add database indexes for suggestion engine performance.
 		self::ensure_post_indexes();
 
+		// Set flag to flush rewrite rules on next request (for /llms.txt).
+		set_transient( 'meowseo_flush_llms_rewrite', 1, 60 );
+
 		// Flush rewrite rules.
 		flush_rewrite_rules();
 	}

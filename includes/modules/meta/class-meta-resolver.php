@@ -96,6 +96,7 @@ class Meta_Resolver {
 			$context = array(
 				'title'       => $post->post_title,
 				'page_number' => get_query_var( 'page', 0 ),
+				'post_id'     => $post_id,
 			);
 
 			$resolved = $this->patterns->resolve( $pattern, $context );

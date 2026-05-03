@@ -40,7 +40,7 @@ class Module_Manager {
 	 */
 	private array $module_registry = array(
 		'meta'          => 'Modules\Meta\Meta_Module',
-		'schema'        => 'Modules\Schema\Schema',
+		'schema'        => 'Modules\Schema\Schema_Module',
 		'sitemap'       => 'Modules\Sitemap\Sitemap',
 		'redirects'     => 'Modules\Redirects\Redirects',
 		'monitor_404'   => 'Modules\Monitor_404\Monitor_404',

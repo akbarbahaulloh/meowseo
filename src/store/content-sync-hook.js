@@ -48,20 +48,12 @@ export function useContentSync() {
 						'slug'
 					) || '';
 
-				// Get current focus keyword from meowseo/data
-				const keyword =
-					select( 'meowseo/data' )?.getMetaField?.(
-						'focusKeyword'
-					) || '';
+				const meta = select( 'core/editor' )?.getEditedPostAttribute?.( 'meta' ) || {};
+				const keyword = meta['_meowseo_focus_keyword'] || '';
 
-				// Get directAnswer and schemaType from meowseo/data
-				const directAnswer =
-					select( 'meowseo/data' )?.getMetaField?.(
-						'directAnswer'
-					) || '';
-				const schemaType =
-					select( 'meowseo/data' )?.getMetaField?.( 'schemaType' ) ||
-					'';
+				// Get directAnswer and schemaType from meta
+				const directAnswer = meta['_meowseo_direct_answer'] || '';
+				const schemaType = meta['_meowseo_schema_type'] || '';
 
 				// Compute analysis using new analysis engine
 				const analysis = analyzeContent( {

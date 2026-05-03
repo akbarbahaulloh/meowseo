@@ -50,11 +50,11 @@ export function analyzeContentLength( content ) {
 
 	if ( wordCount === 0 ) {
 		type = 'problem';
-		message = 'Add content to your post';
+		message = 'Article Length: Add content to your post.';
 		score = 0;
 	} else if ( wordCount >= 300 && wordCount <= 2500 ) {
 		type = 'good';
-		message = `Content length is optimal (${ wordCount.toLocaleString() } words)`;
+		message = `Article Length: The article contains ${ wordCount.toLocaleString() } words. Good job!`;
 		score = 100;
 	} else if (
 		( wordCount >= 150 && wordCount < 300 ) ||
@@ -62,17 +62,17 @@ export function analyzeContentLength( content ) {
 	) {
 		type = 'ok';
 		if ( wordCount < 300 ) {
-			message = `Content is a bit short (${ wordCount } words). Expand to at least 300 words for better SEO.`;
+			message = `Article Length: The article contains ${ wordCount.toLocaleString() } words. Expand to at least 300 words for better SEO.`;
 		} else {
-			message = `Content is quite long (${ wordCount.toLocaleString() } words). Consider breaking into multiple posts.`;
+			message = `Article Length: The article contains ${ wordCount.toLocaleString() } words. Consider breaking into multiple posts.`;
 		}
 		score = 50;
 	} else {
 		type = 'problem';
 		if ( wordCount < 150 ) {
-			message = `Content is too short (${ wordCount } words). Add more content for better SEO.`;
+			message = `Article Length: The article contains ${ wordCount.toLocaleString() } words. Add more content for better SEO.`;
 		} else {
-			message = `Content is very long (${ wordCount.toLocaleString() } words). Consider splitting into multiple posts.`;
+			message = `Article Length: The article contains ${ wordCount.toLocaleString() } words. Consider splitting into multiple posts.`;
 		}
 		score = 0;
 	}

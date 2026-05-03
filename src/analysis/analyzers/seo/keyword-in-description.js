@@ -88,7 +88,7 @@ export function analyzeKeywordInDescription( description, keyword ) {
 		return {
 			id: 'keyword-in-description',
 			type: 'good',
-			message: 'Focus keyword found in description',
+			message: 'Keyphrase in Meta Description: The keyphrase or synonyms are included in the meta description.',
 			score: 100,
 			weight: 0.07,
 			details: {
@@ -102,7 +102,7 @@ export function analyzeKeywordInDescription( description, keyword ) {
 	return {
 		id: 'keyword-in-description',
 		type: 'problem',
-		message: 'Add focus keyword to description',
+		message: 'Keyphrase in Meta Description: The meta description does not contain the keyphrase.',
 		score: 0,
 		weight: 0.07,
 		details: {

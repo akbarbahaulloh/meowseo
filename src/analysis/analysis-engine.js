@@ -231,28 +231,38 @@ function extractMetadata( content, seoResults, readabilityResults ) {
  * @param {string} data.schemaType   - Schema Type field
  * @return {Object} Complete analysis result object
  */
-export function analyzeContent( data ) {
+export async function analyzeContent( data ) {
 	const {
 		content = '',
 		title = '',
 		description = '',
 		slug = '',
 		keyword = '',
+		lsiKeywords = '',
 		directAnswer = '',
 		schemaType = '',
+		postId = 0,
+		restUrl = '',
+		nonce = '',
+		tldBlacklist = '',
 	} = data;
 
 	// Run SEO analyzers
 	let seoResults = [];
 	try {
-		seoResults = runAllSeoAnalyzers( {
+		seoResults = await runAllSeoAnalyzers( {
 			title,
 			description,
 			content,
 			slug,
 			keyword,
+			lsiKeywords,
 			directAnswer,
 			schemaType,
+			postId,
+			restUrl,
+			nonce,
+			tldBlacklist,
 		} );
 	} catch ( error ) {
 		seoResults = [];

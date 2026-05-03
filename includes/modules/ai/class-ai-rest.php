@@ -279,6 +279,40 @@ class AI_REST {
 			)
 		);
 
+		// POST /meowseo/v1/ai/write/faq
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/write/faq',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'write_faq' ),
+				'permission_callback' => array( $this, 'check_permission_and_nonce' ),
+				'args'                => array(
+					'topic'    => array( 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_textarea_field' ),
+					'outline'  => array( 'type' => 'array', 'required' => true ),
+					'style_id' => array( 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_key' ),
+					'post_id'  => array( 'type' => 'integer', 'required' => false, 'sanitize_callback' => 'absint' ),
+				),
+			)
+		);
+
+		// POST /meowseo/v1/ai/explain-seo-score
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/explain-seo-score',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'explain_seo_score' ),
+				'permission_callback' => array( $this, 'check_permission_and_nonce' ),
+				'args'                => array(
+					'post_id'       => array( 'type' => 'integer', 'required' => true, 'sanitize_callback' => 'absint' ),
+					'failed_checks' => array( 'type' => 'array', 'required' => true ),
+					'focus_keyword' => array( 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ),
+					'content'       => array( 'type' => 'string', 'required' => true ),
+				),
+			)
+		);
+
 		// GET /meowseo/v1/ai/provider-status - Get provider statuses (Requirement 3.1, 3.2, 3.3, 3.4, 3.5, 3.6).
 		register_rest_route(
 			self::NAMESPACE,
@@ -1318,6 +1352,59 @@ class AI_REST {
 	}
 
 	/**
+	 * Callback for AI Writer FAQ Generation.
+	 *
+	 * Generates FAQ items from the topic and outline, saves them to post meta,
+	 * and returns HTML for injection into the editor.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error Response object or error.
+	 */
+	public function write_faq( WP_REST_Request $request ) {
+		$topic    = $request->get_param( 'topic' );
+		$outline  = $request->get_param( 'outline' );
+		$style_id = $request->get_param( 'style_id' );
+		$post_id  = $request->get_param( 'post_id' );
+
+		$result = $this->generator->generate_faq( $topic, (array) $outline, $style_id ?: '' );
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error( $result->get_error_code(), $result->get_error_message(), array( 'status' => 500 ) );
+		}
+
+		// If a valid post_id is provided, persist the FAQ items to post meta immediately.
+		if ( $post_id > 0 && get_post( $post_id ) ) {
+			$items = $result['items'] ?? array();
+			if ( ! empty( $items ) ) {
+				update_post_meta( $post_id, '_meowseo_faq_items', $items );
+
+				// Automatically set page type to FAQPage if not already configured.
+				$current_page_type = get_post_meta( $post_id, '_meowseo_schema_page_type', true );
+				if ( empty( $current_page_type ) || 'WebPage' === $current_page_type ) {
+					update_post_meta( $post_id, '_meowseo_schema_page_type', 'FAQPage' );
+				}
+
+				Logger::info(
+					'FAQ items saved to post meta',
+					array(
+						'module'  => 'ai',
+						'post_id' => $post_id,
+						'count'   => count( $items ),
+					)
+				);
+			}
+		}
+
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => $result,
+			),
+			200
+		);
+	}
+
+	/**
 	 * Sanitize image object.
 	 *
 	 * Requirements: 26.1, 26.2, 26.3
@@ -1361,5 +1448,44 @@ class AI_REST {
 		}
 
 		return array_map( 'sanitize_text_field', $value );
+	}
+
+	/**
+	 * Explain SEO score and provide recommendations.
+	 *
+	 * POST /meowseo/v1/ai/explain-seo-score
+	 *
+	 * @param \WP_REST_Request $request Request object.
+	 * @return \WP_REST_Response|\WP_Error Response object or error.
+	 */
+	public function explain_seo_score( \WP_REST_Request $request ) {
+		$post_id       = $request->get_param( 'post_id' );
+		$failed_checks = $request->get_param( 'failed_checks' );
+		$focus_keyword = $request->get_param( 'focus_keyword' );
+		$content       = $request->get_param( 'content' );
+
+		// Validate post exists.
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return new \WP_Error( 'post_not_found', __( 'Post not found.', 'meowseo' ), array( 'status' => 404 ) );
+		}
+
+		try {
+			$explanation = $this->generator->explain_seo_score( $failed_checks, $focus_keyword, $content, $post );
+
+			if ( is_wp_error( $explanation ) ) {
+				return $explanation;
+			}
+
+			return new \WP_REST_Response(
+				array(
+					'success' => true,
+					'data'    => $explanation,
+				),
+				200
+			);
+		} catch ( \Exception $e ) {
+			return new \WP_Error( 'generation_error', $e->getMessage(), array( 'status' => 500 ) );
+		}
 	}
 }

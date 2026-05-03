@@ -98,19 +98,17 @@ export function analyzeKeywordInHeadings( content, keyword ) {
 
 	if ( headingsWithKeyword > 0 ) {
 		type = 'good';
-		message = `Focus keyword found in ${ headingsWithKeyword } heading${
-			headingsWithKeyword > 1 ? 's' : ''
-		}`;
+		message = `Keyphrase in Subheading: ${ headingsWithKeyword } of your H2 and H3 subheadings reflect the topic of your copy.`;
 		score = 100;
-	} else if ( keywordInContent ) {
+	} else if ( headingCount > 0 ) {
 		type = 'ok';
 		message =
-			'Add focus keyword to at least one heading for better structure';
+			'Keyphrase in Subheading: Your keyphrase or its synonyms do not appear in any H2 and H3 subheadings. Add some!';
 		score = 50;
 	} else {
 		type = 'problem';
 		message =
-			'Focus keyword not found in content. Add it to your content and headings.';
+			'Keyphrase in Subheading: You have not used any H2 or H3 subheadings. Use some to break up your text!';
 		score = 0;
 	}
 

@@ -1309,6 +1309,100 @@ class AI_Generator {
 		return [ 'content' => trim( $content ) ];
 	}
 
+	/**
+	 * Generate FAQ section for an article.
+	 *
+	 * Prompts the AI to produce a JSON array of question/answer pairs,
+	 * parses it, and returns both the structured items and an HTML block
+	 * ready for injection into the editor.
+	 *
+	 * @param string $topic    Topic or brief.
+	 * @param array  $outline  The full outline array.
+	 * @param string $style_id Writing style ID.
+	 * @param array  $options  Additional options.
+	 * @return array|WP_Error Result array with 'items' and 'html' keys, or WP_Error.
+	 */
+	public function generate_faq( string $topic, array $outline, string $style_id = '', array $options = [] ) {
+		$style = $this->get_style( $style_id );
+		$outline_json = wp_json_encode( $outline );
+
+		// Use custom FAQ prompt template if available, else fall back to default.
+		if ( $style && ! empty( $style['faq_prompt_template'] ) ) {
+			$prompt = $style['faq_prompt_template'];
+			$prompt = str_replace( '[TOPIC]', $topic, $prompt );
+			$prompt = str_replace( '[OUTLINE]', $outline_json, $prompt );
+		} else {
+			$prompt  = "Based on the following article topic and outline, generate 5 Frequently Asked Questions (FAQ) with concise, helpful answers.\n\n";
+			$prompt .= "Topic: {$topic}\n";
+			$prompt .= "Outline: {$outline_json}\n\n";
+			$prompt .= "IMPORTANT: Return ONLY a valid JSON array. No markdown, no extra text, no code block wrappers.\n";
+			$prompt .= "Format strictly as: [{\"question\": \"...\", \"answer\": \"...\"}, ...]";
+		}
+
+		$result = $this->provider_manager->generate_text( $prompt, $options );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		// Strip markdown wrappers if any.
+		$raw = preg_replace( '/^```json\s*/m', '', trim( $result['content'] ) );
+		$raw = preg_replace( '/^```\s*/m', '', $raw );
+		$raw = trim( $raw );
+
+		$items = json_decode( $raw, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE || ! is_array( $items ) ) {
+			Logger::error(
+				'Failed to parse FAQ JSON response',
+				[
+					'module' => 'ai',
+					'raw'    => substr( $raw, 0, 500 ),
+					'error'  => json_last_error_msg(),
+				]
+			);
+			return new WP_Error( 'faq_parse_error', __( 'Failed to parse AI FAQ response. Please try again.', 'meowseo' ) );
+		}
+
+		// Sanitize each item.
+		$sanitized_items = [];
+		foreach ( $items as $item ) {
+			if ( ! empty( $item['question'] ) && ! empty( $item['answer'] ) ) {
+				$sanitized_items[] = [
+					'question' => sanitize_text_field( $item['question'] ),
+					'answer'   => sanitize_textarea_field( $item['answer'] ),
+				];
+			}
+		}
+
+		if ( empty( $sanitized_items ) ) {
+			return new WP_Error( 'faq_empty', __( 'AI returned an empty FAQ list. Please try again.', 'meowseo' ) );
+		}
+
+		// Build HTML block for direct editor injection.
+		$html  = '<h2>' . esc_html__( 'Frequently Asked Questions', 'meowseo' ) . "</h2>\n";
+		$html .= '<div class="faq-container">' . "\n";
+		foreach ( $sanitized_items as $item ) {
+			$html .= '<div class="faq-item">' . "\n";
+			$html .= '<h3 class="faq-question">' . esc_html( $item['question'] ) . "</h3>\n";
+			$html .= '<p class="faq-answer">' . esc_html( $item['answer'] ) . "</p>\n";
+			$html .= "</div>\n";
+		}
+		$html .= "</div>\n";
+
+		Logger::info(
+			'FAQ generated successfully',
+			[
+				'module' => 'ai',
+				'count'  => count( $sanitized_items ),
+			]
+		);
+
+		return [
+			'items' => $sanitized_items,
+			'html'  => $html,
+		];
+	}
+
 
 	/**
 	 * Generate only text content for a post.
@@ -1396,5 +1490,52 @@ class AI_Generator {
 		$this->cache_result( $post_id, 'image', $result );
 
 		return $result;
+	}
+
+	/**
+	 * Generate an explanation for failed SEO checks.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array    $failed_checks Array of failed check labels.
+	 * @param string   $focus_keyword Focus keyword.
+	 * @param string   $content       Content snippet.
+	 * @param \WP_Post $post          Post object.
+	 * @return string|\WP_Error Generated explanation.
+	 */
+	public function explain_seo_score( array $failed_checks, string $focus_keyword, string $content, \WP_Post $post ) {
+		if ( empty( $failed_checks ) ) {
+			return "Bagus! Artikel Anda sudah memenuhi semua kriteria SEO.";
+		}
+
+		$content_sample = wp_trim_words( wp_strip_all_tags( $content ), 300 );
+		$checks_list = implode( "\n- ", $failed_checks );
+
+		$prompt = "Anda adalah pakar SEO berbahasa Indonesia yang bersahabat.\n\n";
+		$prompt .= "Berikut adalah metrik analisis SEO yang saat ini GAGAL dipenuhi oleh artikel pengguna:\n- {$checks_list}\n\n";
+		
+		if ( ! empty( $focus_keyword ) ) {
+			$prompt .= "Kata kunci utama (Focus Keyword): {$focus_keyword}\n\n";
+		}
+
+		if ( ! empty( $content_sample ) ) {
+			$prompt .= "Kutipan isi artikel:\n\"{$content_sample}\"\n\n";
+		}
+
+		$prompt .= "Tugas Anda:\n";
+		$prompt .= "Berikan saran taktis dan sangat praktis langkah-demi-langkah tentang bagaimana cara memperbaiki peringatan-peringatan SEO tersebut.\n";
+		$prompt .= "Jangan gunakan kata-kata akademis. Berbicaralah seperti rekan kerja yang sedang membantu. Gunakan format markdown (bold, list) agar mudah dibaca.\n";
+		$prompt .= "Tidak perlu basa-basi berlebihan di awal (seperti 'Halo!'), langsung saja ke inti saran perbaikannya.";
+
+		// Generate text content.
+		$text_result = $this->provider_manager->generate_text( $prompt, [
+			'bypass_cache' => true,
+		] );
+
+		if ( is_wp_error( $text_result ) ) {
+			return $text_result;
+		}
+
+		return $text_result['content'];
 	}
 }

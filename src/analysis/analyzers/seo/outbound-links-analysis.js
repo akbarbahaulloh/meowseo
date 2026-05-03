@@ -56,7 +56,7 @@ export function analyzeOutboundLinks( content ) {
 	if ( totalLinks === 0 ) {
 		type = 'problem';
 		message =
-			'Add external links to authoritative sources for better credibility';
+			'External Links: There are no external links on this page. Create them sparingly!';
 		score = 0;
 	} else if ( withNofollow > 0 ) {
 		type = 'good';

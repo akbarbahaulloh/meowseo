@@ -1,362 +1,435 @@
-# Schema Module
+# MeowSEO Schema Generator Module
 
-The Schema Module provides automatic JSON-LD structured data generation for rich search results in Google, Bing, and other search engines.
+Advanced Schema.org markup generator with visual builder for WordPress.
 
 ## Features
 
-- **Automatic Schema Generation**: Generates valid Schema.org JSON-LD markup
-- **@graph Array Approach**: Uses Google's recommended @graph format for Knowledge Graph resolution
-- **Multiple Schema Types**: Supports Article, WebPage, FAQPage, Product, Organization, WebSite, and more
-- **Breadcrumbs Integration**: Automatic BreadcrumbList schema generation
-- **WooCommerce Support**: Product schema with price, availability, and reviews
-- **Caching**: 1-hour Object Cache for performance
-- **REST API**: Headless WordPress support via REST endpoints
-- **WPGraphQL**: GraphQL integration when WPGraphQL is active
+- ✅ **10 Schema Types** - Article, Product, Recipe, Event, Local Business, FAQ, HowTo, Review, Video, Course
+- ✅ **Variable System** - 30+ dynamic variables (%title%, %author%, etc.)
+- ✅ **JSON-LD Output** - Automatic @graph structure
+- ✅ **Global Entities** - Website, Organization, Breadcrumbs, WebPage
+- ✅ **Shortcode Support** - `[meowseo_schema id="s-abc123"]`
+- ✅ **Multi-Schema Support** - Multiple schemas per post/page
+- ✅ **Extensible** - Easy to add custom schema types
+- ✅ **Performance** - Static caching, efficient queries
 
-## Architecture
+## Installation
 
-### Core Components
-
-1. **Schema_Module**: Module entry point, hooks into WordPress
-2. **Schema_Builder**: Core engine that assembles @graph arrays
-3. **Abstract_Schema_Node**: Base class for all schema node builders
-4. **Node Builders**: Individual classes for each schema type
-
-### Schema Node Builders
-
-Located in `includes/helpers/schema-nodes/`:
-
-- `WebSite_Node`: Site-level schema with SearchAction
-- `Organization_Node`: Organization/publisher information
-- `WebPage_Node`: Page-level schema (varies by context)
-- `Article_Node`: Article schema for blog posts
-- `Product_Node`: WooCommerce product schema
-- `FAQ_Node`: FAQPage schema for FAQ content
-- `Breadcrumb_Node`: BreadcrumbList schema
+The module is automatically loaded by MeowSEO. No additional installation required.
 
 ## Usage
 
-### Automatic Output
+### 1. Programmatic Usage
 
-Schema is automatically output in `wp_head` for all public posts and pages. No configuration required.
-
-### Gutenberg Integration
-
-Configure schema type per post in the Gutenberg sidebar:
-
-1. Open post in block editor
-2. Find "MeowSEO" panel in sidebar
-3. Select schema type (Article, WebPage, FAQPage, etc.)
-4. Configure type-specific fields (FAQ items, HowTo steps, etc.)
-
-### Template Function
-
-Display breadcrumbs in theme templates:
+#### Save a Schema
 
 ```php
-<?php
-if ( function_exists( 'meowseo_breadcrumbs' ) ) {
-    meowseo_breadcrumbs( 'my-breadcrumbs', ' > ' );
+use MeowSEO\Modules\Schema\Schema_DB;
+
+$schema_data = [
+    '@type' => 'Article',
+    'headline' => 'My Article Title',
+    'description' => 'Article description',
+    'author' => [
+        '@type' => 'Person',
+        'name' => 'John Doe',
+    ],
+    'metadata' => [
+        'title' => 'Article',
+        'isPrimary' => true,
+    ],
+];
+
+$meta_id = Schema_DB::save_schema( $post_id, $schema_data );
+```
+
+#### Get Schemas
+
+```php
+// Get all schemas for a post
+$schemas = Schema_DB::get_schemas( $post_id );
+
+// Get single schema
+$schema = Schema_DB::get_schema( $post_id, 'schema-123' );
+
+// Get by shortcode
+$result = Schema_DB::get_schema_by_shortcode( 's-abc123' );
+```
+
+#### Delete Schema
+
+```php
+// Delete single schema
+Schema_DB::delete_schema( $post_id, 'schema-123' );
+
+// Delete all schemas
+Schema_DB::delete_all_schemas( $post_id );
+```
+
+### 2. Variable Replacement
+
+```php
+use MeowSEO\Modules\Schema\Schema_Variables;
+
+$post = get_post( 123 );
+
+// Replace variables
+$text = Schema_Variables::replace( '%title% by %author%', $post );
+// Output: "My Post Title by John Doe"
+
+// Date formatting
+$date = Schema_Variables::replace( '%date(Y-m-d\TH:i:sP)%', $post );
+// Output: "2026-05-03T20:41:00+07:00"
+
+// Get available variables
+$variables = Schema_Variables::get_available_variables();
+```
+
+### 3. Create Custom Schema Type
+
+```php
+use MeowSEO\Modules\Schema\Schema_Type;
+
+class Custom_Schema extends Schema_Type {
+    
+    public function __construct() {
+        $this->type = 'Custom';
+        $this->label = __( 'Custom Schema', 'meowseo' );
+        $this->description = __( 'A custom schema type', 'meowseo' );
+        $this->icon = 'admin-generic';
+    }
+    
+    public function get_fields(): array {
+        return [
+            'name' => [
+                'type' => 'text',
+                'label' => __( 'Name', 'meowseo' ),
+                'default' => '%title%',
+                'required' => true,
+            ],
+            'description' => [
+                'type' => 'textarea',
+                'label' => __( 'Description', 'meowseo' ),
+                'default' => '%excerpt%',
+            ],
+        ];
+    }
 }
-?>
+
+// Register the schema type
+add_action( 'meowseo_schema_types_loaded', function() {
+    $custom = new Custom_Schema();
+    $custom->register();
+});
 ```
 
-### Shortcode
-
-Display breadcrumbs in content:
+### 4. Shortcode Usage
 
 ```
-[meowseo_breadcrumbs]
+[meowseo_schema id="s-abc123"]
 ```
 
-## REST API
+## Available Schema Types
 
-### Get Schema for Post
+### 1. Article
+- Headline, description, author, publisher
+- Date published/modified
+- Article body, keywords, section
+- Word count
 
+### 2. Product
+- Name, description, image, brand
+- SKU, MPN, GTIN
+- Offers (price, currency, availability)
+- Aggregate rating, reviews
+
+### 3. Recipe
+- Name, description, image, author
+- Prep time, cook time, total time
+- Ingredients, instructions
+- Nutrition information
+- Aggregate rating, video
+
+### 4. Event
+- Name, description, image
+- Start/end date, status, attendance mode
+- Location (physical or virtual)
+- Organizer, performers
+- Ticket offers
+
+### 5. Local Business
+- 30+ business types (Restaurant, Store, Hotel, etc.)
+- Name, description, logo, contact info
+- Address, geo coordinates
+- Opening hours, price range
+- Aggregate rating, social profiles
+
+### 6. FAQ
+- Question and answer pairs
+- Repeater field for multiple Q&A
+- Automatic FAQPage schema
+- Perfect for help pages
+
+### 7. HowTo
+- Step-by-step instructions
+- Supplies and tools lists
+- Time estimates (prep, perform, total)
+- Images and videos per step
+
+### 8. Review
+- Item being reviewed (Product, Book, Movie, etc.)
+- Rating with best/worst values
+- Review body, author
+- Positive and negative notes
+
+### 9. Video
+- Name, description, thumbnail
+- Upload date, duration
+- Content URL, embed URL
+- Transcript, view count
+- Video segments/chapters
+
+### 10. Course
+- Course name, description, provider
+- Course code, educational level
+- Course instances (schedule, instructor, location)
+- Pricing (free, paid, subscription)
+- Learning outcomes, prerequisites
+- Ratings and reviews
+
+## Field Types
+
+- `text` - Single line text input
+- `textarea` - Multi-line text input
+- `number` - Numeric input
+- `url` - URL input
+- `email` - Email input
+- `date` - Date picker
+- `datetime` - Date and time picker
+- `time` - Time picker
+- `image` - Image selector
+- `select` - Dropdown select
+- `group` - Nested fields
+- `repeater` - Repeatable fields
+- `hidden` - Hidden field
+
+## Variables
+
+### Post Variables
+- `%title%` - Post title
+- `%excerpt%` - Post excerpt
+- `%content%` - Post content (stripped)
+- `%author%` - Post author name
+- `%date%` - Post publish date
+- `%date(format)%` - Custom date format
+- `%modified%` - Post modified date
+- `%modified(format)%` - Custom modified date
+- `%permalink%` - Post URL
+- `%featured_image%` - Featured image URL
+- `%post_id%` - Post ID
+- `%post_type%` - Post type
+
+### Site Variables
+- `%sitename%` - Site name
+- `%sitedesc%` - Site description
+- `%siteurl%` - Site URL
+- `%currentdate%` - Current date
+- `%currentyear%` - Current year
+- `%sep%` - Separator (|)
+
+### Term Variables
+- `%name%` - Term name
+- `%description%` - Term description
+- `%term_id%` - Term ID
+- `%taxonomy%` - Taxonomy name
+- `%slug%` - Term slug
+
+### Author Variables
+- `%name%` - Author display name
+- `%first_name%` - Author first name
+- `%last_name%` - Author last name
+- `%author_url%` - Author archive URL
+
+## Hooks & Filters
+
+### Actions
+
+```php
+// After schema types are loaded
+do_action( 'meowseo_schema_types_loaded' );
+
+// Before JSON-LD output
+do_action( 'meowseo_schema_json_ld', $data, $jsonld );
 ```
-GET /wp-json/meowseo/v1/schema/post/{id}
+
+### Filters
+
+```php
+// Modify schema variables
+apply_filters( 'meowseo_schema_variables', $variables, $object );
+
+// Modify schema defaults
+apply_filters( 'meowseo_schema_defaults', $defaults, $type, $object );
+
+// Modify generated JSON-LD
+apply_filters( 'meowseo_schema_generate', $jsonld, $data, $type, $object );
+
+// Modify Website schema
+apply_filters( 'meowseo_schema_website', $schema );
+
+// Modify Organization schema
+apply_filters( 'meowseo_schema_organization', $schema );
+
+// Modify Breadcrumb schema
+apply_filters( 'meowseo_schema_breadcrumb', $schema );
+
+// Modify WebPage schema
+apply_filters( 'meowseo_schema_webpage', $schema );
+
+// Control global entities
+apply_filters( 'meowseo_schema_add_website', true );
+apply_filters( 'meowseo_schema_add_organization', true );
+apply_filters( 'meowseo_schema_add_breadcrumbs', true );
+apply_filters( 'meowseo_schema_add_webpage', true );
 ```
 
-**Response:**
-```json
+## JSON-LD Output
+
+The module automatically outputs JSON-LD in the `<head>` section:
+
+```html
+<script type="application/ld+json" class="meowseo-schema">
 {
-  "post_id": 123,
-  "schema_jsonld": {
-    "@context": "https://schema.org",
-    "@graph": [...]
-  }
-}
-```
-
-## WPGraphQL
-
-Query schema via GraphQL:
-
-```graphql
-query GetPost {
-  post(id: "1", idType: DATABASE_ID) {
-    title
-    schemaJsonLd
-  }
-}
-```
-
-## Schema Types
-
-### Article
-
-Automatically included for blog posts. Includes:
-- Headline, author, publisher
-- Publication and modification dates
-- Word count, comment count
-- Categories and tags
-- Speakable content for voice assistants
-
-### WebPage
-
-Base schema for all pages. Varies by context:
-- `WebPage`: Standard pages
-- `CollectionPage`: Archive pages
-- `SearchResultsPage`: Search results
-
-### FAQPage
-
-For FAQ content. Configure in Gutenberg sidebar:
-- Add question/answer pairs
-- Automatically generates FAQPage schema
-- Coexists with Article schema
-
-### Product
-
-For WooCommerce products. Includes:
-- Name, SKU, description
-- Price, currency, availability
-- Product images
-- Aggregate ratings and reviews
-
-### Organization
-
-Site-level organization information:
-- Organization name and logo
-- Social media profiles
-- Contact information
-
-### WebSite
-
-Site-level schema with SearchAction:
-- Site name and description
-- Search functionality
-- Language information
-
-## Configuration
-
-### Postmeta Fields
-
-**Schema Type:**
-```
-_meowseo_schema_type: string
-Values: 'Article', 'WebPage', 'FAQPage', 'HowTo', 'LocalBusiness', 'Product'
-```
-
-**Schema Configuration:**
-```
-_meowseo_schema_config: JSON string
-Structure varies by schema type
-```
-
-**Example FAQPage:**
-```json
-{
-  "faq_items": [
+  "@context": "https://schema.org",
+  "@graph": [
     {
-      "question": "What is the question?",
-      "answer": "This is the answer."
+      "@type": "WebSite",
+      "@id": "https://example.com/#website",
+      "url": "https://example.com/",
+      "name": "My Website"
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://example.com/#organization",
+      "name": "My Company",
+      "url": "https://example.com/"
+    },
+    {
+      "@type": "Article",
+      "@id": "https://example.com/my-post/#article",
+      "headline": "My Post Title",
+      "author": {
+        "@type": "Person",
+        "name": "John Doe"
+      }
     }
   ]
 }
-```
-
-### Global Settings
-
-Configure in **MeowSEO > Settings > Schema**:
-
-- Organization name
-- Organization logo
-- Social media profiles (Facebook, Twitter, LinkedIn, etc.)
-
-## Caching
-
-Schema JSON-LD is cached for 1 hour in Object Cache:
-
-**Cache Key:** `meowseo_schema_{post_id}`
-**TTL:** 3600 seconds
-
-**Invalidation Triggers:**
-- Post save/update
-- Schema type change
-- Schema configuration change
-- Global settings change
-
-## Filter Hooks
-
-### meowseo_schema_graph
-
-Modify the complete @graph array:
-
-```php
-add_filter( 'meowseo_schema_graph', function( $graph, $post_id ) {
-    // Add custom node
-    $graph[] = [
-        '@type' => 'CustomType',
-        '@id' => get_permalink( $post_id ) . '#custom',
-        'name' => 'Custom Node',
-    ];
-    return $graph;
-}, 10, 2 );
-```
-
-### meowseo_schema_node_{type}
-
-Modify individual schema nodes:
-
-```php
-add_filter( 'meowseo_schema_node_article', function( $node, $post_id ) {
-    // Modify article node
-    $node['customProperty'] = 'custom value';
-    return $node;
-}, 10, 2 );
-```
-
-Available filters:
-- `meowseo_schema_node_website`
-- `meowseo_schema_node_organization`
-- `meowseo_schema_node_webpage`
-- `meowseo_schema_node_article`
-- `meowseo_schema_node_product`
-- `meowseo_schema_node_faq`
-- `meowseo_schema_node_breadcrumb`
-
-### meowseo_schema_type
-
-Override schema type detection:
-
-```php
-add_filter( 'meowseo_schema_type', function( $type, $post_id ) {
-    if ( has_tag( 'faq', $post_id ) ) {
-        return 'FAQPage';
-    }
-    return $type;
-}, 10, 2 );
-```
-
-### meowseo_schema_social_profiles
-
-Modify social media profiles:
-
-```php
-add_filter( 'meowseo_schema_social_profiles', function( $profiles ) {
-    $profiles[] = 'https://instagram.com/yourprofile';
-    return $profiles;
-} );
-```
-
-## Action Hooks
-
-### meowseo_before_schema_output
-
-Fires before schema output:
-
-```php
-add_action( 'meowseo_before_schema_output', function( $post_id ) {
-    // Do something before schema output
-} );
-```
-
-### meowseo_after_schema_output
-
-Fires after schema output:
-
-```php
-add_action( 'meowseo_after_schema_output', function( $post_id ) {
-    // Do something after schema output
-} );
-```
-
-### meowseo_schema_cache_invalidated
-
-Fires when schema cache is invalidated:
-
-```php
-add_action( 'meowseo_schema_cache_invalidated', function( $post_id ) {
-    // Do something when cache is cleared
-} );
-```
-
-## Validation
-
-### Google Rich Results Test
-
-Test your schema markup:
-https://search.google.com/test/rich-results
-
-### Schema.org Validator
-
-Validate against Schema.org specification:
-https://validator.schema.org/
-
-## Troubleshooting
-
-### Schema Not Appearing
-
-1. Check that Schema module is enabled in **MeowSEO > Settings**
-2. Verify post is published (not draft)
-3. Check for JavaScript errors in browser console
-4. Clear Object Cache
-
-### Invalid Schema
-
-1. Test with Google Rich Results Test
-2. Check for missing required properties
-3. Verify @id format is correct (URL + #fragment)
-4. Enable WP_DEBUG to see validation errors
-
-### Cache Issues
-
-Clear schema cache:
-
-```bash
-wp meowseo schema clear-cache
-```
-
-Or clear for specific post:
-
-```bash
-wp meowseo schema clear-cache --post_id=123
+</script>
 ```
 
 ## Performance
 
-### Benchmarks
+- **Static Caching** - Schemas are cached in memory
+- **Efficient Queries** - Optimized database queries
+- **Lazy Loading** - Components loaded only when needed
+- **Minimal Overhead** - No impact on page load time
 
-- Schema generation: < 5ms per post
-- Cache hit: < 1ms
-- Memory usage: < 1MB per request
+## Security
 
-### Optimization Tips
+- **Sanitization** - All input is sanitized
+- **Validation** - Schema data is validated
+- **Capability Checks** - Proper permission checks
+- **Nonce Verification** - CSRF protection
 
-1. **Enable Object Cache**: Use Redis or Memcached
-2. **Use CDN**: Cache REST API responses
-3. **Minimize Custom Nodes**: Each custom node adds processing time
+## Compatibility
 
-## Requirements
-
+- WordPress 5.0+
 - PHP 7.4+
-- WordPress 6.0+
-- Optional: WooCommerce (for Product schema)
-- Optional: WPGraphQL (for GraphQL support)
+- Classic Editor
+- Gutenberg Editor
+- WooCommerce (Product schema)
+- Any theme
 
-## Related Documentation
+## Development
 
-- [Design Document](../../../.kiro/specs/schema-sitemap-system/design.md)
-- [Requirements Document](../../../.kiro/specs/schema-sitemap-system/requirements.md)
-- [API Documentation](../../../API_DOCUMENTATION.md)
+### File Structure
+
+```
+includes/modules/schema/
+├── class-schema-module.php          # Main module
+├── class-schema-db.php               # Database operations
+├── class-schema-variables.php        # Variable replacement
+├── class-schema-type.php             # Base schema type
+├── class-schema-registry.php         # Type registry
+├── class-schema-jsonld.php           # JSON-LD generator
+├── class-schema-frontend.php         # Frontend handler
+│
+├── types/
+│   ├── class-article-schema.php      # Article
+│   ├── class-product-schema.php      # Product
+│   ├── class-recipe-schema.php       # Recipe
+│   ├── class-event-schema.php        # Event
+│   ├── class-local-business-schema.php # Local Business
+│   ├── class-faq-schema.php          # FAQ
+│   ├── class-howto-schema.php        # HowTo
+│   ├── class-review-schema.php       # Review
+│   ├── class-video-schema.php        # Video
+│   └── class-course-schema.php       # Course
+│
+├── assets/
+│   ├── js/                           # JavaScript files
+│   └── css/                          # CSS files
+│
+└── views/                            # Template files
+```
+
+### Adding a New Schema Type
+
+1. Create a new file in `types/` folder
+2. Extend `Schema_Type` class
+3. Implement `get_fields()` method
+4. Register on `meowseo_schema_types_loaded` action
+
+Example:
+
+```php
+<?php
+namespace MeowSEO\Modules\Schema\Types;
+
+use MeowSEO\Modules\Schema\Schema_Type;
+
+class My_Schema extends Schema_Type {
+    
+    public function __construct() {
+        $this->type = 'MySchema';
+        $this->label = __( 'My Schema', 'meowseo' );
+        $this->description = __( 'Description', 'meowseo' );
+        $this->icon = 'admin-generic';
+    }
+    
+    public function get_fields(): array {
+        return [
+            // Define fields here
+        ];
+    }
+}
+
+add_action( 'meowseo_schema_types_loaded', function() {
+    $schema = new My_Schema();
+    $schema->register();
+});
+```
+
+## Support
+
+For issues and feature requests, please visit:
+https://github.com/meowseo/meowseo
+
+## License
+
+GPL v2 or later
+
+## Credits
+
+Inspired by RankMath's schema generator architecture.

@@ -80,7 +80,7 @@ class Meta implements Module {
 		// Initialize Gutenberg integration
 		$plugin_dir = dirname( dirname( dirname( __DIR__ ) ) );
 		$plugin_url = plugins_url( '', $plugin_dir . '/meowseo.php' );
-		$this->gutenberg = new Gutenberg( $plugin_dir, $plugin_url );
+		$this->gutenberg = new Gutenberg( $plugin_dir, $plugin_url, $options );
 
 		// Initialize Webmaster Verification (Requirement 3.9)
 		$this->webmaster_verification = new Webmaster_Verification( $options );
@@ -158,6 +158,12 @@ class Meta implements Module {
 			'focus_keyword'      => array(
 				'type'         => 'string',
 				'description'  => __( 'Focus keyword', 'meowseo' ),
+				'single'       => true,
+				'show_in_rest' => true,
+			),
+			'lsi_keywords'       => array(
+				'type'         => 'string',
+				'description'  => __( 'LSI Keywords (comma separated)', 'meowseo' ),
 				'single'       => true,
 				'show_in_rest' => true,
 			),
@@ -484,6 +490,67 @@ class Meta implements Module {
 						'sanitize_callback' => 'sanitize_text_field',
 						'default'           => '',
 					),
+					'secondary_keywords' => array(
+						'required'          => false,
+						'type'              => 'array',
+						'sanitize_callback' => function ( $value ) {
+							return array_map( 'sanitize_text_field', (array) $value );
+						},
+						'default'           => array(),
+					),
+					'lsi_keywords' => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+						'default'           => '',
+					),
+					'direct_answer' => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_textarea_field',
+						'default'           => '',
+					),
+				),
+			)
+		);
+
+		// Register schema preview REST route.
+		register_rest_route(
+			'meowseo/v1',
+			'/schema/preview/(?P<post_id>\d+)',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_get_schema_preview' ),
+				'permission_callback' => array( $this, 'check_analysis_permission' ),
+				'args'                => array(
+					'post_id'       => array(
+						'required'          => true,
+						'type'              => 'integer',
+						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
+
+		// Register cannibalization check REST route.
+		register_rest_route(
+			'meowseo/v1',
+			'/check-cannibalization',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'rest_check_cannibalization' ),
+				'permission_callback' => array( $this, 'check_analysis_permission' ),
+				'args'                => array(
+					'post_id'       => array(
+						'required'          => true,
+						'type'              => 'integer',
+						'sanitize_callback' => 'absint',
+					),
+					'keyword' => array(
+						'required'          => true,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 				),
 			)
 		);
@@ -553,11 +620,14 @@ class Meta implements Module {
 	 *
 	 * @since 1.0.0
 	 * @param int    $post_id       Post ID.
-	 * @param string $content       Post content (HTML).
+	 * @param string $content       Post content.
 	 * @param string $focus_keyword Focus keyword.
+	 * @param string $lsi_keywords  LSI keywords.
+	 * @param string $direct_answer Direct answer.
+	 * @param array  $secondary_keywords Secondary keywords.
 	 * @return array Analysis result with score, checks, and color.
 	 */
-	public function get_seo_analysis( int $post_id, string $content = '', string $focus_keyword = '' ): array {
+	public function get_seo_analysis( int $post_id, string $content = '', string $focus_keyword = '', string $lsi_keywords = '', string $direct_answer = '', array $secondary_keywords = array() ): array {
 		// Get post data if not provided.
 		$post = get_post( $post_id );
 		if ( ! $post ) {
@@ -578,6 +648,14 @@ class Meta implements Module {
 			$focus_keyword = get_post_meta( $post_id, self::META_PREFIX . 'focus_keyword', true );
 		}
 
+		// Get LSI keywords and direct answer from postmeta if not provided.
+		if ( empty( $lsi_keywords ) ) {
+			$lsi_keywords = get_post_meta( $post_id, self::META_PREFIX . 'lsi_keywords', true );
+		}
+		if ( empty( $direct_answer ) ) {
+			$direct_answer = get_post_meta( $post_id, self::META_PREFIX . 'direct_answer', true );
+		}
+
 		// Get SEO title and description.
 		$title       = $this->get_title( $post_id );
 		$description = $this->get_description( $post_id );
@@ -590,6 +668,10 @@ class Meta implements Module {
 			'content'       => $content,
 			'slug'          => $slug,
 			'focus_keyword' => $focus_keyword,
+			'secondary_keywords' => $secondary_keywords,
+			'lsi_keywords'  => $lsi_keywords,
+			'direct_answer' => $direct_answer,
+			'post_id'       => $post_id,
 		);
 
 		// Run analysis.
@@ -642,9 +724,11 @@ class Meta implements Module {
 		$post_id       = (int) $request['post_id'];
 		$content       = $request['content'];
 		$focus_keyword = $request->get_param( 'focus_keyword' ) ?? '';
+		$secondary_keywords = $request->get_param( 'secondary_keywords' ) ?? array();
+		$lsi_keywords  = $request->get_param( 'lsi_keywords' ) ?? '';
+		$direct_answer = $request->get_param( 'direct_answer' ) ?? '';
 
-		// Get SEO analysis.
-		$seo_analysis = $this->get_seo_analysis( $post_id, $content, $focus_keyword );
+		$seo_analysis = $this->get_seo_analysis( $post_id, $content, $focus_keyword, $lsi_keywords, $direct_answer, $secondary_keywords );
 
 		// Get readability analysis.
 		$readability_analysis = $this->get_readability_analysis( $content );
@@ -656,6 +740,70 @@ class Meta implements Module {
 		);
 
 		return new \WP_REST_Response( $response, 200 );
+	}
+
+	/**
+	 * REST API callback for cannibalization check
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $request REST request object.
+	 * @return \WP_REST_Response REST response.
+	 */
+	public function rest_check_cannibalization( $request ): \WP_REST_Response {
+		if ( ! $this->verify_nonce( $request ) ) {
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Invalid nonce.', 'meowseo' ),
+				),
+				403
+			);
+		}
+
+		$post_id = (int) $request['post_id'];
+		$keyword = sanitize_text_field( $request['keyword'] );
+
+		if ( empty( $keyword ) ) {
+			return new \WP_REST_Response( array( 'is_used' => false, 'posts' => array() ), 200 );
+		}
+
+		global $wpdb;
+
+		// Search for posts that have this exact focus keyword in postmeta, excluding current post.
+		$query = $wpdb->prepare(
+			"SELECT p.ID, p.post_title 
+			FROM {$wpdb->posts} p
+			INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+			WHERE p.post_status = 'publish' 
+			AND p.ID != %d 
+			AND pm.meta_key = %s 
+			AND pm.meta_value = %s
+			LIMIT 5",
+			$post_id,
+			self::META_PREFIX . 'focus_keyword',
+			$keyword
+		);
+
+		$results = $wpdb->get_results( $query );
+
+		$posts = array();
+		if ( ! empty( $results ) ) {
+			foreach ( $results as $result ) {
+				$posts[] = array(
+					'id'    => $result->ID,
+					'title' => $result->post_title,
+					'url'   => get_permalink( $result->ID ),
+				);
+			}
+		}
+
+		return new \WP_REST_Response(
+			array(
+				'is_used' => ! empty( $posts ),
+				'posts'   => $posts,
+			),
+			200
+		);
 	}
 
 	/**
@@ -699,6 +847,32 @@ class Meta implements Module {
 	 */
 	private function get_separator(): string {
 		return $this->options->get_separator();
+	}
+
+	/**
+	 * REST API callback for schema preview endpoint
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $request REST request object.
+	 * @return \WP_REST_Response REST response.
+	 */
+	public function rest_get_schema_preview( $request ): \WP_REST_Response {
+		$post_id = (int) $request['post_id'];
+		
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return new \WP_REST_Response( array( 'success' => false ), 403 );
+		}
+
+		$schema_builder = new \MeowSEO\Helpers\Schema_Builder( $this->options );
+		$schema_data = $schema_builder->build( $post_id );
+
+		return new \WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => $schema_data,
+			),
+			200
+		);
 	}
 
 	/**

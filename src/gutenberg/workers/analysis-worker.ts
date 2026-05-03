@@ -36,20 +36,25 @@ interface AnalysisOutput {
  * Listens for ANALYZE messages from main thread, runs analysis engine,
  * and returns ANALYSIS_COMPLETE message with results.
  */
-self.addEventListener( 'message', ( event: MessageEvent ) => {
+self.addEventListener( 'message', async ( event: MessageEvent ) => {
 	try {
 		const { type, payload } = event.data;
 
 		if ( type === 'ANALYZE' ) {
 			// Run analysis engine with payload data
-			const result: AnalysisOutput = analyzeContent( {
+			const result: AnalysisOutput = await analyzeContent( {
 				content: payload.content || '',
 				title: payload.title || '',
 				description: payload.description || '',
 				slug: payload.slug || '',
 				keyword: payload.keyword || '',
+				lsiKeywords: payload.lsiKeywords || '',
 				directAnswer: payload.directAnswer || '',
 				schemaType: payload.schemaType || '',
+				postId: payload.postId || 0,
+				restUrl: payload.restUrl || '',
+				nonce: payload.nonce || '',
+				tldBlacklist: payload.tldBlacklist || '',
 			} );
 
 			// Return ANALYSIS_COMPLETE message with results

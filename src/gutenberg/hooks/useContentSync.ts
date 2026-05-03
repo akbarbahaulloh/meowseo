@@ -39,6 +39,7 @@ export function useContentSync(): void {
 				excerpt: editorSelect.getEditedPostAttribute( 'excerpt' ) || '',
 				postType: editorSelect.getCurrentPostType() || '',
 				permalink: editorSelect.getPermalink() || '',
+				meta: editorSelect.getEditedPostAttribute( 'meta' ) || {},
 			};
 		} catch ( error ) {
 			// Requirement 17.5: Log error to console
@@ -50,6 +51,7 @@ export function useContentSync(): void {
 				excerpt: '',
 				postType: '',
 				permalink: '',
+				meta: {},
 			};
 		}
 	}, [] );
@@ -62,7 +64,8 @@ export function useContentSync(): void {
 					title: contentData.title,
 					content: contentData.content,
 					excerpt: contentData.excerpt,
-					focusKeyword: '', // focusKeyword is managed separately via postmeta
+					focusKeyword: contentData.meta['_meowseo_focus_keyword'] || '',
+					lsiKeywords: contentData.meta['_meowseo_lsi_keywords'] || '',
 					postType: contentData.postType,
 					permalink: contentData.permalink,
 				} )
@@ -76,6 +79,7 @@ export function useContentSync(): void {
 		contentData.excerpt,
 		contentData.postType,
 		contentData.permalink,
+		contentData.meta,
 		dispatch,
 	] );
 }

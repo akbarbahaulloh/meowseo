@@ -59,6 +59,9 @@ class SEO_Analyzer {
 		$content = $data['content'] ?? '';
 		$slug = $data['slug'] ?? '';
 		$focus_keyword = $data['focus_keyword'] ?? '';
+		$lsi_keywords = $data['lsi_keywords'] ?? '';
+		$direct_answer = $data['direct_answer'] ?? '';
+		$post_id = $data['post_id'] ?? 0;
 
 		$checks = array();
 
@@ -103,15 +106,15 @@ class SEO_Analyzer {
 		$desc_length = mb_strlen( $description );
 		$checks[] = array(
 			'id'    => 'description_length',
-			'label' => __( 'Meta description length (50-160 characters)', 'meowseo' ),
-			'pass'  => $desc_length >= 50 && $desc_length <= 160,
+			'label' => __( 'Meta Description Length: The meta description is optimal length.', 'meowseo' ),
+			'pass'  => $desc_length >= 120 && $desc_length <= 155,
 		);
 
 		// Check 7: Title length (30-60 chars).
 		$title_length = mb_strlen( $title );
 		$checks[] = array(
 			'id'    => 'title_length',
-			'label' => __( 'SEO title length (30-60 characters)', 'meowseo' ),
+			'label' => __( 'SEO Title Length: Excellent!', 'meowseo' ),
 			'pass'  => $title_length >= 30 && $title_length <= 60,
 		);
 
@@ -128,7 +131,7 @@ class SEO_Analyzer {
 		$internal_count = self::count_internal_links( $content );
 		$checks[] = array(
 			'id'    => 'internal_links',
-			'label' => __( 'At least one internal link', 'meowseo' ),
+			'label' => __( 'Internal Links: You have enough internal links.', 'meowseo' ),
 			'pass'  => $internal_count >= 1,
 			'value' => $internal_count,
 		);
@@ -137,7 +140,7 @@ class SEO_Analyzer {
 		$outbound_count = self::count_outbound_links( $content );
 		$checks[] = array(
 			'id'    => 'outbound_links',
-			'label' => __( 'At least one outbound (external) link', 'meowseo' ),
+			'label' => __( 'External Links: You have enough external links.', 'meowseo' ),
 			'pass'  => $outbound_count >= 1,
 			'value' => $outbound_count,
 		);
@@ -194,6 +197,51 @@ class SEO_Analyzer {
 			'label' => __( 'Subheadings break up content every ≤ 300 words', 'meowseo' ),
 			'pass'  => self::has_good_subheading_distribution( $content ),
 		);
+
+		// Check 18: Single Headline
+		$checks[] = array(
+			'id'    => 'single_headline',
+			'label' => __( 'Single Headline: You don\'t have multiple H1 headings.', 'meowseo' ),
+			'pass'  => self::has_single_headline( $content ),
+		);
+
+		// Check 19: Previously used keyword (Cannibalization Check)
+		$checks[] = self::check_cannibalization( $post_id, $focus_keyword );
+
+		// Check 20: LSI Keyword Analysis
+		$checks[] = self::analyze_lsi_keywords( $content, $lsi_keywords );
+
+		// Check 21: Heading Hierarchy
+		$checks[] = self::analyze_heading_hierarchy( $content );
+
+		// Check 22: ToC Detection
+		$checks[] = self::analyze_toc_detection( $content );
+
+		// Check 23: Local Image Analysis
+		$checks[] = self::analyze_local_images( $content );
+
+		// Check 24: External Link Quality
+		$checks[] = self::analyze_external_links( $content );
+
+		// Check 25: Direct Answer Paragraph
+		$checks[] = self::analyze_direct_answer( $content, $direct_answer );
+
+		// Check 26: List Table Detection
+		$checks[] = self::analyze_list_table( $content );
+
+		// Secondary Keywords Checks
+		$secondary_keywords = $data['secondary_keywords'] ?? array();
+		if ( ! empty( $secondary_keywords ) && is_array( $secondary_keywords ) ) {
+			foreach ( $secondary_keywords as $i => $sk ) {
+				if ( empty( trim( $sk ) ) ) continue;
+				$sk_num = $i + 1;
+				$checks[] = array(
+					'id'    => 'secondary_keyword_in_content_' . $sk_num,
+					'label' => sprintf( __( 'Secondary keyword %d (%s) found in content', 'meowseo' ), $sk_num, esc_html( $sk ) ),
+					'pass'  => self::contains_keyword( $content, $sk ),
+				);
+			}
+		}
 
 		// Calculate score.
 		$passing_checks = count( array_filter( $checks, fn( $check ) => $check['pass'] ) );
@@ -582,5 +630,238 @@ class SEO_Analyzer {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Check if content has single H1 headline.
+	 *
+	 * @param string $content HTML content.
+	 * @return bool True if 1 or 0 H1 headings.
+	 */
+	private static function has_single_headline( string $content ): bool {
+		if ( empty( $content ) ) {
+			return true;
+		}
+		$count = preg_match_all( '/<h1[^>]*>/is', $content, $matches );
+		return $count <= 1;
+	}
+
+	/**
+	 * Analyze LSI Keywords
+	 */
+	private static function analyze_lsi_keywords( string $content, string $lsi_keywords ): array {
+		if ( empty( $lsi_keywords ) ) {
+			return array(
+				'id'    => 'lsi_keyword_analysis',
+				'label' => __( 'Semantic SEO: No LSI keywords provided. Add secondary keywords to improve semantic relevance.', 'meowseo' ),
+				'pass'  => false,
+			);
+		}
+
+		$keywords = array_filter( array_map( 'trim', explode( ',', strtolower( $lsi_keywords ) ) ) );
+		if ( empty( $keywords ) || empty( $content ) ) {
+			return array(
+				'id'    => 'lsi_keyword_analysis',
+				'label' => __( 'Semantic SEO: Add content to analyze LSI keyword usage.', 'meowseo' ),
+				'pass'  => false,
+			);
+		}
+
+		$content_lower = strtolower( wp_strip_all_tags( $content ) );
+		$found = 0;
+		foreach ( $keywords as $kw ) {
+			if ( strpos( $content_lower, $kw ) !== false ) {
+				$found++;
+			}
+		}
+
+		$percent = $found / count( $keywords );
+		return array(
+			'id'    => 'lsi_keyword_analysis',
+			'label' => sprintf( __( 'Semantic SEO: You\'ve used %1$d of %2$d LSI keywords.', 'meowseo' ), $found, count( $keywords ) ),
+			'pass'  => $percent >= 0.5,
+		);
+	}
+
+	/**
+	 * Analyze Heading Hierarchy
+	 */
+	private static function analyze_heading_hierarchy( string $content ): array {
+		if ( empty( $content ) ) {
+			return array( 'id' => 'heading_hierarchy', 'label' => __( 'Content Structure: No content to analyze for heading hierarchy.', 'meowseo' ), 'pass' => true );
+		}
+
+		if ( preg_match_all( '/<h([1-6])[^>]*>/i', $content, $matches ) ) {
+			$levels = array_map( 'intval', $matches[1] );
+			$prev = $levels[0];
+			for ( $i = 1; $i < count( $levels ); $i++ ) {
+				$curr = $levels[$i];
+				if ( $curr > $prev + 1 ) {
+					return array(
+						'id'    => 'heading_hierarchy',
+						'label' => __( 'Content Structure: Your heading structure is incorrect. Do not skip heading levels.', 'meowseo' ),
+						'pass'  => false,
+					);
+				}
+				$prev = $curr;
+			}
+		}
+
+		return array(
+			'id'    => 'heading_hierarchy',
+			'label' => __( 'Content Structure: Great! Your heading hierarchy is logically structured.', 'meowseo' ),
+			'pass'  => true,
+		);
+	}
+
+	/**
+	 * Analyze ToC Detection
+	 */
+	private static function analyze_toc_detection( string $content ): array {
+		$word_count = self::count_words( $content );
+		if ( $word_count < 1000 ) {
+			return array( 'id' => 'toc_detection', 'label' => __( 'Content Structure: Article length is standard, Table of Contents is optional.', 'meowseo' ), 'pass' => true );
+		}
+
+		$has_toc = preg_match( '/class=["\'][^"\']*ez-toc-container/is', $content ) ||
+				   preg_match( '/id=["\'][^"\']*toc/is', $content ) ||
+				   preg_match( '/<!-- wp:(simpletoc\/toc|yoast\/toc|meowseo\/toc)/is', $content );
+
+		if ( $has_toc ) {
+			return array( 'id' => 'toc_detection', 'label' => __( 'Content Structure: Excellent! Your long article includes a Table of Contents.', 'meowseo' ), 'pass' => true );
+		}
+
+		return array( 'id' => 'toc_detection', 'label' => __( 'Content Structure: Consider adding a Table of Contents for long articles.', 'meowseo' ), 'pass' => false );
+	}
+
+	/**
+	 * Analyze Local Image Quality
+	 */
+	private static function analyze_local_images( string $content ): array {
+		if ( empty( $content ) || ! preg_match_all( '/<img[^>]+src=["\']([^"\']+)["\']/i', $content, $matches ) ) {
+			return array( 'id' => 'local_image_analysis', 'label' => __( 'Image Quality: No images appear on this page.', 'meowseo' ), 'pass' => false );
+		}
+
+		$external = 0;
+		foreach ( $matches[1] as $src ) {
+			if ( strpos( $src, 'data:' ) === 0 || strpos( $src, '/' ) === 0 ) {
+				continue;
+			}
+			if ( strpos( $src, 'wp-content/uploads' ) === false ) {
+				$external++;
+			}
+		}
+
+		if ( $external > 0 ) {
+			return array( 'id' => 'local_image_analysis', 'label' => __( 'Image Quality: Found external images. Host images locally for better SEO.', 'meowseo' ), 'pass' => false );
+		}
+
+		return array( 'id' => 'local_image_analysis', 'label' => __( 'Image Quality: All images appear to be hosted locally.', 'meowseo' ), 'pass' => true );
+	}
+
+	/**
+	 * Analyze External Link Quality
+	 */
+	private static function analyze_external_links( string $content ): array {
+		if ( empty( $content ) || ! preg_match_all( '/<a[^>]+href=["\']([^"\']+)["\']/i', $content, $matches ) ) {
+			return array( 'id' => 'external_link_quality', 'label' => __( 'Link Quality: No external links found.', 'meowseo' ), 'pass' => true );
+		}
+
+		$spam = 0;
+		$http = 0;
+		$blacklist = array( '.xyz', '.top', '.loan', '.click', '.gq', '.cf', '.tk', '.ml' );
+
+		foreach ( $matches[1] as $href ) {
+			if ( strpos( $href, 'http://' ) === 0 ) {
+				$http++;
+			}
+			if ( preg_match( '/^https?:\/\//i', $href ) ) {
+				$host = wp_parse_url( $href, PHP_URL_HOST );
+				if ( $host ) {
+					foreach ( $blacklist as $tld ) {
+						if ( substr( $host, -strlen( $tld ) ) === $tld ) {
+							$spam++;
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		if ( $spam > 0 || $http > 0 ) {
+			return array( 'id' => 'external_link_quality', 'label' => __( 'Link Quality: Found HTTP links or blacklisted TLDs. Use HTTPS and avoid spam domains.', 'meowseo' ), 'pass' => false );
+		}
+
+		return array( 'id' => 'external_link_quality', 'label' => __( 'Link Quality: All external links are HTTPS and avoid spam TLDs.', 'meowseo' ), 'pass' => true );
+	}
+
+	/**
+	 * Analyze Direct Answer
+	 */
+	private static function analyze_direct_answer( string $content, string $direct_answer ): array {
+		if ( ! empty( $direct_answer ) ) {
+			$words = str_word_count( strip_tags( $direct_answer ) );
+			return array(
+				'id'    => 'direct_answer_paragraph',
+				'label' => __( 'Featured Snippet: Direct answer paragraph provided.', 'meowseo' ),
+				'pass'  => $words >= 30 && $words <= 60,
+			);
+		}
+
+		if ( preg_match_all( '/<p[^>]*>(.*?)<\/p>/is', $content, $matches ) ) {
+			foreach ( $matches[1] as $p ) {
+				$text = wp_strip_all_tags( $p );
+				$words = str_word_count( $text );
+				if ( $words >= 40 && $words <= 60 ) {
+					return array( 'id' => 'direct_answer_paragraph', 'label' => __( 'Featured Snippet: You have a paragraph of optimal length (40-60 words).', 'meowseo' ), 'pass' => true );
+				}
+			}
+		}
+		return array( 'id' => 'direct_answer_paragraph', 'label' => __( 'Featured Snippet: Add a concise 40-50 word paragraph early in the content.', 'meowseo' ), 'pass' => false );
+	}
+
+	/**
+	 * Analyze List Table
+	 */
+	private static function analyze_list_table( string $content ): array {
+		$has_list = preg_match( '/<(ul|ol)[^>]*>/is', $content );
+		$has_table = preg_match( '/<table[^>]*>/is', $content );
+
+		if ( $has_list || $has_table ) {
+			return array( 'id' => 'list_table_detection', 'label' => __( 'Featured Snippet: Your content contains a list or table.', 'meowseo' ), 'pass' => true );
+		}
+
+		return array( 'id' => 'list_table_detection', 'label' => __( 'Featured Snippet: Try adding a list or a table.', 'meowseo' ), 'pass' => false );
+	}
+
+	/**
+	 * Check Keyword Cannibalization
+	 */
+	private static function check_cannibalization( int $post_id, string $keyword ): array {
+		if ( empty( $keyword ) ) {
+			return array( 'id' => 'previously_used_keyword', 'label' => __( 'Keyphrase Used Previously: No focus keyphrase was set.', 'meowseo' ), 'pass' => false );
+		}
+
+		global $wpdb;
+		$query = $wpdb->prepare(
+			"SELECT p.ID FROM {$wpdb->posts} p
+			INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+			WHERE p.post_status = 'publish' 
+			AND p.ID != %d 
+			AND pm.meta_key = %s 
+			AND pm.meta_value = %s
+			LIMIT 1",
+			$post_id,
+			'_meowseo_focus_keyword',
+			$keyword
+		);
+
+		$is_used = (bool) $wpdb->get_var( $query );
+
+		if ( $is_used ) {
+			return array( 'id' => 'previously_used_keyword', 'label' => __( 'Keyphrase Used Previously: You\'ve used this keyphrase once before. Do not use your keyphrase more than once.', 'meowseo' ), 'pass' => false );
+		}
+
+		return array( 'id' => 'previously_used_keyword', 'label' => __( 'Keyphrase Used Previously: You haven\'t used this keyphrase before, which is great.', 'meowseo' ), 'pass' => true );
 	}
 }

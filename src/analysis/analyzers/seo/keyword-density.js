@@ -128,7 +128,7 @@ export function analyzeKeywordDensity( content, keyword ) {
 
 	if ( density >= 0.5 && density <= 2.5 ) {
 		type = 'good';
-		message = `Keyword density is optimal (${ density.toFixed( 1 ) }%)`;
+		message = `Keyphrase Density: The keyphrase appears ${keywordCount} times, which is great.`;
 		score = 100;
 	} else if (
 		( density >= 0.3 && density < 0.5 ) ||
@@ -136,25 +136,17 @@ export function analyzeKeywordDensity( content, keyword ) {
 	) {
 		type = 'ok';
 		if ( density < 0.5 ) {
-			message = `Keyword density is low (${ density.toFixed(
-				1
-			) }%). Consider adding more keyword occurrences.`;
+			message = `Keyphrase Density: The keyphrase appears only ${keywordCount} times. Consider adding more keyword occurrences.`;
 		} else {
-			message = `Keyword density is high (${ density.toFixed(
-				1
-			) }%). Consider reducing keyword usage.`;
+			message = `Keyphrase Density: The keyphrase appears ${keywordCount} times. Consider reducing keyword usage.`;
 		}
 		score = 50;
 	} else {
 		type = 'problem';
 		if ( density < 0.3 ) {
-			message = `Keyword density is too low (${ density.toFixed(
-				1
-			) }%). Increase keyword usage.`;
+			message = `Keyphrase Density: The keyphrase appears only ${keywordCount} times. Increase keyword usage.`;
 		} else {
-			message = `Keyword density is too high (${ density.toFixed(
-				1
-			) }%). Reduce keyword usage to avoid over-optimization.`;
+			message = `Keyphrase Density: The keyphrase appears ${keywordCount} times. This is far more than the recommended maximum of ${Math.round(totalWords * 0.025)} for text of this length. Don't over-optimize!`;
 		}
 		score = 0;
 	}

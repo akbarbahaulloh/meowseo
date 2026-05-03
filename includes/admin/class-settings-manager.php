@@ -137,6 +137,11 @@ class Settings_Manager {
 				'icon'   => 'dashicons-update',
 				'method' => 'render_content_refresh_tab',
 			),
+			'schema-detector' => array(
+				'title'  => __( 'Schema Auto-Detector', 'meowseo' ),
+				'icon'   => 'dashicons-search',
+				'method' => 'render_schema_detector_tab',
+			),
 			'cron'            => array(
 				'title'  => __( 'Cron Manager', 'meowseo' ),
 				'icon'   => 'dashicons-clock',
@@ -1288,6 +1293,25 @@ class Settings_Manager {
 				</td>
 			</tr>
 
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Link Quality Settings', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<th scope="row"><label for="external_link_tld_blacklist"><?php esc_html_e( 'Spam TLD Blacklist', 'meowseo' ); ?></label></th>
+				<td>
+					<?php
+					$tld_blacklist = $this->options->get( 'external_link_tld_blacklist', '.xyz,.top,.click,.gq,.cf,.tk,.ml,.ga' );
+					?>
+					<input type="text" 
+						   name="external_link_tld_blacklist" 
+						   id="external_link_tld_blacklist" 
+						   value="<?php echo esc_attr( $tld_blacklist ); ?>" 
+						   class="regular-text"
+						   placeholder=".xyz,.top,.click">
+					<p class="description">
+						<?php esc_html_e( 'Comma-separated list of TLDs to flag as low quality in the content analysis (e.g., .xyz,.top,.click).', 'meowseo' ); ?>
+					</p>
+				</td>
+			</tr>
+
 			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Archive Robots', 'meowseo' ); ?></h3></th></tr>
 			<tr>
 				<td colspan="2">
@@ -2331,6 +2355,7 @@ class Settings_Manager {
 					'intro_prompt_template'      => sanitize_textarea_field( $style['intro_prompt_template'] ?? '' ),
 					'body_prompt_template'       => sanitize_textarea_field( $style['body_prompt_template'] ?? '' ),
 					'conclusion_prompt_template' => sanitize_textarea_field( $style['conclusion_prompt_template'] ?? '' ),
+					'faq_prompt_template'        => sanitize_textarea_field( $style['faq_prompt_template'] ?? '' ),
 				);
 			}
 		}
@@ -2358,6 +2383,49 @@ class Settings_Manager {
 		// Return errors if any.
 		if ( ! empty( $this->errors ) ) {
 			return new \WP_Error( 'validation_failed', __( 'Settings validation failed.', 'meowseo' ), $this->errors );
+		}
+
+		// Validate Schema Auto-Detector settings.
+		$schema_text_fields = array(
+			'schema_business_name',
+			'schema_business_address',
+			'schema_business_phone',
+		);
+		foreach ( $schema_text_fields as $field ) {
+			if ( isset( $settings[ $field ] ) ) {
+				$validated[ $field ] = sanitize_text_field( $settings[ $field ] );
+			}
+		}
+
+		// Sanitize coordinates as safe float values.
+		if ( isset( $settings['schema_business_lat'] ) ) {
+			$lat = (float) $settings['schema_business_lat'];
+			$validated['schema_business_lat'] = ( $lat >= -90 && $lat <= 90 ) ? (string) $lat : '';
+		}
+		if ( isset( $settings['schema_business_lng'] ) ) {
+			$lng = (float) $settings['schema_business_lng'];
+			$validated['schema_business_lng'] = ( $lng >= -180 && $lng <= 180 ) ? (string) $lng : '';
+		}
+
+		// Sanitize LocalBusiness categories (array of slugs).
+		if ( isset( $settings['schema_local_business_categories'] ) && is_array( $settings['schema_local_business_categories'] ) ) {
+			$validated['schema_local_business_categories'] = array_map( 'sanitize_key', $settings['schema_local_business_categories'] );
+		} elseif ( isset( $settings['schema_local_business_categories'] ) ) {
+			// Unchecked checkboxes send nothing; treat empty as empty array.
+			$validated['schema_local_business_categories'] = array();
+		}
+
+		// Validate LLMs.txt settings.
+		$validated['llms_txt_enabled']   = ! empty( $settings['llms_txt_enabled'] );
+		if ( isset( $settings['llms_txt_intro'] ) ) {
+			$validated['llms_txt_intro'] = sanitize_textarea_field( $settings['llms_txt_intro'] );
+		}
+		if ( isset( $settings['llms_txt_max_posts'] ) ) {
+			$max = absint( $settings['llms_txt_max_posts'] );
+			$validated['llms_txt_max_posts'] = max( 10, min( 1000, $max ) );
+		}
+		if ( isset( $settings['llms_txt_blocked'] ) ) {
+			$validated['llms_txt_blocked'] = sanitize_textarea_field( $settings['llms_txt_blocked'] );
 		}
 
 		return $validated;
@@ -2882,6 +2950,13 @@ class Settings_Manager {
 									<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [OUTLINE], [SIGN_OFF]', 'meowseo' ); ?></p>
 								</td>
 							</tr>
+							<tr class="meowseo-template-advance" style="<?php echo ( $style['mode'] ?? 'advance' ) === 'advance' ? '' : 'display:none;'; ?>">
+								<th scope="row"><label><?php esc_html_e( 'FAQ Prompt Template', 'meowseo' ); ?></label></th>
+								<td>
+									<textarea name="writing_styles[<?php echo esc_attr( $index ); ?>][faq_prompt_template]" rows="4" class="large-text" placeholder="Generate FAQs for [TOPIC]..."><?php echo esc_textarea( $style['faq_prompt_template'] ?? "Based on the following article topic and outline, generate 5 Frequently Asked Questions (FAQ) along with their concise answers.\n\nTopic: [TOPIC]\nOutline: [OUTLINE]\n\nIMPORTANT: Return ONLY a valid JSON array. No markdown, no extra text. Format:\n[{\"question\": \"...\", \"answer\": \"...\"}]" ); ?></textarea>
+									<p class="description"><?php esc_html_e( 'Template for the AI-generated FAQ section. Available placeholders: [TOPIC], [OUTLINE]. The AI must return a valid JSON array.', 'meowseo' ); ?></p>
+								</td>
+							</tr>
 						</table>
 					</div>
 				</div>
@@ -3087,6 +3162,13 @@ class Settings_Manager {
 											<td>
 												<textarea name="writing_styles[${index}][conclusion_prompt_template]" rows="4" class="large-text" placeholder="Write conclusion for [TOPIC]..."><?php echo esc_textarea( "Write a strong conclusion for: [TOPIC].\nBased on this outline: [OUTLINE].\nEnd the article with a fitting sign-off (Examples: [SIGN_OFF])." ); ?></textarea>
 												<p class="description"><?php esc_html_e( 'Available placeholders: [TOPIC], [OUTLINE], [SIGN_OFF]', 'meowseo' ); ?></p>
+											</td>
+										</tr>
+										<tr class="meowseo-template-advance">
+											<th scope="row"><label><?php esc_html_e( 'FAQ Prompt Template', 'meowseo' ); ?></label></th>
+											<td>
+												<textarea name="writing_styles[${index}][faq_prompt_template]" rows="4" class="large-text" placeholder="Generate FAQs for [TOPIC]..."><?php echo esc_textarea( "Based on the following article topic and outline, generate 5 Frequently Asked Questions (FAQ) along with their concise answers.\n\nTopic: [TOPIC]\nOutline: [OUTLINE]\n\nIMPORTANT: Return ONLY a valid JSON array. No markdown, no extra text. Format:\n[{\"question\": \"...\", \"answer\": \"...\"}]" ); ?></textarea>
+												<p class="description"><?php esc_html_e( 'Template for AI FAQ generation. Available placeholders: [TOPIC], [OUTLINE]. Must return valid JSON array.', 'meowseo' ); ?></p>
 											</td>
 										</tr>
 									</table>
@@ -3540,5 +3622,201 @@ class Settings_Manager {
 	public function render_cron_tab(): void {
 		$module = new \MeowSEO\Admin\Cron_Manager( $this->options );
 		$module->render_tab();
+	}
+
+	/**
+	 * Render Schema Auto-Detector settings tab.
+	 *
+	 * Provides UI for configuring:
+	 * - Organization E-E-A-T data (name, address, phone)
+	 * - Geographic coordinates for LocalBusiness schema
+	 * - Category-based LocalBusiness auto-detection trigger
+	 *
+	 * @return void
+	 */
+	public function render_schema_detector_tab(): void {
+		$business_name    = $this->options->get( 'schema_business_name', '' );
+		$business_address = $this->options->get( 'schema_business_address', '' );
+		$business_phone   = $this->options->get( 'schema_business_phone', '' );
+		$business_lat     = $this->options->get( 'schema_business_lat', '' );
+		$business_lng     = $this->options->get( 'schema_business_lng', '' );
+		$lb_categories    = $this->options->get( 'schema_local_business_categories', array() );
+
+		// Get all available categories.
+		$all_categories = get_categories( array( 'hide_empty' => false ) );
+		?>
+		<h2><?php esc_html_e( 'Schema Auto-Detector Settings', 'meowseo' ); ?></h2>
+		<p class="description">
+			<?php esc_html_e( 'Configure automatic schema injection. All detection runs on-the-fly when a page loads — zero impact on your editor save speed.', 'meowseo' ); ?>
+		</p>
+
+		<table class="form-table" role="presentation">
+
+			<!-- E-E-A-T: Organization & Business Identity -->
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Business Identity (E-E-A-T)', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<td colspan="2">
+					<p class="description"><?php esc_html_e( 'This data is injected into the Organization schema node on every page, strengthening your site\'s authority signals for Google.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="schema_business_name"><?php esc_html_e( 'Business / Organization Name', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="text" name="schema_business_name" id="schema_business_name"
+						value="<?php echo esc_attr( $business_name ); ?>" class="regular-text"
+						placeholder="<?php esc_attr_e( 'e.g. PT Puskomedia Indonesia Kreatif', 'meowseo' ); ?>">
+					<p class="description"><?php esc_html_e( 'Full legal or brand name. Used in Organization schema. Leave empty to use WordPress site name.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="schema_business_address"><?php esc_html_e( 'Street Address', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="text" name="schema_business_address" id="schema_business_address"
+						value="<?php echo esc_attr( $business_address ); ?>" class="regular-text"
+						placeholder="<?php esc_attr_e( 'e.g. Jl. Raya Pekalongan No. 1, Lampung', 'meowseo' ); ?>">
+					<p class="description"><?php esc_html_e( 'Used in Organization and LocalBusiness schema nodes.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="schema_business_phone"><?php esc_html_e( 'Phone Number', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="text" name="schema_business_phone" id="schema_business_phone"
+						value="<?php echo esc_attr( $business_phone ); ?>" class="regular-text"
+						placeholder="<?php esc_attr_e( 'e.g. +62-812-0000-0000', 'meowseo' ); ?>">
+					<p class="description"><?php esc_html_e( 'Added as contactPoint in Organization schema and telephone in LocalBusiness schema.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+
+			<!-- Geographic Coordinates -->
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Geographic Coordinates', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<td colspan="2">
+					<p class="description"><?php esc_html_e( 'Added to LocalBusiness schema as GeoCoordinates. Helps Google Maps associate your business location. Find coordinates at maps.google.com.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="schema_business_lat"><?php esc_html_e( 'Latitude', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="text" name="schema_business_lat" id="schema_business_lat"
+						value="<?php echo esc_attr( $business_lat ); ?>" class="small-text"
+						placeholder="-5.3971">
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="schema_business_lng"><?php esc_html_e( 'Longitude', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="text" name="schema_business_lng" id="schema_business_lng"
+						value="<?php echo esc_attr( $business_lng ); ?>" class="small-text"
+						placeholder="105.2668">
+				</td>
+			</tr>
+
+			<!-- LocalBusiness Auto-Detect -->
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'LocalBusiness Auto-Detect', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<td colspan="2">
+					<p class="description">
+						<?php esc_html_e( 'Select categories that should automatically trigger LocalBusiness schema. Any post assigned to these categories will include a full LocalBusiness structured data node using the business identity above.', 'meowseo' ); ?>
+						<br><strong><?php esc_html_e( 'Example:', 'meowseo' ); ?></strong> <?php esc_html_e( 'Select "Katalog Usaha" so that every UMKM directory post gets LocalBusiness schema injected automatically.', 'meowseo' ); ?>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Trigger Categories', 'meowseo' ); ?></th>
+				<td>
+					<?php if ( empty( $all_categories ) ) : ?>
+						<p class="description"><?php esc_html_e( 'No categories found. Create some categories first.', 'meowseo' ); ?></p>
+					<?php else : ?>
+						<div style="max-height: 200px; overflow-y: auto; border: 1px solid #dcdcde; padding: 8px; border-radius: 4px; background: #fff;">
+							<?php foreach ( $all_categories as $cat ) : ?>
+								<label style="display: block; margin-bottom: 4px;">
+									<input type="checkbox"
+										name="schema_local_business_categories[]" 
+										value="<?php echo esc_attr( $cat->slug ); ?>"
+										<?php checked( in_array( $cat->slug, (array) $lb_categories, true ) ); ?>>
+									<?php echo esc_html( $cat->name ); ?>
+									<span style="color:#888;font-size:11px">(<?php echo esc_html( $cat->slug ); ?>)</span>
+								</label>
+							<?php endforeach; ?>
+						</div>
+						<p class="description"><?php esc_html_e( 'Hold Ctrl/Cmd to select multiple. Zero performance impact — detection runs at render time only.', 'meowseo' ); ?></p>
+					<?php endif; ?>
+				</td>
+			</tr>
+
+			<!-- VideoObject Info -->
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'VideoObject (Auto-Detect)', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<td colspan="2">
+					<p class="description">
+						<?php esc_html_e( 'VideoObject schema is automatically detected from YouTube or Vimeo embeds in your post content. No configuration needed.', 'meowseo' ); ?>
+						<?php esc_html_e( 'Thumbnails are sourced from YouTube\'s free CDN (no API key required). Metadata is pulled from WordPress\'s built-in oEmbed cache.', 'meowseo' ); ?>
+					</p>
+					<p><span class="dashicons dashicons-yes-alt" style="color:#46b450"></span> <?php esc_html_e( 'Active — zero API calls, zero performance impact.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+
+			<!-- HowTo Info -->
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'HowTo (Auto-Detect)', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<td colspan="2">
+					<p class="description">
+						<?php esc_html_e( 'HowTo schema is automatically generated when a post\'s Page Type is set to "HowTo" in the Classic Editor Schema tab AND the post contains an ordered list (<ol>) with 3 or more items.', 'meowseo' ); ?>
+					</p>
+					<p><span class="dashicons dashicons-yes-alt" style="color:#46b450"></span> <?php esc_html_e( 'Active — triggered by Page Type selection + content detection.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+
+			<!-- LLMs.txt — AI Crawler Guidance -->
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'LLMs.txt — Panduan untuk AI Crawler', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<td colspan="2">
+					<p class="description">
+						<?php esc_html_e( 'File /llms.txt memandu AI language model (ChatGPT, Gemini, Perplexity) tentang konten terbaik situs Anda. Ini adalah "robots.txt untuk AI" — keunggulan kompetitif untuk era AI Overviews 2026.', 'meowseo' ); ?>
+					</p>
+					<p>
+						<a href="<?php echo esc_url( \MeowSEO\Modules\Meta\LLMS_Txt::get_url() ); ?>" target="_blank" class="button button-secondary">
+							<?php esc_html_e( 'Lihat /llms.txt', 'meowseo' ); ?> ↗
+						</a>
+						<code style="margin-left:10px;font-size:12px;color:#50575e;"><?php echo esc_html( \MeowSEO\Modules\Meta\LLMS_Txt::get_url() ); ?></code>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="llms_txt_enabled"><?php esc_html_e( 'Aktifkan /llms.txt', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="checkbox" name="llms_txt_enabled" id="llms_txt_enabled" value="1"
+						<?php checked( $this->options->get( 'llms_txt_enabled', true ) ); ?>>
+					<p class="description"><?php esc_html_e( 'Aktifkan agar URL /llms.txt dapat diakses oleh AI crawlers.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="llms_txt_intro"><?php esc_html_e( 'Deskripsi Kustom (Opsional)', 'meowseo' ); ?></label></th>
+				<td>
+					<textarea name="llms_txt_intro" id="llms_txt_intro" rows="3" class="large-text"
+						placeholder="<?php esc_attr_e( 'Deskripsikan situs Anda untuk AI. Contoh: Platform informasi desa digital Indonesia yang menyajikan berita UMKM, potensi daerah, dan program pemerintah.', 'meowseo' ); ?>"><?php echo esc_textarea( $this->options->get( 'llms_txt_intro', '' ) ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'Jika kosong, akan menggunakan tagline WordPress. Markdown diperbolehkan.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="llms_txt_max_posts"><?php esc_html_e( 'Maksimal Jumlah Post', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="number" name="llms_txt_max_posts" id="llms_txt_max_posts"
+						value="<?php echo esc_attr( $this->options->get( 'llms_txt_max_posts', 200 ) ); ?>"
+						min="10" max="1000" class="small-text">
+					<p class="description"><?php esc_html_e( 'Jumlah post terbaru yang dicantumkan. Disarankan 200 untuk performa optimal.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="llms_txt_blocked"><?php esc_html_e( 'Konten yang Dikecualikan', 'meowseo' ); ?></label></th>
+				<td>
+					<textarea name="llms_txt_blocked" id="llms_txt_blocked" rows="4" class="large-text"
+						placeholder="<?php esc_attr_e( '/halaman-rahasia/\n/dokumen-internal/\n/area-member/', 'meowseo' ); ?>"><?php echo esc_textarea( $this->options->get( 'llms_txt_blocked', '' ) ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'Satu URL/path per baris. Konten ini akan dicantumkan di seksi "Tidak Perlu Diproses" sebagai panduan untuk AI.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+
+		</table>
+		<?php
 	}
 }

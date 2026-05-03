@@ -55,7 +55,7 @@ export function analyzeInternalLinks( content ) {
 
 	if ( totalLinks === 0 ) {
 		type = 'problem';
-		message = 'Add internal links to connect your content';
+		message = 'Internal Links: There are no internal links on this page; create them sparingly!';
 		score = 0;
 	} else if ( descriptiveLinks > 3 ) {
 		type = 'good';
