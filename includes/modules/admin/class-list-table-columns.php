@@ -80,6 +80,9 @@ class List_Table_Columns {
 		// Handle sorting query modification.
 		add_action( 'pre_get_posts', array( $this, 'handle_column_sorting' ) );
 
+		// Update word count on save.
+		add_action( 'save_post', array( $this, 'save_word_count' ), 10, 2 );
+
 		// Enqueue admin styles.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_styles' ) );
 	}
@@ -100,12 +103,13 @@ class List_Table_Columns {
 
 			// Insert SEO columns after Title.
 			if ( 'title' === $key ) {
-				$new_columns['seo_score']         = '<span class="dashicons dashicons-admin-site-alt3" title="' . esc_attr__( 'SEO Score', 'meowseo' ) . '"></span>';
-				$new_columns['readability_score'] = '<span class="dashicons dashicons-media-text" title="' . esc_attr__( 'Readability Score', 'meowseo' ) . '"></span>';
-				$new_columns['outbound_links']    = '<span class="dashicons dashicons-external" title="' . esc_attr__( 'Outbound Links', 'meowseo' ) . '"></span>';
-				$new_columns['internal_links']    = '<span class="dashicons dashicons-admin-links" title="' . esc_attr__( 'Internal Links', 'meowseo' ) . '"></span>';
-				$new_columns['inbound_links']     = '<span class="dashicons dashicons-share-alt" title="' . esc_attr__( 'Inbound Links', 'meowseo' ) . '"></span>';
-				$new_columns['broken_links']      = '<span class="dashicons dashicons-warning" title="' . esc_attr__( 'Broken Links', 'meowseo' ) . '" style="color: #dc3232;"></span>';
+				$new_columns['seo_score']         = '<span class="dashicons dashicons-admin-site-alt3"></span><span class="meowseo-column-label">' . esc_html__( 'SEO Score', 'meowseo' ) . '</span>';
+				$new_columns['readability_score'] = '<span class="dashicons dashicons-media-text"></span><span class="meowseo-column-label">' . esc_html__( 'Readability Score', 'meowseo' ) . '</span>';
+				$new_columns['word_count']        = '<span class="dashicons dashicons-editor-paragraph"></span><span class="meowseo-column-label">' . esc_html__( 'Word Count', 'meowseo' ) . '</span>';
+				$new_columns['outbound_links']    = '<span class="dashicons dashicons-external"></span><span class="meowseo-column-label">' . esc_html__( 'Outbound Links', 'meowseo' ) . '</span>';
+				$new_columns['internal_links']    = '<span class="dashicons dashicons-admin-links"></span><span class="meowseo-column-label">' . esc_html__( 'Internal Links', 'meowseo' ) . '</span>';
+				$new_columns['inbound_links']     = '<span class="dashicons dashicons-share-alt"></span><span class="meowseo-column-label">' . esc_html__( 'Inbound Links', 'meowseo' ) . '</span>';
+				$new_columns['broken_links']      = '<span class="dashicons dashicons-warning" style="color: #dc3232;"></span><span class="meowseo-column-label">' . esc_html__( 'Broken Links', 'meowseo' ) . '</span>';
 			}
 		}
 
@@ -142,7 +146,66 @@ class List_Table_Columns {
 			case 'broken_links':
 				$this->render_broken_links_indicator( $post_id );
 				break;
+			case 'word_count':
+				$this->render_word_count( $post_id );
+				break;
 		}
+	}
+
+	/**
+	 * Render word count column.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	private function render_word_count( int $post_id ): void {
+		$count = get_post_meta( $post_id, '_meowseo_word_count', true );
+
+		if ( '' === $count ) {
+			// Calculate on the fly if not set.
+			$post = get_post( $post_id );
+			$count = $this->calculate_word_count( $post->post_content );
+			update_post_meta( $post_id, '_meowseo_word_count', $count );
+		}
+
+		echo esc_html( $count );
+	}
+
+	/**
+	 * Save word count meta on post save.
+	 *
+	 * @param int      $post_id Post ID.
+	 * @param \WP_Post $post    Post object.
+	 * @return void
+	 */
+	public function save_word_count( int $post_id, \WP_Post $post ): void {
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+			return;
+		}
+
+		if ( in_array( $post->post_type, self::EXCLUDED_POST_TYPES, true ) ) {
+			return;
+		}
+
+		$count = $this->calculate_word_count( $post->post_content );
+		update_post_meta( $post_id, '_meowseo_word_count', $count );
+	}
+
+	/**
+	 * Calculate word count from content.
+	 *
+	 * @param string $content HTML content.
+	 * @return int Word count.
+	 */
+	private function calculate_word_count( string $content ): int {
+		$text = wp_strip_all_tags( strip_shortcodes( $content ) );
+		$text = trim( $text );
+
+		if ( empty( $text ) ) {
+			return 0;
+		}
+
+		return count( preg_split( '/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY ) );
 	}
 
 	/**
@@ -222,6 +285,7 @@ class List_Table_Columns {
 	public function register_sortable_column( array $columns ): array {
 		$columns['seo_score']         = 'seo_score';
 		$columns['readability_score'] = 'readability_score';
+		$columns['word_count']        = 'word_count';
 		$columns['outbound_links']    = 'outbound_links';
 		$columns['internal_links']    = 'internal_links';
 		return $columns;
@@ -248,6 +312,10 @@ class List_Table_Columns {
 				break;
 			case 'readability_score':
 				$query->set( 'meta_key', '_meowseo_readability_score' );
+				$query->set( 'orderby', 'meta_value_num' );
+				break;
+			case 'word_count':
+				$query->set( 'meta_key', '_meowseo_word_count' );
 				$query->set( 'orderby', 'meta_value_num' );
 				break;
 			case 'outbound_links':

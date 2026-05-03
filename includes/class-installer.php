@@ -134,6 +134,15 @@ class Installer {
 			return;
 		}
 
+		$saved_version = get_option( 'meowseo_version', '0.0.0' );
+
+		// If version mismatch, run dbDelta and update version (Requirement: Data integrity).
+		if ( version_compare( $saved_version, MEOWSEO_VERSION, '<' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+			dbDelta( self::get_schema() );
+			update_option( 'meowseo_version', MEOWSEO_VERSION );
+		}
+
 		// Check if migration is needed.
 		if ( Migration::is_migration_needed() ) {
 			Migration::run();

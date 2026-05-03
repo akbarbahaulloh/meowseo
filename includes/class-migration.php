@@ -23,7 +23,7 @@ class Migration {
 	/**
 	 * Current migration version
 	 */
-	private const MIGRATION_VERSION = '2.1.0';
+	private const MIGRATION_VERSION = '2.1.1';
 
 	/**
 	 * Migration version option key
@@ -45,6 +45,10 @@ class Migration {
 
 		if ( version_compare( $current_version, '2.1.0', '<' ) ) {
 			self::migrate_to_2_1_0();
+		}
+
+		if ( version_compare( $current_version, '2.1.1', '<' ) ) {
+			self::migrate_to_2_1_1();
 		}
 
 		// Update migration version.
@@ -254,5 +258,27 @@ class Migration {
 	public static function is_migration_needed(): bool {
 		$current_version = self::get_version();
 		return version_compare( $current_version, self::MIGRATION_VERSION, '<' );
+	}
+
+	/**
+	 * Migrate to version 2.1.1 (Ensure is_broken column)
+	 *
+	 * Explicitly adds the is_broken column to meowseo_link_checks if it's missing.
+	 * This is a safety measure in case dbDelta failed.
+	 *
+	 * @return void
+	 */
+	private static function migrate_to_2_1_1(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'meowseo_link_checks';
+		
+		// Check if column exists.
+		$column = $wpdb->get_results( $wpdb->prepare( "SHOW COLUMNS FROM {$table} LIKE %s", 'is_broken' ) );
+		
+		if ( empty( $column ) ) {
+			$wpdb->query( "ALTER TABLE {$table} ADD is_broken TINYINT(1) NOT NULL DEFAULT 0 AFTER http_status" );
+			$wpdb->query( "ALTER TABLE {$table} ADD INDEX idx_is_broken (is_broken)" );
+			error_log( 'MeowSEO Migration 2.1.1: Added missing is_broken column to link_checks table' );
+		}
 	}
 }

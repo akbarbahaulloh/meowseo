@@ -76,17 +76,106 @@
 
 .column-outbound_links,
 .column-internal_links,
-.column-inbound_links {
+.column-inbound_links,
+.column-word_count {
 	width: 50px;
 	text-align: center;
 }
 
-/* Header Dashicons */
+/* Header Dashicons and Tooltips */
+.manage-column {
+	position: relative;
+}
+
+/* Ensure sortable headers align icon and arrows horizontally */
+.column-seo_score a,
+.column-readability_score a,
+.column-word_count a,
+.column-outbound_links a,
+.column-internal_links a {
+	display: flex !important;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+}
+
 .manage-column .dashicons {
 	vertical-align: middle;
 	font-size: 18px;
 	width: 18px;
 	height: 18px;
+	cursor: help;
+	flex-shrink: 0;
+}
+
+/* Ensure sorting indicator doesn't force a line break */
+.manage-column .sorting-indicator {
+	position: static !important;
+	margin: 0 !important;
+	visibility: visible !important;
+}
+
+/* Tooltip style for labels in table header */
+.manage-column .meowseo-column-label {
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translate(-50%, -10px);
+	background: #2c3338;
+	color: #fff;
+	padding: 4px 10px;
+	border-radius: 4px;
+	font-size: 12px;
+	line-height: 1.4;
+	white-space: nowrap;
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.2s ease;
+	pointer-events: none;
+	z-index: 9999;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Tooltip arrow */
+.manage-column .meowseo-column-label::after {
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: #2c3338 transparent transparent transparent;
+}
+
+/* Show tooltip on hover */
+.manage-column:hover .meowseo-column-label {
+	opacity: 1;
+	visibility: visible;
+	transform: translate(-50%, -5px);
+}
+
+/* Reset styles for Screen Options */
+#screen-options-wrap .dashicons {
+	display: none !important;
+}
+
+#screen-options-wrap .meowseo-column-label {
+	position: static;
+	opacity: 1;
+	visibility: visible;
+	transform: none;
+	background: none;
+	color: inherit;
+	padding: 0;
+	font-size: inherit;
+	box-shadow: none;
+	pointer-events: auto;
+	display: inline;
+}
+
+#screen-options-wrap .meowseo-column-label::after {
+	display: none;
 }
 
 /* Responsive adjustments */
