@@ -113,6 +113,15 @@ class AI_Generator {
 	}
 
 	/**
+	 * Get the Options instance.
+	 *
+	 * @return Options
+	 */
+	public function get_options(): Options {
+		return $this->options;
+	}
+
+	/**
 	 * Generate all SEO metadata for a post.
 	 *
 	 * Validates the post exists and has sufficient content, then generates
@@ -265,6 +274,217 @@ class AI_Generator {
 		);
 
 		return $result;
+	}
+
+	/**
+	 * Generate structured schema data for a post using AI.
+	 *
+	 * Reads post content and generates a structured JSON object that maps
+	 * to the specified schema type's field definitions.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int    $post_id     Post ID.
+	 * @param string $schema_type Schema type (e.g. 'FAQPage', 'HowTo', 'Article').
+	 * @param array  $options     Optional. Generation options.
+	 * @return array|WP_Error Generated schema data on success, WP_Error on failure.
+	 */
+	public function generate_schema( int $post_id, string $schema_type, array $options = [] ) {
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return new WP_Error( 'invalid_post', __( 'Post not found.', 'meowseo' ) );
+		}
+
+		$word_count = $this->count_words( $post->post_content );
+		if ( $word_count < self::MIN_WORD_COUNT ) {
+			return new WP_Error(
+				'content_too_short',
+				sprintf(
+					/* translators: %d: minimum word count */
+					__( 'Content must be at least %d words for schema generation.', 'meowseo' ),
+					self::MIN_WORD_COUNT
+				)
+			);
+		}
+
+		$prompt   = $this->build_schema_prompt( $post, $schema_type );
+		$provider = $options['provider'] ?? '';
+
+		$text_result = $this->provider_manager->generate_text( $prompt, [ 'provider' => $provider ] );
+
+		if ( is_wp_error( $text_result ) ) {
+			return $text_result;
+		}
+
+		// Strip markdown wrappers and parse JSON.
+		$raw     = $text_result['content'];
+		$raw     = preg_replace( '/^```json\s*/m', '', $raw );
+		$raw     = preg_replace( '/^```\s*/m', '', $raw );
+		$raw     = trim( $raw );
+		$parsed  = json_decode( $raw, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			Logger::error( 'Schema AI JSON parse error', [ 'module' => 'ai', 'error' => json_last_error_msg() ] );
+			return new WP_Error( 'json_parse_error', __( 'AI returned an invalid schema. Please try again.', 'meowseo' ) );
+		}
+
+		Logger::info( 'Schema generated successfully', [ 'module' => 'ai', 'post_id' => $post_id, 'schema_type' => $schema_type ] );
+
+		return [
+			'schema_data' => $parsed,
+			'provider'    => $text_result['provider'],
+		];
+	}
+
+	/**
+	 * Build a schema-type-specific AI prompt.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param \WP_Post $post        Post object.
+	 * @param string   $schema_type Schema type identifier.
+	 * @return string Prompt string.
+	 */
+	public function build_schema_prompt( $post, string $schema_type ): string {
+		$title   = $post->post_title;
+		$content = wp_strip_all_tags( $post->post_content );
+		$content = wp_trim_words( $content, self::MAX_PROMPT_WORDS );
+		$url     = get_permalink( $post->ID );
+		$author  = get_the_author_meta( 'display_name', $post->post_author );
+		$date    = get_the_date( 'c', $post );
+		$site    = get_bloginfo( 'name' );
+		$language = $this->options->get( 'ai_output_language', 'auto' );
+
+		$prompt  = "You are a structured data expert. Read the article below and generate valid schema.org JSON for the schema type: {$schema_type}.\n\n";
+		$prompt .= "Article Title: {$title}\n";
+		$prompt .= "Article URL: {$url}\n";
+		$prompt .= "Author: {$author}\n";
+		$prompt .= "Site Name: {$site}\n";
+		$prompt .= "Date Published: {$date}\n\n";
+		$prompt .= "Article Content:\n{$content}\n\n";
+
+		if ( 'auto' !== $language ) {
+			$lang_names = [ 'id' => 'Indonesian', 'en' => 'English' ];
+			$lang_name  = $lang_names[ $language ] ?? $language;
+			$prompt .= "Language: Generate all text fields in {$lang_name}.\n\n";
+		}
+
+		switch ( $schema_type ) {
+			case 'FAQPage':
+				$prompt .= "Extract or generate 5-8 frequently asked questions with detailed answers based on the article.\n";
+				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
+				$prompt .= '{"mainEntity": [{"@type": "Question", "name": "Question text?", "acceptedAnswer": {"@type": "Answer", "text": "Answer text."}}]}';
+				break;
+
+			case 'HowTo':
+				$prompt .= "Extract the step-by-step instructions from the article.\n";
+				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
+				$prompt .= '{"name": "HowTo title", "description": "Brief description", "totalTime": "PT30M", "step": [{"@type": "HowToStep", "name": "Step name", "text": "Step description"}]}';
+				break;
+
+			case 'Recipe':
+				$prompt .= "Extract the recipe details including ingredients and steps from the article.\n";
+				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
+				$prompt .= '{"name": "Recipe name", "description": "Description", "prepTime": "PT15M", "cookTime": "PT30M", "recipeYield": "4 servings", "recipeIngredient": ["ingredient 1", "ingredient 2"], "recipeInstructions": [{"@type": "HowToStep", "name": "Step name", "text": "Step text"}], "recipeCategory": "Main course", "recipeCuisine": "Indonesian"}';
+				break;
+
+			case 'Article':
+				$prompt .= "Generate article schema data based on the article.\n";
+				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
+				$prompt .= '{"headline": "Article headline (max 110 chars)", "description": "Short description", "keywords": "keyword1, keyword2", "articleSection": "Category/section name", "wordCount": 1000}';
+				break;
+
+			case 'Event':
+				$prompt .= "Extract event details from the article.\n";
+				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
+				$prompt .= '{"name": "Event name", "description": "Event description", "startDate": "2025-01-01T09:00", "endDate": "2025-01-01T17:00", "location": {"@type": "Place", "name": "Venue name", "address": "Full address"}, "organizer": {"@type": "Organization", "name": "Organizer name"}}';
+				break;
+
+			case 'Product':
+				$prompt .= "Extract product details from the article.\n";
+				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
+				$prompt .= '{"name": "Product name", "description": "Product description", "sku": "SKU123", "brand": {"@type": "Brand", "name": "Brand name"}, "offers": {"@type": "Offer", "price": "99.99", "priceCurrency": "IDR", "availability": "https://schema.org/InStock"}}';
+				break;
+
+			case 'Review':
+				$prompt .= "Extract review details from the article.\n";
+				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
+				$prompt .= '{"name": "Review title", "reviewBody": "Full review text", "reviewRating": {"@type": "Rating", "ratingValue": "4.5", "bestRating": "5", "worstRating": "1"}, "itemReviewed": {"@type": "Thing", "name": "Item being reviewed"}, "author": {"@type": "Person", "name": "Reviewer name"}}';
+				break;
+
+			case 'LocalBusiness':
+				$prompt .= "Extract local business information from the article.\n";
+				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
+				$prompt .= '{"name": "Business name", "description": "Business description", "telephone": "+62-xxx-xxx-xxxx", "address": {"@type": "PostalAddress", "streetAddress": "Street", "addressLocality": "City", "addressRegion": "Province", "addressCountry": "ID"}, "openingHoursSpecification": [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday"], "opens": "09:00", "closes": "17:00"}]}';
+				break;
+
+			case 'Course':
+				$prompt .= "Extract course details from the article.\n";
+				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
+				$prompt .= '{"name": "Course name", "description": "Course description", "provider": {"@type": "Organization", "name": "Provider name"}, "hasCourseInstance": [{"@type": "CourseInstance", "courseMode": "online", "instructor": {"@type": "Person", "name": "Instructor name"}}]}';
+				break;
+
+			default:
+				// Generic schema: extract main info.
+				$prompt .= "Extract the main information from the article for a {$schema_type} schema.\n";
+				$prompt .= "Return ONLY a valid JSON object (no markdown, no explanation) with the most relevant fields for {$schema_type} schema type.";
+				break;
+		}
+
+		$prompt .= "\n\nIMPORTANT: Return ONLY valid JSON. No explanations, no markdown code blocks, no extra text.";
+
+		return $prompt;
+	}
+
+	/**
+	 * Generate a professional introduction for the llms.txt file using AI.
+	 *
+	 * Analyzes site information (name, tagline, categories, latest posts) to
+	 * write a high-density summary for LLM crawlers.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string|WP_Error Generated introduction on success, WP_Error on failure.
+	 */
+	public function generate_llms_txt_intro() {
+		$site_name    = get_bloginfo( 'name' );
+		$tagline      = get_bloginfo( 'description' );
+		$categories   = get_categories( array( 'hide_empty' => true, 'number' => 10 ) );
+		$recent_posts = get_posts( array( 'posts_per_page' => 10, 'post_status' => 'publish' ) );
+		$language     = $this->options->get( 'ai_output_language', 'auto' );
+
+		$cat_names = array_map( function( $cat ) { return $cat->name; }, $categories );
+		$post_titles = array_map( function( $post ) { return $post->post_title; }, $recent_posts );
+
+		$prompt  = "You are an SEO and AI crawler expert. Write a professional, high-density site summary for an 'llms.txt' file.\n";
+		$prompt .= "This summary helps LLMs (ChatGPT, Gemini, etc.) understand the core value and content of this website.\n\n";
+		$prompt .= "Site Name: {$site_name}\n";
+		if ( ! empty( $tagline ) ) {
+			$prompt .= "Site Tagline: {$tagline}\n";
+		}
+		$prompt .= "Primary Topics: " . implode( ', ', $cat_names ) . "\n";
+		$prompt .= "Recent Articles: " . implode( '; ', $post_titles ) . "\n\n";
+
+		if ( 'auto' !== $language ) {
+			$lang_names = [ 'id' => 'Indonesian', 'en' => 'English' ];
+			$lang_name  = $lang_names[ $language ] ?? $language;
+			$prompt .= "Language: Write the summary in {$lang_name}.\n\n";
+		}
+
+		$prompt .= "Instructions:\n";
+		$prompt .= "1. Be concise but informative (2-3 paragraphs).\n";
+		$prompt .= "2. Use professional tone.\n";
+		$prompt .= "3. Focus on what kind of information an LLM would find most useful.\n";
+		$prompt .= "4. Use Markdown if it helps structure the summary.\n";
+		$prompt .= "5. Return ONLY the summary text, no extra explanations or markdown code blocks.";
+
+		$text_result = $this->provider_manager->generate_text( $prompt );
+
+		if ( is_wp_error( $text_result ) ) {
+			return $text_result;
+		}
+
+		return trim( $text_result['content'] );
 	}
 
 	/**

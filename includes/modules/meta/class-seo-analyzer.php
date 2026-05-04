@@ -228,6 +228,30 @@ class SEO_Analyzer {
 
 		// Check 26: List Table Detection
 		$checks[] = self::analyze_list_table( $content );
+		
+		// Check 27: Featured image width (Optimal for large previews).
+		$img_width = $data['featured_image_width'] ?? 0;
+		$checks[] = array(
+			'id'    => 'featured_image_size',
+			'label' => __( 'Featured image width is optimal for large previews', 'meowseo' ),
+			'pass'  => $img_width >= 1200,
+		);
+
+		// Check 28: Author Biography.
+		$has_author_bio = $data['has_author_bio'] ?? false;
+		$checks[] = array(
+			'id'    => 'author_bio',
+			'label' => __( 'Author has a biography description', 'meowseo' ),
+			'pass'  => $has_author_bio,
+		);
+
+		// Check 29: Large Image Preview Meta.
+		$robots = $data['robots'] ?? '';
+		$checks[] = array(
+			'id'    => 'max_image_preview',
+			'label' => __( 'Large image preview meta tag is active', 'meowseo' ),
+			'pass'  => strpos( $robots, 'max-image-preview:large' ) !== false,
+		);
 
 		// Secondary Keywords Checks
 		$secondary_keywords = $data['secondary_keywords'] ?? array();

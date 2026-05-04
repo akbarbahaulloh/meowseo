@@ -392,7 +392,7 @@ class Meta implements Module {
 		$robots = get_post_meta( $post_id, self::META_PREFIX . 'robots', true );
 
 		if ( empty( $robots ) ) {
-			$robots = 'index,follow';
+			$robots = 'index,follow,max-image-preview:large';
 		}
 
 		// Cache the result.
@@ -661,17 +661,34 @@ class Meta implements Module {
 		$description = $this->get_description( $post_id );
 		$slug        = $post->post_name;
 
+		// Get featured image data.
+		$featured_image_id = get_post_thumbnail_id( $post_id );
+		$image_width       = 0;
+		if ( $featured_image_id ) {
+			$img_meta = wp_get_attachment_metadata( $featured_image_id );
+			if ( $img_meta && isset( $img_meta['width'] ) ) {
+				$image_width = (int) $img_meta['width'];
+			}
+		}
+
+		// Get author data.
+		$author_id = $post->post_author;
+		$author_bio = get_the_author_meta( 'description', $author_id );
+
 		// Prepare data for analyzer.
 		$data = array(
-			'title'         => $title,
-			'description'   => $description,
-			'content'       => $content,
-			'slug'          => $slug,
-			'focus_keyword' => $focus_keyword,
-			'secondary_keywords' => $secondary_keywords,
-			'lsi_keywords'  => $lsi_keywords,
-			'direct_answer' => $direct_answer,
-			'post_id'       => $post_id,
+			'title'                => $title,
+			'description'          => $description,
+			'content'              => $content,
+			'slug'                 => $slug,
+			'focus_keyword'        => $focus_keyword,
+			'secondary_keywords'   => $secondary_keywords,
+			'lsi_keywords'         => $lsi_keywords,
+			'direct_answer'        => $direct_answer,
+			'post_id'              => $post_id,
+			'featured_image_width' => $image_width,
+			'has_author_bio'       => ! empty( $author_bio ),
+			'robots'               => $this->get_robots( $post_id ),
 		);
 
 		// Run analysis.

@@ -414,6 +414,144 @@ class AI_REST {
 				),
 			)
 		);
+
+		// POST /meowseo/v1/ai/schema - AI-powered schema auto-fill.
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/schema',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'generate_schema_data' ),
+				'permission_callback' => array( $this, 'check_permission_and_nonce' ),
+				'args'                => array(
+					'post_id'     => array(
+						'type'              => 'integer',
+						'required'          => true,
+						'sanitize_callback' => 'absint',
+					),
+					'schema_type' => array(
+						'type'              => 'string',
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
+			)
+		);
+
+		// POST /meowseo/v1/ai/llms-intro - AI-powered llms.txt intro generation.
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/llms-intro',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'generate_llms_intro' ),
+				'permission_callback' => array( $this, 'check_manage_options_capability' ),
+			)
+		);
+
+		// GET /meowseo/v1/ai/llms-preview - Live preview of generated llms.txt.
+		register_rest_route(
+			self::NAMESPACE,
+			'/ai/llms-preview',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_llms_preview' ),
+				'permission_callback' => array( $this, 'check_manage_options_capability' ),
+			)
+		);
+	}
+
+	/**
+	 * Get a live preview of the llms.txt content.
+	 *
+	 * GET /meowseo/v1/ai/llms-preview
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response Response.
+	 */
+	public function get_llms_preview( WP_REST_Request $request ) {
+		$llms_txt = new \MeowSEO\Modules\Meta\LLMS_Txt( $this->generator->get_options() );
+		$content  = $llms_txt->generate();
+
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'content' => $content,
+			),
+			200
+		);
+	}
+
+	/**
+	 * Generate AI-powered introduction for llms.txt.
+	 *
+	 * POST /meowseo/v1/ai/llms-intro
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error Response.
+	 */
+	public function generate_llms_intro( WP_REST_Request $request ) {
+		$result = $this->generator->generate_llms_txt_intro();
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error(
+				$result->get_error_code(),
+				$result->get_error_message(),
+				array( 'status' => 500 )
+			);
+		}
+
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'intro'   => $result,
+			),
+			200
+		);
+	}
+
+	/**
+	 * Generate AI-powered schema data for a post.
+	 *
+	 * POST /meowseo/v1/ai/schema
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error Response.
+	 */
+	public function generate_schema_data( WP_REST_Request $request ) {
+		$post_id     = $request->get_param( 'post_id' );
+		$schema_type = $request->get_param( 'schema_type' );
+
+		if ( ! $post_id || $post_id <= 0 ) {
+			return new WP_Error( 'invalid_post_id', __( 'Invalid post ID.', 'meowseo' ), array( 'status' => 400 ) );
+		}
+
+		if ( empty( $schema_type ) ) {
+			return new WP_Error( 'missing_schema_type', __( 'Schema type is required.', 'meowseo' ), array( 'status' => 400 ) );
+		}
+
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return new WP_Error( 'post_not_found', __( 'Post not found.', 'meowseo' ), array( 'status' => 404 ) );
+		}
+
+		$result = $this->generator->generate_schema( $post_id, $schema_type );
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error(
+				$result->get_error_code(),
+				$result->get_error_message(),
+				array( 'status' => 500 )
+			);
+		}
+
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => $result,
+			),
+			200
+		);
 	}
 
 	/**

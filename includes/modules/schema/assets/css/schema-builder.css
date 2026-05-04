@@ -197,19 +197,51 @@
 	font-style: italic;
 }
 
-.meowseo-field__input {
+.meowseo-field__input,
+.meowseo-field__select {
 	width: 100%;
-	padding: 8px 12px;
-	border: 1px solid #ddd;
-	border-radius: 3px;
-	font-size: 14px;
-	transition: border-color 0.2s ease;
 }
 
-.meowseo-field__input:focus {
-	border-color: #0073aa;
-	outline: none;
-	box-shadow: 0 0 0 1px #0073aa;
+/* Specific styling for the actual input/textarea/select elements within Gutenberg components */
+.meowseo-field__input input,
+.meowseo-field__input textarea,
+.meowseo-field__select select,
+.components-base-control__field input,
+.components-base-control__field select,
+.components-base-control__field textarea {
+	width: 100% !important;
+	padding: 8px 12px !important;
+	border: 1px solid #ddd !important;
+	border-radius: 3px !important;
+	font-size: 14px !important;
+	height: auto !important;
+	box-sizing: border-box !important;
+}
+
+.meowseo-field__input input:focus,
+.meowseo-field__input textarea:focus,
+.meowseo-field__select select:focus {
+	border-color: #0073aa !important;
+	box-shadow: 0 0 0 1px #0073aa !important;
+}
+
+/* Specific fix for Latitude/Longitude being too small */
+.meowseo-field--latitude input,
+.meowseo-field--longitude input {
+	min-width: 200px;
+}
+
+/* Side-by-side layout for Geo coordinates if there's enough space */
+.meowseo-field--geo .meowseo-group > div {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+}
+
+@media (max-width: 600px) {
+	.meowseo-field--geo .meowseo-group > div {
+		grid-template-columns: 1fr;
+	}
 }
 
 .meowseo-field__textarea {
@@ -219,10 +251,6 @@
 
 .meowseo-field__select {
 	width: 100%;
-	padding: 8px 12px;
-	border: 1px solid #ddd;
-	border-radius: 3px;
-	font-size: 14px;
 	background: #fff;
 	cursor: pointer;
 }

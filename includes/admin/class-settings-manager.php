@@ -3664,7 +3664,7 @@ class Settings_Manager {
 				<td>
 					<input type="text" name="schema_business_name" id="schema_business_name"
 						value="<?php echo esc_attr( $business_name ); ?>" class="regular-text"
-						placeholder="<?php esc_attr_e( 'e.g. PT Puskomedia Indonesia Kreatif', 'meowseo' ); ?>">
+						placeholder="<?php esc_attr_e( 'e.g. PT Meowseo Indonesia', 'meowseo' ); ?>">
 					<p class="description"><?php esc_html_e( 'Full legal or brand name. Used in Organization schema. Leave empty to use WordPress site name.', 'meowseo' ); ?></p>
 				</td>
 			</tr>
@@ -3673,7 +3673,7 @@ class Settings_Manager {
 				<td>
 					<input type="text" name="schema_business_address" id="schema_business_address"
 						value="<?php echo esc_attr( $business_address ); ?>" class="regular-text"
-						placeholder="<?php esc_attr_e( 'e.g. Jl. Raya Pekalongan No. 1, Lampung', 'meowseo' ); ?>">
+						placeholder="<?php esc_attr_e( 'e.g. Jl. Maju Makur, Banyumas, 12345', 'meowseo' ); ?>">
 					<p class="description"><?php esc_html_e( 'Used in Organization and LocalBusiness schema nodes.', 'meowseo' ); ?></p>
 				</td>
 			</tr>
@@ -3698,7 +3698,7 @@ class Settings_Manager {
 				<th scope="row"><label for="schema_business_lat"><?php esc_html_e( 'Latitude', 'meowseo' ); ?></label></th>
 				<td>
 					<input type="text" name="schema_business_lat" id="schema_business_lat"
-						value="<?php echo esc_attr( $business_lat ); ?>" class="small-text"
+						value="<?php echo esc_attr( $business_lat ); ?>" class="regular-text"
 						placeholder="-5.3971">
 				</td>
 			</tr>
@@ -3706,7 +3706,7 @@ class Settings_Manager {
 				<th scope="row"><label for="schema_business_lng"><?php esc_html_e( 'Longitude', 'meowseo' ); ?></label></th>
 				<td>
 					<input type="text" name="schema_business_lng" id="schema_business_lng"
-						value="<?php echo esc_attr( $business_lng ); ?>" class="small-text"
+						value="<?php echo esc_attr( $business_lng ); ?>" class="regular-text"
 						placeholder="105.2668">
 				</td>
 			</tr>
@@ -3793,9 +3793,57 @@ class Settings_Manager {
 			<tr>
 				<th scope="row"><label for="llms_txt_intro"><?php esc_html_e( 'Deskripsi Kustom (Opsional)', 'meowseo' ); ?></label></th>
 				<td>
-					<textarea name="llms_txt_intro" id="llms_txt_intro" rows="3" class="large-text"
-						placeholder="<?php esc_attr_e( 'Deskripsikan situs Anda untuk AI. Contoh: Platform informasi desa digital Indonesia yang menyajikan berita UMKM, potensi daerah, dan program pemerintah.', 'meowseo' ); ?>"><?php echo esc_textarea( $this->options->get( 'llms_txt_intro', '' ) ); ?></textarea>
+					<div style="display:flex; flex-direction:column; gap:10px;">
+						<textarea name="llms_txt_intro" id="llms_txt_intro" rows="5" class="large-text"
+							placeholder="<?php esc_attr_e( 'Deskripsikan situs Anda untuk AI. Contoh: Platform informasi desa digital Indonesia yang menyajikan berita UMKM, potensi daerah, dan program pemerintah.', 'meowseo' ); ?>"><?php echo esc_textarea( $this->options->get( 'llms_txt_intro', '' ) ); ?></textarea>
+						<div>
+							<button type="button" id="meowseo-ai-gen-llms-intro" class="button button-secondary">
+								<span class="dashicons dashicons-admin-appearance" style="font-size:16px; width:16px; height:16px; margin-top:4px;"></span>
+								<?php esc_html_e( '✨ Generate dengan AI', 'meowseo' ); ?>
+							</button>
+							<span id="meowseo-ai-llms-status" style="margin-left:10px; font-style:italic; color:#666; display:none;"></span>
+						</div>
+					</div>
 					<p class="description"><?php esc_html_e( 'Jika kosong, akan menggunakan tagline WordPress. Markdown diperbolehkan.', 'meowseo' ); ?></p>
+					
+					<script>
+					jQuery(document).ready(function($) {
+						$('#meowseo-ai-gen-llms-intro').on('click', function() {
+							var btn = $(this);
+							var status = $('#meowseo-ai-llms-status');
+							var textarea = $('#llms_txt_intro');
+							
+							btn.prop('disabled', true);
+							status.text('<?php esc_html_e( 'Menghasilkan deskripsi...', 'meowseo' ); ?>').show();
+							
+							$.ajax({
+								url: '<?php echo esc_url( rest_url( 'meowseo/v1/ai/llms-intro' ) ); ?>',
+								method: 'POST',
+								beforeSend: function(xhr) {
+									xhr.setRequestHeader('X-WP-Nonce', '<?php echo esc_js( wp_create_nonce( 'wp_rest' ) ); ?>');
+								},
+								success: function(response) {
+									if (response.success && response.intro) {
+										textarea.val(response.intro);
+										status.text('<?php esc_html_e( 'Berhasil!', 'meowseo' ); ?>').fadeOut(3000);
+									} else {
+										status.text('<?php esc_html_e( 'Gagal menghasilkan.', 'meowseo' ); ?>');
+									}
+								},
+								error: function(xhr) {
+									var msg = '<?php esc_html_e( 'Terjadi kesalahan.', 'meowseo' ); ?>';
+									if (xhr.responseJSON && xhr.responseJSON.message) {
+										msg = xhr.responseJSON.message;
+									}
+									status.text(msg);
+								},
+								complete: function() {
+									btn.prop('disabled', false);
+								}
+							});
+						});
+					});
+					</script>
 				</td>
 			</tr>
 			<tr>
@@ -3808,11 +3856,79 @@ class Settings_Manager {
 				</td>
 			</tr>
 			<tr>
+				<th scope="row"><label><?php esc_html_e( 'Post Type yang Dicantumkan', 'meowseo' ); ?></label></th>
+				<td>
+					<?php
+					$post_types = get_post_types( array( 'public' => true ), 'objects' );
+					$selected_types = $this->options->get( 'llms_txt_post_types', array( 'post', 'page' ) );
+					if ( ! is_array( $selected_types ) ) $selected_types = array( 'post', 'page' );
+					
+					foreach ( $post_types as $type ) :
+						if ( in_array( $type->name, array( 'attachment', 'revision', 'nav_menu_item' ) ) ) continue;
+						?>
+						<label style="margin-right:15px;">
+							<input type="checkbox" name="llms_txt_post_types[]" value="<?php echo esc_attr( $type->name ); ?>"
+								<?php checked( in_array( $type->name, $selected_types ) ); ?>>
+							<?php echo esc_html( $type->label ); ?>
+						</label>
+					<?php endforeach; ?>
+					<p class="description"><?php esc_html_e( 'Pilih jenis konten yang ingin diproses oleh AI crawler.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
 				<th scope="row"><label for="llms_txt_blocked"><?php esc_html_e( 'Konten yang Dikecualikan', 'meowseo' ); ?></label></th>
 				<td>
 					<textarea name="llms_txt_blocked" id="llms_txt_blocked" rows="4" class="large-text"
 						placeholder="<?php esc_attr_e( '/halaman-rahasia/\n/dokumen-internal/\n/area-member/', 'meowseo' ); ?>"><?php echo esc_textarea( $this->options->get( 'llms_txt_blocked', '' ) ); ?></textarea>
 					<p class="description"><?php esc_html_e( 'Satu URL/path per baris. Konten ini akan dicantumkan di seksi "Tidak Perlu Diproses" sebagai panduan untuk AI.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Pratinjau /llms.txt', 'meowseo' ); ?></th>
+				<td>
+					<button type="button" id="meowseo-llms-preview-btn" class="button button-secondary">
+						<?php esc_html_e( 'Buka Pratinjau', 'meowseo' ); ?>
+					</button>
+					<div id="meowseo-llms-preview-container" style="display:none; margin-top:15px; border:1px solid #ccd0d4; background:#f9f9f9; padding:15px; max-height:400px; overflow-y:auto; font-family:monospace; white-space:pre-wrap;">
+						<div id="meowseo-llms-preview-content"></div>
+					</div>
+					
+					<script>
+					jQuery(document).ready(function($) {
+						$('#meowseo-llms-preview-btn').on('click', function() {
+							var container = $('#meowseo-llms-preview-container');
+							var content = $('#meowseo-llms-preview-content');
+							var btn = $(this);
+							
+							if (container.is(':visible')) {
+								container.slideUp();
+								btn.text('<?php esc_html_e( 'Buka Pratinjau', 'meowseo' ); ?>');
+								return;
+							}
+							
+							btn.prop('disabled', true).text('<?php esc_html_e( 'Memuat...', 'meowseo' ); ?>');
+							
+							$.ajax({
+								url: '<?php echo esc_url( rest_url( 'meowseo/v1/ai/llms-preview' ) ); ?>',
+								method: 'GET',
+								beforeSend: function(xhr) {
+									xhr.setRequestHeader('X-WP-Nonce', '<?php echo esc_js( wp_create_nonce( 'wp_rest' ) ); ?>');
+								},
+								success: function(response) {
+									if (response.success && response.content) {
+										content.text(response.content);
+										container.slideDown();
+										btn.prop('disabled', false).text('<?php esc_html_e( 'Tutup Pratinjau', 'meowseo' ); ?>');
+									}
+								},
+								error: function() {
+									alert('<?php esc_html_e( 'Gagal memuat pratinjau.', 'meowseo' ); ?>');
+									btn.prop('disabled', false).text('<?php esc_html_e( 'Buka Pratinjau', 'meowseo' ); ?>');
+								}
+							});
+						});
+					});
+					</script>
 				</td>
 			</tr>
 

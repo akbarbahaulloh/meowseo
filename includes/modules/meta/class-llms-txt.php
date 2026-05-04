@@ -150,8 +150,13 @@ class LLMS_Txt {
 		$lines[] = '';
 
 		// Get published posts (max 200 for performance).
+		$post_types = $this->options->get( 'llms_txt_post_types', array( 'post', 'page' ) );
+		if ( ! is_array( $post_types ) ) {
+			$post_types = array( 'post', 'page' );
+		}
+
 		$posts = get_posts( array(
-			'post_type'      => 'post',
+			'post_type'      => $post_types,
 			'post_status'    => 'publish',
 			'posts_per_page' => $this->options->get( 'llms_txt_max_posts', 200 ),
 			'orderby'        => 'modified',
@@ -209,6 +214,9 @@ class LLMS_Txt {
 			}
 			$lines[] = '';
 		}
+
+		// Allow other modules to inject content.
+		$lines = apply_filters( 'meowseo/llms_txt/content', $lines, $this->options );
 
 		// Footer.
 		$lines[] = '---';

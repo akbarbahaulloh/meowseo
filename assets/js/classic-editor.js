@@ -240,6 +240,155 @@
 	}
 
 	// -------------------------------------------------------------------------
+	// AI Schema Auto-Fill
+	// -------------------------------------------------------------------------
+	function initSchemaAiGenerate() {
+		var $select   = $( '#meowseo_schema_page_type' );
+		var $aiWrap   = $( '#meowseo-schema-ai-wrap' );
+
+		// If the wrapper doesn't exist, inject it right after the schema type select.
+		if ( ! $aiWrap.length ) {
+			$select.closest( '.meowseo-field' ).after(
+				'<div id="meowseo-schema-ai-wrap" style="margin:10px 0 6px;">'
+				+ '<button type="button" id="meowseo-schema-ai-btn" class="button" style="display:none;">'
+				+ '<span class="dashicons dashicons-superhero" style="margin-top:3px;"></span> ✨ Generate with AI'
+				+ '</button>'
+				+ '<span id="meowseo-schema-ai-status" style="margin-left:10px;font-size:12px;color:#666;"></span>'
+				+ '</div>'
+			);
+			$aiWrap = $( '#meowseo-schema-ai-wrap' );
+		}
+
+		// Show/hide button based on schema type selection.
+		$select.on( 'change', function () {
+			var val = $( this ).val();
+			if ( val ) {
+				$( '#meowseo-schema-ai-btn' ).show();
+			} else {
+				$( '#meowseo-schema-ai-btn' ).hide();
+			}
+		} ).trigger( 'change' );
+
+		// Handle AI generate button click.
+		$( document ).on( 'click', '#meowseo-schema-ai-btn', function () {
+			var $btn      = $( this );
+			var $status   = $( '#meowseo-schema-ai-status' );
+			var schemaType = $select.val();
+			var postId     = meowseoClassic.postId || $( '#post_ID' ).val();
+
+			if ( ! schemaType ) {
+				alert( 'Please select a schema type first.' );
+				return;
+			}
+			if ( ! postId || postId === '0' ) {
+				alert( 'Please save the post first before generating schema.' );
+				return;
+			}
+
+			$btn.prop( 'disabled', true ).html( '<span class="dashicons dashicons-update-alt" style="margin-top:3px;"></span> Generating…' );
+			$status.text( 'AI is reading your content…' ).css( 'color', '#666' );
+
+			$.ajax( {
+				url: meowseoClassic.restUrl + '/ai/schema',
+				method: 'POST',
+				beforeSend: function ( xhr ) {
+					xhr.setRequestHeader( 'X-WP-Nonce', meowseoClassic.nonce );
+					xhr.setRequestHeader( 'Content-Type', 'application/json' );
+				},
+				data: JSON.stringify( {
+					post_id: parseInt( postId, 10 ),
+					schema_type: schemaType,
+				} ),
+				success: function ( response ) {
+					if ( response && response.success && response.data && response.data.schema_data ) {
+						var data = response.data.schema_data;
+						applySchemaDataToForm( schemaType, data );
+						$status.text( '✓ Schema filled successfully!' ).css( 'color', '#46b450' );
+					} else {
+						$status.text( '✗ AI returned no data. Try again.' ).css( 'color', '#d63638' );
+					}
+				},
+				error: function ( xhr ) {
+					var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'AI generation failed.';
+					$status.text( '✗ ' + msg ).css( 'color', '#d63638' );
+					console.error( 'MeowSEO Schema AI Error:', msg );
+				},
+				complete: function () {
+					$btn.prop( 'disabled', false ).html( '<span class="dashicons dashicons-superhero" style="margin-top:3px;"></span> ✨ Generate with AI' );
+					setTimeout( function () {
+						$status.text( '' );
+					}, 5000 );
+				},
+			} );
+		} );
+	}
+
+	/**
+	 * Apply AI-generated schema data to the classic editor form fields.
+	 * Also fires a CustomEvent so the React SchemaBuilder can pick up the data.
+	 */
+	function applySchemaDataToForm( schemaType, data ) {
+		// Fire CustomEvent for React SchemaBuilder component.
+		window.dispatchEvent( new CustomEvent( 'meowseo:schema:autofill', {
+			detail: { schema_type: schemaType, schema_data: data },
+		} ) );
+
+		// --- Classic editor legacy form field population ---
+		if ( schemaType === 'FAQPage' && Array.isArray( data.mainEntity ) ) {
+			var $container = $( '#meowseo-faq-items' );
+			$container.empty();
+			data.mainEntity.forEach( function ( item ) {
+				var q = item.name || '';
+				var a = ( item.acceptedAnswer && item.acceptedAnswer.text ) ? item.acceptedAnswer.text : '';
+				$container.append(
+					'<div class="meowseo-faq-item" style="border:1px solid #dcdcde;padding:10px;margin-bottom:8px;border-radius:4px">'
+					+ '<div class="meowseo-field"><label>Question</label>'
+					+ '<input type="text" name="meowseo_faq_question[]" value="' + escHtml( q ) + '" /></div>'
+					+ '<div class="meowseo-field"><label>Answer</label>'
+					+ '<textarea name="meowseo_faq_answer[]">' + escHtml( a ) + '</textarea></div>'
+					+ '<button type="button" class="button meowseo-remove-faq">Remove</button>'
+					+ '</div>'
+				);
+			} );
+		}
+
+		if ( schemaType === 'HowTo' ) {
+			if ( data.name )        { $( '#meowseo_schema_howto_name' ).val( data.name ); }
+			if ( data.description ) { $( '#meowseo_schema_howto_description' ).val( data.description ); }
+			if ( data.totalTime )   { $( '#meowseo_schema_howto_total_time' ).val( data.totalTime ); }
+			if ( Array.isArray( data.step ) ) {
+				var $steps = $( '#meowseo-howto-steps' );
+				$steps.empty();
+				data.step.forEach( function ( step ) {
+					$steps.append(
+						'<div class="meowseo-howto-step" style="border:1px solid #dcdcde;padding:10px;margin-bottom:8px;border-radius:4px">'
+						+ '<div class="meowseo-field"><label>Step Name</label>'
+						+ '<input type="text" name="meowseo_howto_step_name[]" value="' + escHtml( step.name || '' ) + '" /></div>'
+						+ '<div class="meowseo-field"><label>Step Text</label>'
+						+ '<textarea name="meowseo_howto_step_text[]">' + escHtml( step.text || '' ) + '</textarea></div>'
+						+ '<button type="button" class="button meowseo-remove-step">Remove</button>'
+						+ '</div>'
+					);
+				} );
+			}
+		}
+
+		// Generic text fields auto-fill.
+		var fieldMap = {
+			'name':        '#meowseo_schema_name',
+			'description': '#meowseo_schema_description',
+			'headline':    '#meowseo_schema_headline',
+			'telephone':   '#meowseo_schema_telephone',
+			'sku':         '#meowseo_schema_sku',
+		};
+		$.each( fieldMap, function ( key, selector ) {
+			if ( data[ key ] !== undefined ) {
+				$( selector ).val( data[ key ] );
+			}
+		} );
+	}
+
+	// -------------------------------------------------------------------------
 	// FAQ / HowTo Repeaters
 	// -------------------------------------------------------------------------
 	function initRepeaters() {
@@ -1062,6 +1211,12 @@
 			initSchemaFields();
 		} catch ( e ) {
 			console.error( 'MeowSEO Schema Fields Initialization Error:', e );
+		}
+
+		try {
+			initSchemaAiGenerate();
+		} catch ( e ) {
+			console.error( 'MeowSEO Schema AI Generate Initialization Error:', e );
 		}
 
 		try {

@@ -104,7 +104,7 @@ class Schema_JsonLD {
 	}
 
 	/**
-	 * Add global entities (Website, Organization, Breadcrumbs).
+	 * Add global entities (Website, Organization, Breadcrumbs, Person).
 	 *
 	 * @param array $data Schema data array.
 	 * @return array Modified schema data.
@@ -118,6 +118,11 @@ class Schema_JsonLD {
 		// Add Organization/Person.
 		if ( $this->should_add_organization() ) {
 			$data['Organization'] = $this->get_organization_schema();
+		}
+
+		// Add Author Person schema (for singular posts).
+		if ( $this->should_add_author() ) {
+			$data['Author'] = $this->get_author_schema();
 		}
 
 		// Add Breadcrumbs.
@@ -221,9 +226,16 @@ class Schema_JsonLD {
 	 * @return array Organization schema.
 	 */
 	private function get_organization_schema(): array {
-		$type = get_option( 'meowseo_organization_type', 'Organization' );
-		$name = get_option( 'meowseo_organization_name', get_bloginfo( 'name' ) );
-		$logo = get_option( 'meowseo_organization_logo', '' );
+		$settings = get_option( 'meowseo_schema_settings', array() );
+		
+		$type = $settings['organization_type'] ?? get_option( 'meowseo_organization_type', 'Organization' );
+		$name = $settings['organization_name'] ?? get_option( 'meowseo_organization_name', get_bloginfo( 'name' ) );
+		$logo = $settings['organization_logo'] ?? get_option( 'meowseo_organization_logo', '' );
+
+		// Use site name if organization name is empty.
+		if ( empty( $name ) ) {
+			$name = get_bloginfo( 'name' );
+		}
 
 		$schema = array(
 			'@type' => $type,
@@ -234,11 +246,21 @@ class Schema_JsonLD {
 
 		// Add logo.
 		if ( $logo ) {
-			$schema['logo'] = array(
+			$logo_data = array(
 				'@type' => 'ImageObject',
 				'@id'   => home_url( '/#logo' ),
 				'url'   => $logo,
 			);
+
+			// Add dimensions if available.
+			if ( ! empty( $settings['organization_logo_width'] ) ) {
+				$logo_data['width'] = absint( $settings['organization_logo_width'] );
+			}
+			if ( ! empty( $settings['organization_logo_height'] ) ) {
+				$logo_data['height'] = absint( $settings['organization_logo_height'] );
+			}
+
+			$schema['logo'] = $logo_data;
 		}
 
 		// Add social profiles.
@@ -390,6 +412,7 @@ class Schema_JsonLD {
 	 */
 	private function get_social_profiles(): array {
 		$profiles = array();
+		$settings = get_option( 'meowseo_schema_settings', array() );
 
 		$social_options = array(
 			'facebook_url',
@@ -401,7 +424,8 @@ class Schema_JsonLD {
 		);
 
 		foreach ( $social_options as $option ) {
-			$url = get_option( 'meowseo_' . $option, '' );
+			// Check new settings first, then fall back to old options.
+			$url = $settings[ $option ] ?? get_option( 'meowseo_' . $option, '' );
 			if ( $url ) {
 				$profiles[] = $url;
 			}
@@ -488,7 +512,8 @@ class Schema_JsonLD {
 	 * @return bool
 	 */
 	private function should_add_website(): bool {
-		return apply_filters( 'meowseo_schema_add_website', true );
+		$auto_website = get_option( 'meowseo_schema_settings', array() )['auto_website'] ?? true;
+		return apply_filters( 'meowseo_schema_add_website', $auto_website );
 	}
 
 	/**
@@ -497,7 +522,8 @@ class Schema_JsonLD {
 	 * @return bool
 	 */
 	private function should_add_organization(): bool {
-		return apply_filters( 'meowseo_schema_add_organization', true );
+		$auto_organization = get_option( 'meowseo_schema_settings', array() )['auto_organization'] ?? true;
+		return apply_filters( 'meowseo_schema_add_organization', $auto_organization );
 	}
 
 	/**
@@ -510,7 +536,8 @@ class Schema_JsonLD {
 			return false;
 		}
 
-		return apply_filters( 'meowseo_schema_add_breadcrumbs', true );
+		$auto_breadcrumbs = get_option( 'meowseo_schema_settings', array() )['auto_breadcrumbs'] ?? true;
+		return apply_filters( 'meowseo_schema_add_breadcrumbs', $auto_breadcrumbs );
 	}
 
 	/**
@@ -519,7 +546,90 @@ class Schema_JsonLD {
 	 * @return bool
 	 */
 	private function should_add_webpage(): bool {
-		return apply_filters( 'meowseo_schema_add_webpage', true );
+		$auto_webpage = get_option( 'meowseo_schema_settings', array() )['auto_webpage'] ?? true;
+		return apply_filters( 'meowseo_schema_add_webpage', $auto_webpage );
+	}
+
+	/**
+	 * Check if should add Author schema.
+	 *
+	 * @return bool
+	 */
+	private function should_add_author(): bool {
+		// Only add author on singular posts.
+		if ( ! is_singular() || ! $this->post ) {
+			return false;
+		}
+
+		// Check if automatic author schema is enabled.
+		$auto_author = get_option( 'meowseo_schema_settings', array() )['auto_author'] ?? true;
+		
+		return apply_filters( 'meowseo_schema_add_author', $auto_author, $this->post );
+	}
+
+	/**
+	 * Get Author Person schema.
+	 *
+	 * @return array Author schema.
+	 */
+	private function get_author_schema(): array {
+		if ( ! $this->post ) {
+			return array();
+		}
+
+		$author_id = $this->post->post_author;
+		$author    = get_userdata( $author_id );
+
+		if ( ! $author ) {
+			return array();
+		}
+
+		$schema = array(
+			'@type' => 'Person',
+			'@id'   => get_author_posts_url( $author_id ) . '#author',
+			'name'  => $author->display_name,
+			'url'   => get_author_posts_url( $author_id ),
+		);
+
+		// Add description if available.
+		$description = get_the_author_meta( 'description', $author_id );
+		if ( $description ) {
+			$schema['description'] = $description;
+		}
+
+		// Add image (avatar).
+		$avatar_url = get_avatar_url( $author_id, array( 'size' => 96 ) );
+		if ( $avatar_url ) {
+			$schema['image'] = array(
+				'@type' => 'ImageObject',
+				'@id'   => get_author_posts_url( $author_id ) . '#avatar',
+				'url'   => $avatar_url,
+			);
+		}
+
+		// Add social profiles if available.
+		$social_profiles = array();
+		
+		// Website.
+		$website = get_the_author_meta( 'user_url', $author_id );
+		if ( $website ) {
+			$social_profiles[] = $website;
+		}
+
+		// Custom social fields (if they exist).
+		$social_fields = array( 'twitter', 'facebook', 'linkedin', 'instagram', 'youtube' );
+		foreach ( $social_fields as $field ) {
+			$url = get_the_author_meta( $field, $author_id );
+			if ( $url ) {
+				$social_profiles[] = $url;
+			}
+		}
+
+		if ( ! empty( $social_profiles ) ) {
+			$schema['sameAs'] = $social_profiles;
+		}
+
+		return apply_filters( 'meowseo_schema_author', $schema, $author_id );
 	}
 
 	/**

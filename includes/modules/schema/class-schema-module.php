@@ -75,7 +75,11 @@ class Schema_Module implements Module {
 
 		// Initialize components.
 		if ( is_admin() ) {
-			new Schema_Admin();
+			$admin = new Schema_Admin();
+			
+			// Initialize settings.
+			$settings = new Schema_Settings();
+			$settings->setup();
 		}
 
 		new Schema_Frontend();
@@ -93,6 +97,7 @@ class Schema_Module implements Module {
 		require_once __DIR__ . '/class-schema-jsonld.php';
 		require_once __DIR__ . '/class-schema-frontend.php';
 		require_once __DIR__ . '/class-schema-rest.php';
+		require_once __DIR__ . '/class-schema-settings.php';
 		
 		if ( is_admin() ) {
 			require_once __DIR__ . '/class-schema-admin.php';

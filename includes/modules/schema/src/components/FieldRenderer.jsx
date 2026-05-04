@@ -20,12 +20,14 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 		onChange,
 	};
 
+	const fieldClassName = `meowseo-field meowseo-field--${fieldId} meowseo-field--type-${type}`;
+
 	switch (type) {
 		case 'text':
 		case 'url':
 		case 'email':
 			return (
-				<div className="meowseo-field">
+				<div className={fieldClassName}>
 					<TextControl
 						{...commonProps}
 						type={type}
@@ -37,7 +39,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'textarea':
 			return (
-				<div className="meowseo-field">
+				<div className={fieldClassName}>
 					<TextareaControl
 						{...commonProps}
 						placeholder={placeholder}
@@ -49,7 +51,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'number':
 			return (
-				<div className="meowseo-field">
+				<div className={fieldClassName}>
 					<TextControl
 						{...commonProps}
 						type="number"
@@ -62,7 +64,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'select':
 			return (
-				<div className="meowseo-field">
+				<div className={fieldClassName}>
 					<SelectControl
 						{...commonProps}
 						options={Object.entries(options || {}).map(([val, label]) => ({
@@ -78,7 +80,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 		case 'datetime':
 		case 'time':
 			return (
-				<div className="meowseo-field">
+				<div className={fieldClassName}>
 					<TextControl
 						{...commonProps}
 						type={type === 'datetime' ? 'datetime-local' : type}
@@ -90,7 +92,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'image':
 			return (
-				<div className="meowseo-field">
+				<div className={fieldClassName}>
 					<label className="meowseo-field__label">
 						{commonProps.label}
 					</label>
@@ -108,24 +110,28 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'group':
 			return (
-				<GroupField
-					label={label}
-					description={description}
-					fields={fields}
-					value={value || {}}
-					onChange={onChange}
-				/>
+				<div className={fieldClassName}>
+					<GroupField
+						label={label}
+						description={description}
+						fields={fields}
+						value={value || {}}
+						onChange={onChange}
+					/>
+				</div>
 			);
 
 		case 'repeater':
 			return (
-				<RepeaterField
-					label={label}
-					description={description}
-					fields={fields}
-					value={value || []}
-					onChange={onChange}
-				/>
+				<div className={fieldClassName}>
+					<RepeaterField
+						label={label}
+						description={description}
+						fields={fields}
+						value={value || []}
+						onChange={onChange}
+					/>
+				</div>
 			);
 
 		case 'hidden':
