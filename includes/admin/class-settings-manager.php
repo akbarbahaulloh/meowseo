@@ -137,10 +137,10 @@ class Settings_Manager {
 				'icon'   => 'dashicons-update',
 				'method' => 'render_content_refresh_tab',
 			),
-			'schema-detector' => array(
-				'title'  => __( 'Schema Auto-Detector', 'meowseo' ),
-				'icon'   => 'dashicons-search',
-				'method' => 'render_schema_detector_tab',
+			'schema' => array(
+				'title'  => __( 'Schema', 'meowseo' ),
+				'icon'   => 'dashicons-category',
+				'method' => 'render_schema_tab',
 			),
 			'search-console'  => array(
 				'title'  => __( 'Search Console', 'meowseo' ),
@@ -1791,26 +1791,29 @@ class Settings_Manager {
 			}
 		}
 
-		// Validate social URLs.
-		$social_url_fields = array( 'facebook_url', 'instagram_url', 'linkedin_url', 'youtube_url' );
-		$social_profiles   = array();
+		// Validate social profiles.
+		$social_url_fields = array(
+			'social_facebook_url',
+			'social_twitter_url',
+			'social_instagram_url',
+			'social_linkedin_url',
+			'social_youtube_url',
+			'social_pinterest_url'
+		);
 
 		foreach ( $social_url_fields as $field ) {
-			if ( isset( $settings[ $field ] ) && ! empty( $settings[ $field ] ) ) {
-				$sanitized_url = $this->sanitize_social_url( $settings[ $field ] );
-				if ( is_wp_error( $sanitized_url ) ) {
-					$this->errors[ $field ] = $sanitized_url->get_error_message();
+			if ( isset( $settings[ $field ] ) ) {
+				if ( empty( $settings[ $field ] ) ) {
+					$validated[ $field ] = '';
 				} else {
-					$network = str_replace( '_url', '', $field );
-					if ( ! empty( $sanitized_url ) ) {
-						$social_profiles[ $network ] = $sanitized_url;
+					$sanitized_url = $this->sanitize_social_url( $settings[ $field ] );
+					if ( is_wp_error( $sanitized_url ) ) {
+						$this->errors[ $field ] = $sanitized_url->get_error_message();
+					} else {
+						$validated[ $field ] = $sanitized_url;
 					}
 				}
 			}
-		}
-
-		if ( ! empty( $social_profiles ) ) {
-			$validated['meowseo_schema_social_profiles'] = $social_profiles;
 		}
 
 		// Validate Twitter username.
@@ -1827,6 +1830,29 @@ class Settings_Manager {
 		// Validate organization name.
 		if ( isset( $settings['organization_name'] ) && ! empty( $settings['organization_name'] ) ) {
 			$organization['name'] = sanitize_text_field( $settings['organization_name'] );
+			$validated['schema_business_name'] = $organization['name']; // Keep in sync for now.
+		}
+
+		// Validate new schema toggles.
+		$schema_toggles = array(
+			'schema_auto_website',
+			'schema_auto_organization',
+			'schema_auto_breadcrumbs',
+			'schema_auto_author',
+			'schema_auto_webpage',
+			'schema_enable_output'
+		);
+		foreach ( $schema_toggles as $toggle ) {
+			if ( isset( $settings[ $toggle ] ) ) {
+				$validated[ $toggle ] = (bool) $settings[ $toggle ];
+			}
+		}
+
+		if ( isset( $settings['schema_organization_type'] ) ) {
+			$validated['schema_organization_type'] = sanitize_text_field( $settings['schema_organization_type'] );
+		}
+		if ( isset( $settings['schema_output_format'] ) ) {
+			$validated['schema_output_format'] = in_array( $settings['schema_output_format'], array( 'graph', 'separate' ), true ) ? $settings['schema_output_format'] : 'graph';
 		}
 		
 		// Validate organization contact email.
@@ -3647,7 +3673,24 @@ class Settings_Manager {
 	 *
 	 * @return void
 	 */
-	public function render_schema_detector_tab(): void {
+	/**
+	 * Render Schema settings tab
+	 *
+	 * Consolidates global schema configuration, business identity, and available types.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	public function render_schema_tab(): void {
+		$auto_website      = $this->options->get( 'schema_auto_website', true );
+		$auto_organization = $this->options->get( 'schema_auto_organization', true );
+		$auto_breadcrumbs  = $this->options->get( 'schema_auto_breadcrumbs', true );
+		$auto_author       = $this->options->get( 'schema_auto_author', true );
+		$auto_webpage      = $this->options->get( 'schema_auto_webpage', true );
+		$org_type          = $this->options->get( 'schema_organization_type', 'Organization' );
+		$output_format     = $this->options->get( 'schema_output_format', 'graph' );
+		$enable_output     = $this->options->get( 'schema_enable_output', true );
+
 		$business_name    = $this->options->get( 'schema_business_name', '' );
 		$business_address = $this->options->get( 'schema_business_address', '' );
 		$business_phone   = $this->options->get( 'schema_business_phone', '' );
@@ -3655,146 +3698,190 @@ class Settings_Manager {
 		$business_lng     = $this->options->get( 'schema_business_lng', '' );
 		$lb_categories    = $this->options->get( 'schema_local_business_categories', array() );
 
+		// Social Profiles.
+		$facebook_url  = $this->options->get( 'social_facebook_url', '' );
+		$twitter_url   = $this->options->get( 'social_twitter_url', '' );
+		$instagram_url = $this->options->get( 'social_instagram_url', '' );
+		$linkedin_url  = $this->options->get( 'social_linkedin_url', '' );
+		$youtube_url   = $this->options->get( 'social_youtube_url', '' );
+		$pinterest_url = $this->options->get( 'social_pinterest_url', '' );
+
 		// Get all available categories.
 		$all_categories = get_categories( array( 'hide_empty' => false ) );
 		?>
-		<h2><?php esc_html_e( 'Schema Auto-Detector Settings', 'meowseo' ); ?></h2>
+		<h2><?php esc_html_e( 'Schema Settings', 'meowseo' ); ?></h2>
 		<p class="description">
-			<?php esc_html_e( 'Configure automatic schema injection. All detection runs on-the-fly when a page loads — zero impact on your editor save speed.', 'meowseo' ); ?>
+			<?php esc_html_e( 'Configure automatic schema generation and business identity for Knowledge Graph and Rich Results.', 'meowseo' ); ?>
 		</p>
 
 		<table class="form-table" role="presentation">
+			<!-- Global Configuration -->
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Global Configuration', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Schema Output', 'meowseo' ); ?></th>
+				<td>
+					<label for="schema_enable_output">
+						<input type="checkbox" name="schema_enable_output" id="schema_enable_output" value="1" <?php checked( $enable_output ); ?>>
+						<?php esc_html_e( 'Enable JSON-LD Schema output on frontend', 'meowseo' ); ?>
+					</label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="schema_output_format"><?php esc_html_e( 'Output Format', 'meowseo' ); ?></label></th>
+				<td>
+					<select name="schema_output_format" id="schema_output_format">
+						<option value="graph" <?php selected( $output_format, 'graph' ); ?>><?php esc_html_e( 'Nested Graph (Recommended)', 'meowseo' ); ?></option>
+						<option value="separate" <?php selected( $output_format, 'separate' ); ?>><?php esc_html_e( 'Separate Blocks', 'meowseo' ); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e( 'Graph format connects all schema nodes (Website, Organization, WebPage) for better SEO context.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+
+			<!-- Automatic Schemas -->
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Automatic Schemas', 'meowseo' ); ?></h3></th></tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Enabled Nodes', 'meowseo' ); ?></th>
+				<td>
+					<fieldset>
+						<label for="schema_auto_website" style="display:block; margin-bottom: 5px;">
+							<input type="checkbox" name="schema_auto_website" id="schema_auto_website" value="1" <?php checked( $auto_website ); ?>>
+							<?php esc_html_e( 'Website Schema (Search Box)', 'meowseo' ); ?>
+						</label>
+						<label for="schema_auto_organization" style="display:block; margin-bottom: 5px;">
+							<input type="checkbox" name="schema_auto_organization" id="schema_auto_organization" value="1" <?php checked( $auto_organization ); ?>>
+							<?php esc_html_e( 'Organization Schema (Knowledge Graph)', 'meowseo' ); ?>
+						</label>
+						<label for="schema_auto_breadcrumbs" style="display:block; margin-bottom: 5px;">
+							<input type="checkbox" name="schema_auto_breadcrumbs" id="schema_auto_breadcrumbs" value="1" <?php checked( $auto_breadcrumbs ); ?>>
+							<?php esc_html_e( 'BreadcrumbList Schema', 'meowseo' ); ?>
+						</label>
+						<label for="schema_auto_author" style="display:block; margin-bottom: 5px;">
+							<input type="checkbox" name="schema_auto_author" id="schema_auto_author" value="1" <?php checked( $auto_author ); ?>>
+							<?php esc_html_e( 'Author (Person) Schema', 'meowseo' ); ?>
+						</label>
+						<label for="schema_auto_webpage" style="display:block; margin-bottom: 5px;">
+							<input type="checkbox" name="schema_auto_webpage" id="schema_auto_webpage" value="1" <?php checked( $auto_webpage ); ?>>
+							<?php esc_html_e( 'WebPage Schema', 'meowseo' ); ?>
+						</label>
+					</fieldset>
+					<p class="description"><?php esc_html_e( 'These foundational schemas are automatically added to relevant pages without manual configuration.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
 
 			<!-- E-E-A-T: Organization & Business Identity -->
 			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Business Identity (E-E-A-T)', 'meowseo' ); ?></h3></th></tr>
-			<tr>
-				<td colspan="2">
-					<p class="description"><?php esc_html_e( 'This data is injected into the Organization schema node on every page, strengthening your site\'s authority signals for Google.', 'meowseo' ); ?></p>
-				</td>
-			</tr>
 			<tr>
 				<th scope="row"><label for="schema_business_name"><?php esc_html_e( 'Business / Organization Name', 'meowseo' ); ?></label></th>
 				<td>
 					<input type="text" name="schema_business_name" id="schema_business_name"
 						value="<?php echo esc_attr( $business_name ); ?>" class="regular-text"
 						placeholder="<?php esc_attr_e( 'e.g. PT Meowseo Indonesia', 'meowseo' ); ?>">
-					<p class="description"><?php esc_html_e( 'Full legal or brand name. Used in Organization schema. Leave empty to use WordPress site name.', 'meowseo' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="schema_organization_type"><?php esc_html_e( 'Organization Type', 'meowseo' ); ?></label></th>
+				<td>
+					<select name="schema_organization_type" id="schema_organization_type">
+						<option value="Organization" <?php selected( $org_type, 'Organization' ); ?>><?php esc_html_e( 'Organization', 'meowseo' ); ?></option>
+						<option value="Corporation" <?php selected( $org_type, 'Corporation' ); ?>><?php esc_html_e( 'Corporation', 'meowseo' ); ?></option>
+						<option value="EducationalOrganization" <?php selected( $org_type, 'EducationalOrganization' ); ?>><?php esc_html_e( 'Educational Organization', 'meowseo' ); ?></option>
+						<option value="GovernmentOrganization" <?php selected( $org_type, 'GovernmentOrganization' ); ?>><?php esc_html_e( 'Government Organization', 'meowseo' ); ?></option>
+						<option value="LocalBusiness" <?php selected( $org_type, 'LocalBusiness' ); ?>><?php esc_html_e( 'Local Business', 'meowseo' ); ?></option>
+						<option value="NGO" <?php selected( $org_type, 'NGO' ); ?>><?php esc_html_e( 'NGO', 'meowseo' ); ?></option>
+					</select>
 				</td>
 			</tr>
 			<tr>
 				<th scope="row"><label for="schema_business_address"><?php esc_html_e( 'Street Address', 'meowseo' ); ?></label></th>
 				<td>
 					<input type="text" name="schema_business_address" id="schema_business_address"
-						value="<?php echo esc_attr( $business_address ); ?>" class="regular-text"
-						placeholder="<?php esc_attr_e( 'e.g. Jl. Maju Makur, Banyumas, 12345', 'meowseo' ); ?>">
-					<p class="description"><?php esc_html_e( 'Used in Organization and LocalBusiness schema nodes.', 'meowseo' ); ?></p>
+						value="<?php echo esc_attr( $business_address ); ?>" class="regular-text">
 				</td>
 			</tr>
 			<tr>
 				<th scope="row"><label for="schema_business_phone"><?php esc_html_e( 'Phone Number', 'meowseo' ); ?></label></th>
 				<td>
 					<input type="text" name="schema_business_phone" id="schema_business_phone"
-						value="<?php echo esc_attr( $business_phone ); ?>" class="regular-text"
-						placeholder="<?php esc_attr_e( 'e.g. +62-812-0000-0000', 'meowseo' ); ?>">
-					<p class="description"><?php esc_html_e( 'Added as contactPoint in Organization schema and telephone in LocalBusiness schema.', 'meowseo' ); ?></p>
+						value="<?php echo esc_attr( $business_phone ); ?>" class="regular-text">
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="schema_business_lat"><?php esc_html_e( 'Latitude / Longitude', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="text" name="schema_business_lat" id="schema_business_lat"
+						value="<?php echo esc_attr( $business_lat ); ?>" style="width:120px"
+						placeholder="Lat">
+					<input type="text" name="schema_business_lng" id="schema_business_lng"
+						value="<?php echo esc_attr( $business_lng ); ?>" style="width:120px"
+						placeholder="Lng">
+					<p class="description"><?php esc_html_e( 'Added to LocalBusiness node for map association.', 'meowseo' ); ?></p>
 				</td>
 			</tr>
 
-			<!-- Geographic Coordinates -->
-			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Geographic Coordinates', 'meowseo' ); ?></h3></th></tr>
+			<!-- Social Profiles -->
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'Social Profiles', 'meowseo' ); ?></h3></th></tr>
 			<tr>
-				<td colspan="2">
-					<p class="description"><?php esc_html_e( 'Added to LocalBusiness schema as GeoCoordinates. Helps Google Maps associate your business location. Find coordinates at maps.google.com.', 'meowseo' ); ?></p>
-				</td>
+				<th scope="row"><label for="social_facebook_url"><?php esc_html_e( 'Facebook URL', 'meowseo' ); ?></label></th>
+				<td><input type="url" name="social_facebook_url" id="social_facebook_url" value="<?php echo esc_attr( $facebook_url ); ?>" class="regular-text"></td>
 			</tr>
 			<tr>
-				<th scope="row"><label for="schema_business_lat"><?php esc_html_e( 'Latitude', 'meowseo' ); ?></label></th>
-				<td>
-					<input type="text" name="schema_business_lat" id="schema_business_lat"
-						value="<?php echo esc_attr( $business_lat ); ?>" class="regular-text"
-						placeholder="-5.3971">
-				</td>
+				<th scope="row"><label for="social_twitter_url"><?php esc_html_e( 'Twitter / X URL', 'meowseo' ); ?></label></th>
+				<td><input type="url" name="social_twitter_url" id="social_twitter_url" value="<?php echo esc_attr( $twitter_url ); ?>" class="regular-text"></td>
 			</tr>
 			<tr>
-				<th scope="row"><label for="schema_business_lng"><?php esc_html_e( 'Longitude', 'meowseo' ); ?></label></th>
-				<td>
-					<input type="text" name="schema_business_lng" id="schema_business_lng"
-						value="<?php echo esc_attr( $business_lng ); ?>" class="regular-text"
-						placeholder="105.2668">
-				</td>
+				<th scope="row"><label for="social_instagram_url"><?php esc_html_e( 'Instagram URL', 'meowseo' ); ?></label></th>
+				<td><input type="url" name="social_instagram_url" id="social_instagram_url" value="<?php echo esc_attr( $instagram_url ); ?>" class="regular-text"></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="social_linkedin_url"><?php esc_html_e( 'LinkedIn URL', 'meowseo' ); ?></label></th>
+				<td><input type="url" name="social_linkedin_url" id="social_linkedin_url" value="<?php echo esc_attr( $linkedin_url ); ?>" class="regular-text"></td>
 			</tr>
 
 			<!-- LocalBusiness Auto-Detect -->
 			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'LocalBusiness Auto-Detect', 'meowseo' ); ?></h3></th></tr>
 			<tr>
-				<td colspan="2">
-					<p class="description">
-						<?php esc_html_e( 'Select categories that should automatically trigger LocalBusiness schema. Any post assigned to these categories will include a full LocalBusiness structured data node using the business identity above.', 'meowseo' ); ?>
-						<br><strong><?php esc_html_e( 'Example:', 'meowseo' ); ?></strong> <?php esc_html_e( 'Select "Katalog Usaha" so that every UMKM directory post gets LocalBusiness schema injected automatically.', 'meowseo' ); ?>
-					</p>
-				</td>
-			</tr>
-			<tr>
 				<th scope="row"><?php esc_html_e( 'Trigger Categories', 'meowseo' ); ?></th>
 				<td>
 					<?php if ( empty( $all_categories ) ) : ?>
-						<p class="description"><?php esc_html_e( 'No categories found. Create some categories first.', 'meowseo' ); ?></p>
+						<p class="description"><?php esc_html_e( 'No categories found.', 'meowseo' ); ?></p>
 					<?php else : ?>
-						<div style="max-height: 200px; overflow-y: auto; border: 1px solid #dcdcde; padding: 8px; border-radius: 4px; background: #fff;">
+						<div style="max-height: 150px; overflow-y: auto; border: 1px solid #dcdcde; padding: 8px; border-radius: 4px; background: #fff;">
 							<?php foreach ( $all_categories as $cat ) : ?>
 								<label style="display: block; margin-bottom: 4px;">
-									<input type="checkbox"
-										name="schema_local_business_categories[]" 
-										value="<?php echo esc_attr( $cat->slug ); ?>"
-										<?php checked( in_array( $cat->slug, (array) $lb_categories, true ) ); ?>>
+									<input type="checkbox" name="schema_local_business_categories[]" value="<?php echo esc_attr( $cat->slug ); ?>" <?php checked( in_array( $cat->slug, (array) $lb_categories, true ) ); ?>>
 									<?php echo esc_html( $cat->name ); ?>
-									<span style="color:#888;font-size:11px">(<?php echo esc_html( $cat->slug ); ?>)</span>
 								</label>
 							<?php endforeach; ?>
 						</div>
-						<p class="description"><?php esc_html_e( 'Hold Ctrl/Cmd to select multiple. Zero performance impact — detection runs at render time only.', 'meowseo' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Posts in these categories will automatically get LocalBusiness schema.', 'meowseo' ); ?></p>
 					<?php endif; ?>
 				</td>
 			</tr>
+		</table>
 
-			<!-- VideoObject Info -->
-			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'VideoObject (Auto-Detect)', 'meowseo' ); ?></h3></th></tr>
-			<tr>
-				<td colspan="2">
-					<p class="description">
-						<?php esc_html_e( 'VideoObject schema is automatically detected from YouTube or Vimeo embeds in your post content. No configuration needed.', 'meowseo' ); ?>
-						<?php esc_html_e( 'Thumbnails are sourced from YouTube\'s free CDN (no API key required). Metadata is pulled from WordPress\'s built-in oEmbed cache.', 'meowseo' ); ?>
-					</p>
-					<p><span class="dashicons dashicons-yes-alt" style="color:#46b450"></span> <?php esc_html_e( 'Active — zero API calls, zero performance impact.', 'meowseo' ); ?></p>
-				</td>
-			</tr>
+		<div class="meowseo-schema-info-section" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #dcdcde;">
+			<h3><?php esc_html_e( 'Supported Schema Types', 'meowseo' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'These schema types are available in the Schema Generator sidebar when editing posts or pages.', 'meowseo' ); ?></p>
+			
+			<div class="meowseo-schema-types-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+				<?php
+				if ( class_exists( '\MeowSEO\Modules\Schema\Schema_Admin' ) ) {
+					$schema_admin = new \MeowSEO\Modules\Schema\Schema_Admin();
+					$schema_admin->render_schema_types_grid();
+				}
+				?>
+			</div>
+		</div>
 
-			<!-- HowTo Info -->
-			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'HowTo (Auto-Detect)', 'meowseo' ); ?></h3></th></tr>
-			<tr>
-				<td colspan="2">
-					<p class="description">
-						<?php esc_html_e( 'HowTo schema is automatically generated when a post\'s Page Type is set to "HowTo" in the Classic Editor Schema tab AND the post contains an ordered list (<ol>) with 3 or more items.', 'meowseo' ); ?>
-					</p>
-					<p><span class="dashicons dashicons-yes-alt" style="color:#46b450"></span> <?php esc_html_e( 'Active — triggered by Page Type selection + content detection.', 'meowseo' ); ?></p>
-				</td>
-			</tr>
-
-			<!-- LLMs.txt — AI Crawler Guidance -->
-			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'LLMs.txt — Panduan untuk AI Crawler', 'meowseo' ); ?></h3></th></tr>
-			<tr>
-				<td colspan="2">
-					<p class="description">
-						<?php esc_html_e( 'File /llms.txt memandu AI language model (ChatGPT, Gemini, Perplexity) tentang konten terbaik situs Anda. Ini adalah "robots.txt untuk AI" — keunggulan kompetitif untuk era AI Overviews 2026.', 'meowseo' ); ?>
-					</p>
-					<p>
-						<a href="<?php echo esc_url( \MeowSEO\Modules\Meta\LLMS_Txt::get_url() ); ?>" target="_blank" class="button button-secondary">
-							<?php esc_html_e( 'Lihat /llms.txt', 'meowseo' ); ?> ↗
-						</a>
-						<code style="margin-left:10px;font-size:12px;color:#50575e;"><?php echo esc_html( \MeowSEO\Modules\Meta\LLMS_Txt::get_url() ); ?></code>
-					</p>
-				</td>
-			</tr>
+		<div class="meowseo-schema-help" style="margin-top: 30px; background: #f0f6fb; padding: 15px; border-left: 4px solid #11a0d2;">
+			<h4><?php esc_html_e( 'Need Help?', 'meowseo' ); ?></h4>
+			<ul style="margin: 0; padding-left: 20px;">
+				<li><a href="https://search.google.com/test/rich-results" target="_blank"><?php esc_html_e( 'Test your site with Rich Results Test', 'meowseo' ); ?> ↗</a></li>
+				<li><a href="https://validator.schema.org/" target="_blank"><?php esc_html_e( 'Validate markup with Schema Validator', 'meowseo' ); ?> ↗</a></li>
+			</ul>
+		</div>
+			<!-- LLMs.txt — Panduan untuk AI Crawler -->
+			<tr><th scope="row" colspan="2"><h3><?php esc_html_e( 'LLMs.txt — AI Crawler Guidance', 'meowseo' ); ?></h3></th></tr>
 			<tr>
 				<th scope="row"><label for="llms_txt_enabled"><?php esc_html_e( 'Aktifkan /llms.txt', 'meowseo' ); ?></label></th>
 				<td>

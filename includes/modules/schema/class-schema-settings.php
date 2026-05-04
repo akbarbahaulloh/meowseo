@@ -64,7 +64,7 @@ class Schema_Settings {
 	 */
 	public function setup(): void {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
-		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
+		// Standalone menu removed for consolidation into main Settings.
 	}
 
 	/**
@@ -561,8 +561,27 @@ class Schema_Settings {
 	 * @return array Settings array.
 	 */
 	public function get_settings(): array {
-		$settings = get_option( self::OPTION_NAME, array() );
-		return wp_parse_args( $settings, $this->defaults );
+		$options = new \MeowSEO\Options();
+		return array(
+			'auto_website'            => $options->get( 'schema_auto_website', true ),
+			'auto_organization'       => $options->get( 'schema_auto_organization', true ),
+			'auto_breadcrumbs'        => $options->get( 'schema_auto_breadcrumbs', true ),
+			'auto_author'             => $options->get( 'schema_auto_author', true ),
+			'auto_webpage'            => $options->get( 'schema_auto_webpage', true ),
+			'organization_type'       => $options->get( 'schema_organization_type', 'Organization' ),
+			'organization_name'       => $options->get( 'schema_business_name', '' ),
+			'organization_logo'       => $options->get( 'schema_organization_logo', '' ),
+			'organization_logo_width' => $options->get( 'schema_organization_logo_width', '' ),
+			'organization_logo_height' => $options->get( 'schema_organization_logo_height', '' ),
+			'facebook_url'            => $options->get( 'social_facebook_url', '' ),
+			'twitter_url'             => $options->get( 'social_twitter_url', '' ),
+			'instagram_url'           => $options->get( 'social_instagram_url', '' ),
+			'linkedin_url'            => $options->get( 'social_linkedin_url', '' ),
+			'youtube_url'             => $options->get( 'social_youtube_url', '' ),
+			'pinterest_url'           => $options->get( 'social_pinterest_url', '' ),
+			'enable_schema_output'    => $options->get( 'schema_enable_output', true ),
+			'schema_output_format'    => $options->get( 'schema_output_format', 'graph' ),
+		);
 	}
 
 	/**

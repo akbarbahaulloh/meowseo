@@ -26,13 +26,7 @@ class Schema_Admin {
 
 		// Add Gutenberg sidebar panel.
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
-
-		// Add admin menu page.
-		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 	}
-
-	// Metabox now integrated into Classic Editor class.
-
 
 	/**
 	 * Enqueue admin assets.
@@ -175,20 +169,6 @@ class Schema_Admin {
 	}
 
 	/**
-	 * Add admin menu page.
-	 */
-	public function add_admin_menu(): void {
-		add_submenu_page(
-			'meowseo',
-			__( 'Schema Generator', 'meowseo' ),
-			__( 'Schema Generator', 'meowseo' ),
-			'manage_options',
-			'meowseo-schema',
-			array( $this, 'render_admin_page' )
-		);
-	}
-
-	/**
 	 * Render admin page.
 	 */
 	public function render_admin_page(): void {
@@ -253,7 +233,7 @@ class Schema_Admin {
 	/**
 	 * Render schema types grid.
 	 */
-	private function render_schema_types_grid(): void {
+	public function render_schema_types_grid(): void {
 		$registry = Schema_Registry::get_instance();
 		$types    = $registry->get_all();
 

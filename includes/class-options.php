@@ -97,6 +97,23 @@ class Options {
 			'schema_business_lng'                 => '',
 			'schema_local_business_categories'    => array(),
 
+			// Global Schema Toggles.
+			'schema_auto_website'                 => true,
+			'schema_auto_organization'            => true,
+			'schema_auto_breadcrumbs'             => true,
+			'schema_auto_author'                  => true,
+			'schema_auto_webpage'                 => true,
+			'schema_organization_type'            => 'Organization',
+			'schema_output_format'                => 'graph', // 'graph' or 'separate'
+
+			// Social Profiles for Schema / Knowledge Graph.
+			'social_facebook_url'                 => '',
+			'social_twitter_url'                  => '',
+			'social_instagram_url'                => '',
+			'social_linkedin_url'                 => '',
+			'social_youtube_url'                  => '',
+			'social_pinterest_url'                => '',
+
 			// LLMs.txt — AI Crawler Guidance File.
 			'llms_txt_enabled'                    => true,
 			'llms_txt_intro'                      => '',

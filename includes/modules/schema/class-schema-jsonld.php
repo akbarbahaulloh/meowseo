@@ -36,7 +36,19 @@ class Schema_JsonLD {
 	 *
 	 * @var array
 	 */
-	private $data = array();
+	/**
+	 * Options instance.
+	 *
+	 * @var \MeowSEO\Options
+	 */
+	private $options;
+
+	/**
+	 * Constructor.
+	 */
+	public function __construct() {
+		$this->options = new \MeowSEO\Options();
+	}
 
 	/**
 	 * Setup hooks.
@@ -226,11 +238,9 @@ class Schema_JsonLD {
 	 * @return array Organization schema.
 	 */
 	private function get_organization_schema(): array {
-		$settings = get_option( 'meowseo_schema_settings', array() );
-		
-		$type = $settings['organization_type'] ?? get_option( 'meowseo_organization_type', 'Organization' );
-		$name = $settings['organization_name'] ?? get_option( 'meowseo_organization_name', get_bloginfo( 'name' ) );
-		$logo = $settings['organization_logo'] ?? get_option( 'meowseo_organization_logo', '' );
+		$type = $this->options->get( 'schema_organization_type', 'Organization' );
+		$name = $this->options->get( 'schema_business_name', get_bloginfo( 'name' ) );
+		$logo = $this->options->get( 'schema_organization_logo', '' );
 
 		// Use site name if organization name is empty.
 		if ( empty( $name ) ) {
@@ -253,11 +263,13 @@ class Schema_JsonLD {
 			);
 
 			// Add dimensions if available.
-			if ( ! empty( $settings['organization_logo_width'] ) ) {
-				$logo_data['width'] = absint( $settings['organization_logo_width'] );
+			$logo_width = $this->options->get( 'schema_organization_logo_width', '' );
+			$logo_height = $this->options->get( 'schema_organization_logo_height', '' );
+			if ( ! empty( $logo_width ) ) {
+				$logo_data['width'] = absint( $logo_width );
 			}
-			if ( ! empty( $settings['organization_logo_height'] ) ) {
-				$logo_data['height'] = absint( $settings['organization_logo_height'] );
+			if ( ! empty( $logo_height ) ) {
+				$logo_data['height'] = absint( $logo_height );
 			}
 
 			$schema['logo'] = $logo_data;
@@ -412,20 +424,18 @@ class Schema_JsonLD {
 	 */
 	private function get_social_profiles(): array {
 		$profiles = array();
-		$settings = get_option( 'meowseo_schema_settings', array() );
 
 		$social_options = array(
-			'facebook_url',
-			'twitter_url',
-			'instagram_url',
-			'linkedin_url',
-			'youtube_url',
-			'pinterest_url',
+			'social_facebook_url',
+			'social_twitter_url',
+			'social_instagram_url',
+			'social_linkedin_url',
+			'social_youtube_url',
+			'social_pinterest_url',
 		);
 
 		foreach ( $social_options as $option ) {
-			// Check new settings first, then fall back to old options.
-			$url = $settings[ $option ] ?? get_option( 'meowseo_' . $option, '' );
+			$url = $this->options->get( $option, '' );
 			if ( $url ) {
 				$profiles[] = $url;
 			}
@@ -512,7 +522,7 @@ class Schema_JsonLD {
 	 * @return bool
 	 */
 	private function should_add_website(): bool {
-		$auto_website = get_option( 'meowseo_schema_settings', array() )['auto_website'] ?? true;
+		$auto_website = $this->options->get( 'schema_auto_website', true );
 		return apply_filters( 'meowseo_schema_add_website', $auto_website );
 	}
 
@@ -522,7 +532,7 @@ class Schema_JsonLD {
 	 * @return bool
 	 */
 	private function should_add_organization(): bool {
-		$auto_organization = get_option( 'meowseo_schema_settings', array() )['auto_organization'] ?? true;
+		$auto_organization = $this->options->get( 'schema_auto_organization', true );
 		return apply_filters( 'meowseo_schema_add_organization', $auto_organization );
 	}
 
@@ -536,7 +546,7 @@ class Schema_JsonLD {
 			return false;
 		}
 
-		$auto_breadcrumbs = get_option( 'meowseo_schema_settings', array() )['auto_breadcrumbs'] ?? true;
+		$auto_breadcrumbs = $this->options->get( 'schema_auto_breadcrumbs', true );
 		return apply_filters( 'meowseo_schema_add_breadcrumbs', $auto_breadcrumbs );
 	}
 
@@ -546,7 +556,7 @@ class Schema_JsonLD {
 	 * @return bool
 	 */
 	private function should_add_webpage(): bool {
-		$auto_webpage = get_option( 'meowseo_schema_settings', array() )['auto_webpage'] ?? true;
+		$auto_webpage = $this->options->get( 'schema_auto_webpage', true );
 		return apply_filters( 'meowseo_schema_add_webpage', $auto_webpage );
 	}
 
@@ -562,7 +572,7 @@ class Schema_JsonLD {
 		}
 
 		// Check if automatic author schema is enabled.
-		$auto_author = get_option( 'meowseo_schema_settings', array() )['auto_author'] ?? true;
+		$auto_author = $this->options->get( 'schema_auto_author', true );
 		
 		return apply_filters( 'meowseo_schema_add_author', $auto_author, $this->post );
 	}
