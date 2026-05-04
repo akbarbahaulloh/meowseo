@@ -415,6 +415,7 @@ class GSC_API {
 					'ctr'         => $ctr,
 					'position'    => $position,
 					'date'        => $start_date,
+					'data_hash'   => md5( $site_url . ( $page ?? '' ) . ( $query ?? '' ) . $start_date ),
 					'created_at'  => current_time( 'mysql' ),
 				];
 
@@ -422,7 +423,7 @@ class GSC_API {
 				$wpdb->replace(
 					$table,
 					$insert_data,
-					[ '%s', '%s', '%s', '%d', '%d', '%f', '%f', '%s', '%s' ]
+					[ '%s', '%s', '%s', '%d', '%d', '%f', '%f', '%s', '%s', '%s' ]
 				);
 			}
 

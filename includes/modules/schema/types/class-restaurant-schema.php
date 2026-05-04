@@ -187,10 +187,12 @@ class Restaurant_Schema extends Schema_Type {
 					'latitude'  => array(
 						'type'  => 'text',
 						'label' => __( 'Latitude', 'meowseo' ),
+						'width' => 'calc(50% - 5px)',
 					),
 					'longitude' => array(
 						'type'  => 'text',
 						'label' => __( 'Longitude', 'meowseo' ),
+						'width' => 'calc(50% - 5px)',
 					),
 				),
 			),

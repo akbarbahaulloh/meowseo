@@ -430,6 +430,19 @@ class Admin {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'meowseo' ) );
 		}
 
+		// Handle OAuth callback.
+		if ( isset( $_GET['action'] ) && 'oauth_callback' === $_GET['action'] && isset( $_GET['code'] ) ) {
+			$gsc = $this->module_manager->get_module( 'gsc' );
+			if ( $gsc ) {
+				$success = $gsc->handle_oauth_callback( sanitize_text_field( $_GET['code'] ) );
+				if ( $success ) {
+					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Google Search Console connected successfully!', 'meowseo' ) . '</p></div>';
+				} else {
+					echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Failed to connect Google Search Console. Please check your credentials.', 'meowseo' ) . '</p></div>';
+				}
+			}
+		}
+
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'Search Console', 'meowseo' ); ?></h1>

@@ -35,13 +35,6 @@ class Redirects_Admin {
 	private Options $options;
 
 	/**
-	 * Redirects per page
-	 *
-	 * @var int
-	 */
-	private const REDIRECTS_PER_PAGE = 50;
-
-	/**
 	 * Constructor
 	 *
 	 * @param Options $options Options instance.
@@ -59,8 +52,7 @@ class Redirects_Admin {
 	 */
 	public function boot(): void {
 		// Menu registration is handled by Admin class to prevent duplicates
-		add_action( 'wp_ajax_meowseo_import_redirects', array( $this, 'handle_csv_import' ) );
-		add_action( 'wp_ajax_meowseo_export_redirects', array( $this, 'handle_csv_export' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 	}
 
 	/**
@@ -83,6 +75,43 @@ class Redirects_Admin {
 	}
 
 	/**
+	 * Enqueue admin scripts and styles
+	 *
+	 * @param string $hook Current admin page hook.
+	 * @return void
+	 */
+	public function enqueue_scripts( string $hook ): void {
+		// Only load on our admin page.
+		if ( 'meowseo_page_meowseo-redirects' !== $hook ) {
+			return;
+		}
+
+		$asset_file = MEOWSEO_PATH . 'build/admin-redirects.asset.php';
+		if ( ! file_exists( $asset_file ) ) {
+			return;
+		}
+
+		$assets = include $asset_file;
+
+		wp_enqueue_script(
+			'meowseo-admin-redirects',
+			MEOWSEO_URL . 'build/admin-redirects.js',
+			$assets['dependencies'],
+			$assets['version'],
+			true
+		);
+
+		wp_enqueue_style(
+			'meowseo-admin-redirects',
+			MEOWSEO_URL . 'build/admin-redirects.css',
+			array(),
+			$assets['version']
+		);
+
+		wp_set_script_translations( 'meowseo-admin-redirects', 'meowseo' );
+	}
+
+	/**
 	 * Render admin page
 	 *
 	 * Outputs the main redirects management page.
@@ -96,576 +125,6 @@ class Redirects_Admin {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'meowseo' ) );
 		}
 
-		// Handle form submissions
-		$this->handle_form_submission();
-
-		?>
-		<div class="wrap">
-			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-
-			<?php $this->render_form(); ?>
-			<?php $this->render_csv_section(); ?>
-			<?php $this->render_table(); ?>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Handle form submission
-	 *
-	 * Processes create, update, and delete actions.
-	 *
-	 * @return void
-	 */
-	private function handle_form_submission(): void {
-		// Check if form was submitted
-		if ( ! isset( $_POST['meowseo_redirect_action'] ) ) {
-			return;
-		}
-
-		// Verify nonce
-		if ( ! isset( $_POST['meowseo_redirect_nonce'] ) || ! wp_verify_nonce( $_POST['meowseo_redirect_nonce'], 'meowseo_redirect_action' ) ) {
-			add_settings_error( 'meowseo_redirects', 'invalid_nonce', __( 'Security check failed.', 'meowseo' ), 'error' );
-			return;
-		}
-
-		$action = sanitize_text_field( $_POST['meowseo_redirect_action'] );
-
-		switch ( $action ) {
-			case 'create':
-				$this->handle_create_redirect();
-				break;
-			case 'delete':
-				$this->handle_delete_redirect();
-				break;
-			case 'bulk_delete':
-				$this->handle_bulk_delete();
-				break;
-		}
-	}
-
-	/**
-	 * Handle create redirect
-	 *
-	 * Creates a new redirect rule from form data.
-	 *
-	 * @return void
-	 */
-	private function handle_create_redirect(): void {
-		global $wpdb;
-
-		$source_url = isset( $_POST['source_url'] ) ? sanitize_text_field( $_POST['source_url'] ) : '';
-		$target_url = isset( $_POST['target_url'] ) ? esc_url_raw( $_POST['target_url'] ) : '';
-		$redirect_type = isset( $_POST['redirect_type'] ) ? absint( $_POST['redirect_type'] ) : 301;
-		$is_regex = isset( $_POST['is_regex'] ) ? 1 : 0;
-
-		// Validate required fields
-		if ( empty( $source_url ) || empty( $target_url ) ) {
-			add_settings_error( 'meowseo_redirects', 'missing_fields', __( 'Source URL and Target URL are required.', 'meowseo' ), 'error' );
-			return;
-		}
-
-		// Validate redirect type
-		if ( ! in_array( $redirect_type, array( 301, 302, 307, 410, 451 ), true ) ) {
-			$redirect_type = 301;
-		}
-
-		$table = $wpdb->prefix . 'meowseo_redirects';
-
-		// Insert redirect
-		$result = $wpdb->insert(
-			$table,
-			array(
-				'source_url'    => $source_url,
-				'target_url'    => $target_url,
-				'redirect_type' => $redirect_type,
-				'is_regex'      => $is_regex,
-				'is_active'     => 1,
-			),
-			array( '%s', '%s', '%d', '%d', '%d' )
-		);
-
-		if ( false === $result ) {
-			add_settings_error( 'meowseo_redirects', 'db_error', __( 'Failed to create redirect.', 'meowseo' ), 'error' );
-			return;
-		}
-
-		// Update has_regex_rules flag if this is a regex rule
-		if ( $is_regex ) {
-			$this->update_regex_rules_flag();
-		}
-
-		add_settings_error( 'meowseo_redirects', 'redirect_created', __( 'Redirect created successfully.', 'meowseo' ), 'success' );
-	}
-
-	/**
-	 * Handle delete redirect
-	 *
-	 * Deletes a single redirect rule.
-	 *
-	 * @return void
-	 */
-	private function handle_delete_redirect(): void {
-		global $wpdb;
-
-		$redirect_id = isset( $_POST['redirect_id'] ) ? absint( $_POST['redirect_id'] ) : 0;
-
-		if ( ! $redirect_id ) {
-			add_settings_error( 'meowseo_redirects', 'invalid_id', __( 'Invalid redirect ID.', 'meowseo' ), 'error' );
-			return;
-		}
-
-		$table = $wpdb->prefix . 'meowseo_redirects';
-
-		$result = $wpdb->delete(
-			$table,
-			array( 'id' => $redirect_id ),
-			array( '%d' )
-		);
-
-		if ( false === $result ) {
-			add_settings_error( 'meowseo_redirects', 'db_error', __( 'Failed to delete redirect.', 'meowseo' ), 'error' );
-			return;
-		}
-
-		// Update has_regex_rules flag
-		$this->update_regex_rules_flag();
-
-		add_settings_error( 'meowseo_redirects', 'redirect_deleted', __( 'Redirect deleted successfully.', 'meowseo' ), 'success' );
-	}
-
-	/**
-	 * Handle bulk delete
-	 *
-	 * Deletes multiple redirect rules.
-	 *
-	 * @return void
-	 */
-	private function handle_bulk_delete(): void {
-		global $wpdb;
-
-		$redirect_ids = isset( $_POST['redirect_ids'] ) ? array_map( 'absint', (array) $_POST['redirect_ids'] ) : array();
-
-		if ( empty( $redirect_ids ) ) {
-			add_settings_error( 'meowseo_redirects', 'no_selection', __( 'No redirects selected.', 'meowseo' ), 'error' );
-			return;
-		}
-
-		$table = $wpdb->prefix . 'meowseo_redirects';
-		$placeholders = implode( ',', array_fill( 0, count( $redirect_ids ), '%d' ) );
-
-		$query = $wpdb->prepare(
-			"DELETE FROM {$table} WHERE id IN ({$placeholders})",
-			$redirect_ids
-		);
-
-		$result = $wpdb->query( $query );
-
-		if ( false === $result ) {
-			add_settings_error( 'meowseo_redirects', 'db_error', __( 'Failed to delete redirects.', 'meowseo' ), 'error' );
-			return;
-		}
-
-		// Update has_regex_rules flag
-		$this->update_regex_rules_flag();
-
-		add_settings_error( 'meowseo_redirects', 'redirects_deleted', sprintf( __( '%d redirects deleted successfully.', 'meowseo' ), $result ), 'success' );
-	}
-
-	/**
-	 * Render form for creating new redirects
-	 *
-	 * Requirements: 12.2, 12.3
-	 *
-	 * @return void
-	 */
-	private function render_form(): void {
-		?>
-		<div class="card">
-			<h2><?php esc_html_e( 'Add New Redirect', 'meowseo' ); ?></h2>
-			<form method="post" action="">
-				<?php wp_nonce_field( 'meowseo_redirect_action', 'meowseo_redirect_nonce' ); ?>
-				<input type="hidden" name="meowseo_redirect_action" value="create">
-
-				<table class="form-table">
-					<tr>
-						<th scope="row">
-							<label for="source_url"><?php esc_html_e( 'Source URL', 'meowseo' ); ?></label>
-						</th>
-						<td>
-							<input type="text" id="source_url" name="source_url" class="regular-text" required>
-							<p class="description"><?php esc_html_e( 'The URL to redirect from (e.g., /old-page/)', 'meowseo' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="target_url"><?php esc_html_e( 'Target URL', 'meowseo' ); ?></label>
-						</th>
-						<td>
-							<input type="text" id="target_url" name="target_url" class="regular-text" required>
-							<p class="description"><?php esc_html_e( 'The URL to redirect to (e.g., /new-page/)', 'meowseo' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="redirect_type"><?php esc_html_e( 'Redirect Type', 'meowseo' ); ?></label>
-						</th>
-						<td>
-							<select id="redirect_type" name="redirect_type">
-								<option value="301"><?php esc_html_e( '301 - Permanent', 'meowseo' ); ?></option>
-								<option value="302"><?php esc_html_e( '302 - Temporary', 'meowseo' ); ?></option>
-								<option value="307"><?php esc_html_e( '307 - Temporary (Preserve Method)', 'meowseo' ); ?></option>
-								<option value="410"><?php esc_html_e( '410 - Gone', 'meowseo' ); ?></option>
-								<option value="451"><?php esc_html_e( '451 - Unavailable For Legal Reasons', 'meowseo' ); ?></option>
-							</select>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<?php esc_html_e( 'Regex Mode', 'meowseo' ); ?>
-						</th>
-						<td>
-							<label>
-								<input type="checkbox" id="is_regex" name="is_regex" value="1">
-								<?php esc_html_e( 'Use regular expression pattern matching', 'meowseo' ); ?>
-							</label>
-							<p class="description"><?php esc_html_e( 'Enable this to use regex patterns in the source URL (e.g., ^/blog/.*)', 'meowseo' ); ?></p>
-						</td>
-					</tr>
-				</table>
-
-				<?php submit_button( __( 'Create Redirect', 'meowseo' ) ); ?>
-			</form>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Render CSV import/export section
-	 *
-	 * Requirements: 12.1, 12.2
-	 *
-	 * @return void
-	 */
-	private function render_csv_section(): void {
-		?>
-		<div class="card">
-			<h2><?php esc_html_e( 'Import / Export', 'meowseo' ); ?></h2>
-			<div style="display: flex; gap: 20px;">
-				<?php $this->render_csv_import(); ?>
-				<?php $this->render_csv_export(); ?>
-			</div>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Render CSV import form
-	 *
-	 * Requirements: 12.3, 12.4, 12.5, 12.6
-	 *
-	 * @return void
-	 */
-	private function render_csv_import(): void {
-		?>
-		<div style="flex: 1;">
-			<h3><?php esc_html_e( 'Import from CSV', 'meowseo' ); ?></h3>
-			<p><?php esc_html_e( 'Upload a CSV file with columns: source_url, target_url, redirect_type, is_regex', 'meowseo' ); ?></p>
-			<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>">
-				<?php wp_nonce_field( 'meowseo_csv_import', 'meowseo_csv_nonce' ); ?>
-				<input type="hidden" name="action" value="meowseo_import_redirects">
-				<input type="file" name="csv_file" accept=".csv" required>
-				<?php submit_button( __( 'Import CSV', 'meowseo' ), 'secondary', 'submit', false ); ?>
-			</form>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Render CSV export button
-	 *
-	 * Requirements: 12.5
-	 *
-	 * @return void
-	 */
-	private function render_csv_export(): void {
-		?>
-		<div style="flex: 1;">
-			<h3><?php esc_html_e( 'Export to CSV', 'meowseo' ); ?></h3>
-			<p><?php esc_html_e( 'Download all redirect rules as a CSV file.', 'meowseo' ); ?></p>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>">
-				<?php wp_nonce_field( 'meowseo_csv_export', 'meowseo_csv_nonce' ); ?>
-				<input type="hidden" name="action" value="meowseo_export_redirects">
-				<?php submit_button( __( 'Export CSV', 'meowseo' ), 'secondary', 'submit', false ); ?>
-			</form>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Render redirects table
-	 *
-	 * Requirements: 12.4, 12.5, 12.6
-	 *
-	 * @return void
-	 */
-	private function render_table(): void {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'meowseo_redirects';
-
-		// Get current page
-		$paged = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;
-		$offset = ( $paged - 1 ) * self::REDIRECTS_PER_PAGE;
-
-		// Get search query
-		$search = isset( $_GET['s'] ) ? sanitize_text_field( $_GET['s'] ) : '';
-
-		// Build query
-		$where = '';
-		$query_args = array();
-
-		if ( ! empty( $search ) ) {
-			$where = $wpdb->prepare( ' WHERE source_url LIKE %s OR target_url LIKE %s', '%' . $wpdb->esc_like( $search ) . '%', '%' . $wpdb->esc_like( $search ) . '%' );
-		}
-
-		// Get total count
-		$total = $wpdb->get_var( "SELECT COUNT(*) FROM {$table}{$where}" );
-
-		// Get redirects
-		$redirects = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$table}{$where} ORDER BY id DESC LIMIT %d OFFSET %d",
-				self::REDIRECTS_PER_PAGE,
-				$offset
-			),
-			ARRAY_A
-		);
-
-		// Calculate total pages
-		$total_pages = ceil( $total / self::REDIRECTS_PER_PAGE );
-
-		?>
-		<div class="card">
-			<h2><?php esc_html_e( 'Redirects', 'meowseo' ); ?></h2>
-
-			<!-- Search form -->
-			<form method="get" action="">
-				<input type="hidden" name="page" value="meowseo-redirects">
-				<p class="search-box">
-					<label class="screen-reader-text" for="redirect-search-input"><?php esc_html_e( 'Search Redirects:', 'meowseo' ); ?></label>
-					<input type="search" id="redirect-search-input" name="s" value="<?php echo esc_attr( $search ); ?>">
-					<?php submit_button( __( 'Search Redirects', 'meowseo' ), 'button', false, false, array( 'id' => 'search-submit' ) ); ?>
-				</p>
-			</form>
-
-			<!-- Bulk actions form -->
-			<form method="post" action="">
-				<?php wp_nonce_field( 'meowseo_redirect_action', 'meowseo_redirect_nonce' ); ?>
-				<input type="hidden" name="meowseo_redirect_action" value="bulk_delete">
-
-				<div class="tablenav top">
-					<div class="alignleft actions bulkactions">
-						<select name="bulk_action">
-							<option value=""><?php esc_html_e( 'Bulk Actions', 'meowseo' ); ?></option>
-							<option value="delete"><?php esc_html_e( 'Delete', 'meowseo' ); ?></option>
-						</select>
-						<?php submit_button( __( 'Apply', 'meowseo' ), 'action', 'submit', false ); ?>
-					</div>
-				</div>
-
-				<table class="wp-list-table widefat fixed striped">
-					<thead>
-						<tr>
-							<td class="manage-column column-cb check-column">
-								<input type="checkbox" id="cb-select-all">
-							</td>
-							<th><?php esc_html_e( 'Source URL', 'meowseo' ); ?></th>
-							<th><?php esc_html_e( 'Target URL', 'meowseo' ); ?></th>
-							<th><?php esc_html_e( 'Type', 'meowseo' ); ?></th>
-							<th><?php esc_html_e( 'Regex', 'meowseo' ); ?></th>
-							<th><?php esc_html_e( 'Hits', 'meowseo' ); ?></th>
-							<th><?php esc_html_e( 'Last Hit', 'meowseo' ); ?></th>
-							<th><?php esc_html_e( 'Actions', 'meowseo' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php if ( empty( $redirects ) ) : ?>
-							<tr>
-								<td colspan="8"><?php esc_html_e( 'No redirects found.', 'meowseo' ); ?></td>
-							</tr>
-						<?php else : ?>
-							<?php foreach ( $redirects as $redirect ) : ?>
-								<tr>
-									<th scope="row" class="check-column">
-										<input type="checkbox" name="redirect_ids[]" value="<?php echo esc_attr( $redirect['id'] ); ?>">
-									</th>
-									<td><?php echo esc_html( $redirect['source_url'] ); ?></td>
-									<td><?php echo esc_html( $redirect['target_url'] ); ?></td>
-									<td><?php echo esc_html( $redirect['redirect_type'] ); ?></td>
-									<td><?php echo $redirect['is_regex'] ? '✓' : '—'; ?></td>
-									<td><?php echo esc_html( $redirect['hit_count'] ?? 0 ); ?></td>
-									<td><?php echo $redirect['last_hit'] ? esc_html( $redirect['last_hit'] ) : '—'; ?></td>
-									<td>
-										<form method="post" action="" style="display: inline;">
-											<?php wp_nonce_field( 'meowseo_redirect_action', 'meowseo_redirect_nonce' ); ?>
-											<input type="hidden" name="meowseo_redirect_action" value="delete">
-											<input type="hidden" name="redirect_id" value="<?php echo esc_attr( $redirect['id'] ); ?>">
-											<button type="submit" class="button button-small" onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to delete this redirect?', 'meowseo' ); ?>')">
-												<?php esc_html_e( 'Delete', 'meowseo' ); ?>
-											</button>
-										</form>
-									</td>
-								</tr>
-							<?php endforeach; ?>
-						<?php endif; ?>
-					</tbody>
-				</table>
-
-				<!-- Pagination -->
-				<?php if ( $total_pages > 1 ) : ?>
-					<div class="tablenav bottom">
-						<div class="tablenav-pages">
-							<?php
-							echo paginate_links(
-								array(
-									'base'      => add_query_arg( 'paged', '%#%' ),
-									'format'    => '',
-									'prev_text' => __( '&laquo;', 'meowseo' ),
-									'next_text' => __( '&raquo;', 'meowseo' ),
-									'total'     => $total_pages,
-									'current'   => $paged,
-								)
-							);
-							?>
-						</div>
-					</div>
-				<?php endif; ?>
-			</form>
-		</div>
-
-		<script>
-		jQuery(document).ready(function($) {
-			// Select all checkboxes
-			$('#cb-select-all').on('click', function() {
-				$('input[name="redirect_ids[]"]').prop('checked', this.checked);
-			});
-		});
-		</script>
-		<?php
-	}
-
-	/**
-	 * Update has_regex_rules option flag
-	 *
-	 * Checks if any active regex rules exist and updates the option flag.
-	 *
-	 * @return void
-	 */
-	private function update_regex_rules_flag(): void {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'meowseo_redirects';
-
-		// Check if any active regex rules exist
-		$has_regex = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$table} WHERE is_regex = 1 AND is_active = 1"
-		);
-
-		// Update option flag
-		$this->options->set( 'has_regex_rules', $has_regex > 0 );
-		$this->options->save();
-	}
-
-	/**
-	 * Handle CSV import
-	 *
-	 * AJAX handler for importing redirects from CSV file.
-	 * Requirements: 12.3, 12.4, 12.5, 12.6
-	 *
-	 * @return void
-	 */
-	/**
-	 * Handle CSV import
-	 *
-	 * AJAX handler for importing redirects from CSV file.
-	 * Uses CSV_Importer class for processing.
-	 * Requirements: 5.1, 5.6, 5.7
-	 *
-	 * @return void
-	 */
-	public function handle_csv_import(): void {
-		// Verify nonce
-		if ( ! isset( $_POST['meowseo_csv_nonce'] ) || ! wp_verify_nonce( $_POST['meowseo_csv_nonce'], 'meowseo_csv_import' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Security check failed.', 'meowseo' ) ) );
-		}
-
-		// Check capability
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => __( 'You do not have permission to import redirects.', 'meowseo' ) ) );
-		}
-
-		// Check if file was uploaded
-		if ( empty( $_FILES['csv_file'] ) ) {
-			wp_send_json_error( array( 'message' => __( 'No file uploaded.', 'meowseo' ) ) );
-		}
-
-		// Use CSV_Importer class
-		$importer = new CSV_Importer( $this );
-		$result   = $importer->import_from_file( $_FILES['csv_file'] );
-
-		if ( is_wp_error( $result ) ) {
-			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
-		}
-
-		// Requirement 5.6, 5.7: Display import summary
-		if ( $result['imported'] > 0 ) {
-			wp_send_json_success(
-				array(
-					'message'        => sprintf(
-						/* translators: 1: Imported count, 2: Skipped count */
-						__( 'Successfully imported %1$d redirects. Skipped %2$d rows.', 'meowseo' ),
-						$result['imported'],
-						$result['skipped']
-					),
-					'imported_count' => $result['imported'],
-					'skipped_count'  => $result['skipped'],
-					'errors'         => $result['errors'],
-				)
-			);
-		} else {
-			wp_send_json_error(
-				array(
-					'message' => __( 'No redirects were imported. Please check the CSV format.', 'meowseo' ),
-					'errors'  => $result['errors'],
-				)
-			);
-		}
-	}
-
-	/**
-	 * Handle CSV export
-	 *
-	 * AJAX handler for exporting redirects to CSV file.
-	 * Uses CSV_Exporter class for processing.
-	 * Requirements: 5.2, 5.10
-	 *
-	 * @return void
-	 */
-	public function handle_csv_export(): void {
-		// Verify nonce
-		if ( ! isset( $_POST['meowseo_csv_nonce'] ) || ! wp_verify_nonce( $_POST['meowseo_csv_nonce'], 'meowseo_csv_export' ) ) {
-			wp_die( esc_html__( 'Security check failed.', 'meowseo' ) );
-		}
-
-		// Check capability
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to export redirects.', 'meowseo' ) );
-		}
-
-		// Use CSV_Exporter class
-		$exporter = new CSV_Exporter( $this );
-		$exporter->export_to_file();
-		// Note: export_to_file() exits after sending the file
+		echo '<div id="meowseo-redirects-root"></div>';
 	}
 }

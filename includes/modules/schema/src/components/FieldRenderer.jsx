@@ -21,13 +21,14 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 	};
 
 	const fieldClassName = `meowseo-field meowseo-field--${fieldId} meowseo-field--type-${type}`;
+	const fieldStyle = field.width ? { width: field.width, flex: 'none' } : {};
 
 	switch (type) {
 		case 'text':
 		case 'url':
 		case 'email':
 			return (
-				<div className={fieldClassName}>
+				<div className={fieldClassName} style={fieldStyle}>
 					<TextControl
 						{...commonProps}
 						type={type}
@@ -39,7 +40,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'textarea':
 			return (
-				<div className={fieldClassName}>
+				<div className={fieldClassName} style={fieldStyle}>
 					<TextareaControl
 						{...commonProps}
 						placeholder={placeholder}
@@ -51,7 +52,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'number':
 			return (
-				<div className={fieldClassName}>
+				<div className={fieldClassName} style={fieldStyle}>
 					<TextControl
 						{...commonProps}
 						type="number"
@@ -64,7 +65,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'select':
 			return (
-				<div className={fieldClassName}>
+				<div className={fieldClassName} style={fieldStyle}>
 					<SelectControl
 						{...commonProps}
 						options={Object.entries(options || {}).map(([val, label]) => ({
@@ -80,7 +81,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 		case 'datetime':
 		case 'time':
 			return (
-				<div className={fieldClassName}>
+				<div className={fieldClassName} style={fieldStyle}>
 					<TextControl
 						{...commonProps}
 						type={type === 'datetime' ? 'datetime-local' : type}
@@ -92,7 +93,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'image':
 			return (
-				<div className={fieldClassName}>
+				<div className={fieldClassName} style={fieldStyle}>
 					<label className="meowseo-field__label">
 						{commonProps.label}
 					</label>
@@ -110,7 +111,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'group':
 			return (
-				<div className={fieldClassName}>
+				<div className={fieldClassName} style={fieldStyle}>
 					<GroupField
 						label={label}
 						description={description}
@@ -123,7 +124,7 @@ export default function FieldRenderer({ fieldId, field, value, onChange }) {
 
 		case 'repeater':
 			return (
-				<div className={fieldClassName}>
+				<div className={fieldClassName} style={fieldStyle}>
 					<RepeaterField
 						label={label}
 						description={description}

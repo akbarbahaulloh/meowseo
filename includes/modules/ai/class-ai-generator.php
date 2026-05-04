@@ -423,6 +423,12 @@ class AI_Generator {
 				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
 				$prompt .= '{"name": "Course name", "description": "Course description", "provider": {"@type": "Organization", "name": "Provider name"}, "hasCourseInstance": [{"@type": "CourseInstance", "courseMode": "online", "instructor": {"@type": "Person", "name": "Instructor name"}}]}';
 				break;
+				
+			case 'VideoObject':
+				$prompt .= "Extract video details from the article.\n";
+				$prompt .= "Return ONLY a JSON object (no markdown, no explanation):\n";
+				$prompt .= '{"name": "Video title", "description": "Video description", "thumbnailUrl": "https://example.com/thumb.jpg", "uploadDate": "2025-01-01T08:00:00+08:00", "duration": "PT1M33S", "contentUrl": "https://example.com/video.mp4", "embedUrl": "https://example.com/embed/123"}';
+				break;
 
 			default:
 				// Generic schema: extract main info.

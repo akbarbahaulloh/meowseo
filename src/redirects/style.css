@@ -1,0 +1,22 @@
+/**
+ * Redirects Styles
+ */
+
+@import '../monitor-404/style.css';
+
+.meowseo-badge-regex {
+	display: inline-block;
+	background: #e1f0ff;
+	color: #0c5991;
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	margin-left: 8px;
+	vertical-align: middle;
+}
+
+.meowseo-dashboard .dashicons-arrow-right-alt2 {
+	color: #8c8f94;
+}

@@ -22,7 +22,7 @@ export default function GroupField({ label, description, fields, value, onChange
 			{description && (
 				<p className="meowseo-field__description">{description}</p>
 			)}
-			<div>
+			<div className="meowseo-group__fields" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
 				{Object.entries(fields || {}).map(([fieldId, field]) => (
 					<FieldRenderer
 						key={fieldId}

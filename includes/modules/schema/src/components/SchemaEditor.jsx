@@ -18,6 +18,7 @@ export default function SchemaEditor({ postId, schema, onSave, onCancel }) {
 	const [fields, setFields] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
+	const [isAiGenerating, setIsAiGenerating] = useState(false);
 
 	useEffect(() => {
 		if (selectedType) {
@@ -27,6 +28,33 @@ export default function SchemaEditor({ postId, schema, onSave, onCancel }) {
 			}
 		}
 	}, [selectedType]);
+
+	const handleAiGenerate = async () => {
+		try {
+			setIsAiGenerating(true);
+			const result = await apiFetch({
+				path: `/meowseo/v1/ai/schema`,
+				method: 'POST',
+				data: {
+					post_id: postId,
+					schema_type: selectedType,
+				},
+			});
+
+			if (result.success && result.data?.schema_data) {
+				setSchemaData({
+					...schemaData,
+					...result.data.schema_data,
+				});
+			} else {
+				throw new Error(result.message || __('AI generation failed.', 'meowseo'));
+			}
+		} catch (err) {
+			alert(__('Error generating schema with AI:', 'meowseo') + ' ' + (err.message || err.code));
+		} finally {
+			setIsAiGenerating(false);
+		}
+	};
 
 	async function loadFields() {
 		try {
@@ -80,12 +108,24 @@ export default function SchemaEditor({ postId, schema, onSave, onCancel }) {
 				<h3 className="meowseo-schema-editor__title">
 					{schema ? __('Edit Schema', 'meowseo') : __('Add Schema', 'meowseo')}
 				</h3>
-				<button
-					className="meowseo-schema-editor__close"
-					onClick={onCancel}
-				>
-					{__('Cancel', 'meowseo')}
-				</button>
+				<div className="meowseo-schema-editor__header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+					{selectedType && (
+						<Button
+							isTertiary
+							onClick={handleAiGenerate}
+							disabled={isAiGenerating || loading}
+							icon="magic"
+						>
+							{isAiGenerating ? __('Generating...', 'meowseo') : __('AI Generate', 'meowseo')}
+						</Button>
+					)}
+					<button
+						className="meowseo-schema-editor__close"
+						onClick={onCancel}
+					>
+						{__('Cancel', 'meowseo')}
+					</button>
+				</div>
 			</div>
 
 			<div className="meowseo-schema-editor__body">
@@ -129,7 +169,7 @@ export default function SchemaEditor({ postId, schema, onSave, onCancel }) {
 					<Button isSecondary onClick={onCancel}>
 						{__('Cancel', 'meowseo')}
 					</Button>
-					<Button isPrimary onClick={handleSave} disabled={saving}>
+					<Button isPrimary onClick={handleSave} disabled={saving || isAiGenerating}>
 						{saving ? __('Saving...', 'meowseo') : __('Save Schema', 'meowseo')}
 					</Button>
 				</div>

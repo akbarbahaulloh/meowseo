@@ -142,6 +142,11 @@ class Settings_Manager {
 				'icon'   => 'dashicons-search',
 				'method' => 'render_schema_detector_tab',
 			),
+			'search-console'  => array(
+				'title'  => __( 'Search Console', 'meowseo' ),
+				'icon'   => 'dashicons-google',
+				'method' => 'render_search_console_tab',
+			),
 			'cron'            => array(
 				'title'  => __( 'Cron Manager', 'meowseo' ),
 				'icon'   => 'dashicons-clock',
@@ -2428,6 +2433,14 @@ class Settings_Manager {
 			$validated['llms_txt_blocked'] = sanitize_textarea_field( $settings['llms_txt_blocked'] );
 		}
 
+		// Validate GSC credentials.
+		if ( isset( $settings['meowseo_gsc_client_id'] ) ) {
+			$validated['meowseo_gsc_client_id'] = sanitize_text_field( $settings['meowseo_gsc_client_id'] );
+		}
+		if ( isset( $settings['meowseo_gsc_client_secret'] ) ) {
+			$validated['meowseo_gsc_client_secret'] = sanitize_text_field( $settings['meowseo_gsc_client_secret'] );
+		}
+
 		return $validated;
 	}
 
@@ -3933,6 +3946,45 @@ class Settings_Manager {
 			</tr>
 
 		</table>
+		<?php
+	}
+
+	/**
+	 * Render Search Console settings tab.
+	 */
+	public function render_search_console_tab(): void {
+		$client_id     = get_option( 'meowseo_gsc_client_id', '' );
+		$client_secret = get_option( 'meowseo_gsc_client_secret', '' );
+		?>
+		<h2><?php esc_html_e( 'Search Console Settings', 'meowseo' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Configure your Google API credentials to enable Search Console integration.', 'meowseo' ); ?></p>
+
+		<table class="form-table">
+			<tr>
+				<th scope="row"><label for="meowseo_gsc_client_id"><?php esc_html_e( 'Google Client ID', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="text" name="meowseo_gsc_client_id" id="meowseo_gsc_client_id" value="<?php echo esc_attr( $client_id ); ?>" class="regular-text">
+					<p class="description"><?php printf( __( 'Get your credentials from the %s.', 'meowseo' ), '<a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a>' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="meowseo_gsc_client_secret"><?php esc_html_e( 'Google Client Secret', 'meowseo' ); ?></label></th>
+				<td>
+					<input type="password" name="meowseo_gsc_client_secret" id="meowseo_gsc_client_secret" value="<?php echo esc_attr( $client_secret ); ?>" class="regular-text">
+				</td>
+			</tr>
+		</table>
+		<?php
+	}
+
+	/**
+	 * Render Schema Detector tab.
+	 */
+	public function render_schema_detector_tab(): void {
+		?>
+		<h2><?php esc_html_e( 'Schema Auto-Detector', 'meowseo' ); ?></h2>
+		<p><?php esc_html_e( 'Configure which post types should automatically trigger specific schema types.', 'meowseo' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Coming soon: Enhanced AI-based schema detection.', 'meowseo' ); ?></p>
 		<?php
 	}
 }

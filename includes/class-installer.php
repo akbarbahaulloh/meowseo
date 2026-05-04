@@ -209,15 +209,21 @@ CREATE TABLE {$prefix}meowseo_gsc_queue (
 
 CREATE TABLE {$prefix}meowseo_gsc_data (
 	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-	url VARCHAR(2048) NOT NULL,
-	url_hash CHAR(64) NOT NULL,
+	site_url VARCHAR(2048) NOT NULL,
+	page VARCHAR(2048) NULL,
+	query VARCHAR(2048) NULL,
 	date DATE NOT NULL,
 	clicks INT UNSIGNED NOT NULL DEFAULT 0,
 	impressions INT UNSIGNED NOT NULL DEFAULT 0,
 	ctr DECIMAL(5,4) NOT NULL DEFAULT 0.0000,
 	position DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+	data_hash CHAR(32) NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id),
-	UNIQUE KEY idx_url_hash_date (url_hash(64), date),
+	UNIQUE KEY idx_data_hash (data_hash),
+	KEY idx_site_url (site_url(191)),
+	KEY idx_page (page(191)),
+	KEY idx_query (query(191)),
 	KEY idx_date (date)
 ) $charset_collate;
 

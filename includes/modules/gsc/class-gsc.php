@@ -239,5 +239,15 @@ class GSC implements Module {
 
 		return $this->queue->enqueue( $url, $job_type );
 	}
+
+	/**
+	 * Handle OAuth callback.
+	 *
+	 * @param string $code Authorization code.
+	 * @return bool True on success, false on failure.
+	 */
+	public function handle_oauth_callback( string $code ): bool {
+		return $this->auth->handle_callback( $code );
+	}
 }
 

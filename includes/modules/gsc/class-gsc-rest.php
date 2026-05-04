@@ -138,6 +138,40 @@ class GSC_REST {
 				),
 			)
 		);
+
+		// GET /meowseo/v1/gsc/auth/start - Start OAuth flow.
+		register_rest_route(
+			self::NAMESPACE,
+			'/gsc/auth/start',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'start_auth' ),
+				'permission_callback' => array( $this, 'check_manage_options' ),
+			)
+		);
+	}
+
+	/**
+	 * Start OAuth flow.
+	 *
+	 * Redirects user to Google OAuth consent page.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 */
+	public function start_auth( WP_REST_Request $request ) {
+		$redirect_uri = admin_url( 'admin.php?page=meowseo-search-console&action=oauth_callback' );
+		$auth_url     = $this->auth->get_auth_url( $redirect_uri );
+
+		if ( empty( $auth_url ) ) {
+			return new WP_Error(
+				'missing_client_id',
+				__( 'Google Client ID is not configured. Please set it in settings.', 'meowseo' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		wp_redirect( $auth_url );
+		exit;
 	}
 
 	/**
