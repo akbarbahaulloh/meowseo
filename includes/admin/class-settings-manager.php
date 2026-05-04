@@ -3977,14 +3977,4 @@ class Settings_Manager {
 		<?php
 	}
 
-	/**
-	 * Render Schema Detector tab.
-	 */
-	public function render_schema_detector_tab(): void {
-		?>
-		<h2><?php esc_html_e( 'Schema Auto-Detector', 'meowseo' ); ?></h2>
-		<p><?php esc_html_e( 'Configure which post types should automatically trigger specific schema types.', 'meowseo' ); ?></p>
-		<p class="description"><?php esc_html_e( 'Coming soon: Enhanced AI-based schema detection.', 'meowseo' ); ?></p>
-		<?php
-	}
 }
