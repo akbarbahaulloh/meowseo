@@ -146,7 +146,7 @@ class Dashboard_Widgets {
 					class="meowseo-widget" 
 					id="meowseo-widget-<?php echo esc_attr( $widget_id ); ?>"
 					data-widget-id="<?php echo esc_attr( $widget_id ); ?>"
-					data-endpoint="<?php echo esc_attr( $widget_config['endpoint'] ); ?>"
+					data-endpoint="<?php echo esc_url( get_rest_url( null, $widget_config['endpoint'] ) ); ?>"
 					data-nonce="<?php echo esc_attr( wp_create_nonce( 'wp_rest' ) ); ?>"
 					data-dashboard-nonce="<?php echo esc_attr( $dashboard_nonce ); ?>"
 				>
