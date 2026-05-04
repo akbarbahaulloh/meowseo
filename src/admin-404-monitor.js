@@ -6,7 +6,7 @@
 
 import { render } from '@wordpress/element';
 import MonitorDashboard from './monitor-404/MonitorDashboard';
-import './monitor-404/style.css';
+import './monitor-404/admin-404-monitor.css';
 
 const mountPoint = document.getElementById('meowseo-404-monitor-root');
 

@@ -2,7 +2,7 @@
  * Redirects Styles
  */
 
-@import '../monitor-404/style.css';
+@import '../monitor-404/admin-404-monitor.css';
 
 .meowseo-badge-regex {
 	display: inline-block;
