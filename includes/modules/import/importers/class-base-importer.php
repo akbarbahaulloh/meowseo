@@ -44,6 +44,13 @@ abstract class Base_Importer {
 	abstract public function get_plugin_name(): string;
 
 	/**
+	 * Get plugin slug.
+	 *
+	 * @return string Plugin slug (e.g., "yoast", "rankmath").
+	 */
+	abstract public function get_plugin_slug(): string;
+
+	/**
 	 * Check if plugin is installed.
 	 *
 	 * Checks for plugin-specific option keys or files.

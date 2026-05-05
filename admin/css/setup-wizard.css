@@ -1,0 +1,200 @@
+/**
+ * MeowSEO Setup Wizard CSS
+ */
+
+:root {
+	--meow-primary: #7c3aed;
+	--meow-primary-dark: #6d28d9;
+	--meow-bg: #0f172a;
+	--meow-surface: #1e293b;
+	--meow-border: #334155;
+	--meow-text: #f8fafc;
+	--meow-text-muted: #94a3b8;
+}
+
+body.meowseo-setup-wizard {
+	background: var(--meow-bg);
+	color: var(--meow-text);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	margin: 0;
+	height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+#meowseo-wizard-container {
+	background: var(--meow-surface);
+	width: 100%;
+	max-width: 800px;
+	border-radius: 16px;
+	box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+	overflow: hidden;
+	border: 1px solid var(--meow-border);
+}
+
+.wizard-header {
+	padding: 40px;
+	background: rgba(124, 58, 237, 0.05);
+	border-bottom: 1px solid var(--meow-border);
+	text-align: center;
+}
+
+.wizard-header .logo {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 30px;
+}
+
+.wizard-header .logo img {
+	height: 48px;
+}
+
+.wizard-header h1 {
+	margin: 0;
+	font-size: 24px;
+	font-weight: 700;
+	color: var(--meow-text);
+}
+
+.progress-bar-container {
+	height: 4px;
+	background: var(--meow-border);
+	width: 100%;
+	margin-bottom: 30px;
+	border-radius: 2px;
+}
+
+.progress-bar {
+	height: 100%;
+	background: var(--meow-primary);
+	transition: width 0.3s ease;
+	box-shadow: 0 0 10px var(--meow-primary);
+}
+
+.wizard-steps ul {
+	display: flex;
+	justify-content: space-between;
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.wizard-steps li {
+	color: var(--meow-text-muted);
+	font-size: 13px;
+	font-weight: 500;
+	position: relative;
+	flex: 1;
+}
+
+.wizard-steps li span {
+	display: block;
+}
+
+.wizard-steps li.active {
+	color: var(--meow-primary);
+}
+
+.wizard-steps li.completed {
+	color: var(--meow-text);
+}
+
+.wizard-content {
+	padding: 40px;
+	min-height: 300px;
+}
+
+.step-body h2 {
+	margin-top: 0;
+	font-size: 28px;
+	font-weight: 700;
+	margin-bottom: 15px;
+}
+
+.step-body p {
+	color: var(--meow-text-muted);
+	font-size: 16px;
+	line-height: 1.6;
+	margin-bottom: 30px;
+}
+
+.wizard-footer {
+	margin-top: 40px;
+	display: flex;
+	align-items: center;
+	gap: 20px;
+}
+
+.button.button-hero {
+	padding: 12px 32px !important;
+	height: auto !important;
+	font-size: 16px !important;
+	font-weight: 600 !important;
+	border-radius: 8px !important;
+	background: var(--meow-primary) !important;
+	border: none !important;
+	box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.4) !important;
+}
+
+.button.button-hero:hover {
+	background: var(--meow-primary-dark) !important;
+	transform: translateY(-1px);
+}
+
+.skip-link {
+	color: var(--meow-text-muted);
+	text-decoration: none;
+	font-size: 14px;
+}
+
+.skip-link:hover {
+	color: var(--meow-text);
+}
+
+/* Form controls */
+input[type="text"], input[type="url"], select, textarea {
+	background: var(--meow-bg) !important;
+	border: 1px solid var(--meow-border) !important;
+	color: var(--meow-text) !important;
+	padding: 10px 15px !important;
+	border-radius: 6px !important;
+}
+
+/* Card selection for modes */
+.mode-selection {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+}
+
+.mode-card {
+	background: var(--meow-bg);
+	border: 2px solid var(--meow-border);
+	padding: 25px;
+	border-radius: 12px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.mode-card:hover {
+	border-color: var(--meow-primary);
+	transform: translateY(-2px);
+}
+
+.mode-card.active {
+	border-color: var(--meow-primary);
+	background: rgba(124, 58, 237, 0.05);
+}
+
+.mode-card h3 {
+	margin: 0 0 10px 0;
+	font-size: 18px;
+}
+
+.mode-card p {
+	font-size: 14px;
+	margin: 0;
+}

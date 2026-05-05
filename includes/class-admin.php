@@ -14,6 +14,7 @@ use MeowSEO\Admin\Log_Viewer;
 use MeowSEO\Admin\Dashboard_Widgets;
 use MeowSEO\Admin\Settings_Manager;
 use MeowSEO\Admin\Tools_Manager;
+use MeowSEO\Admin\Setup_Wizard;
 use MeowSEO\Modules\Admin\List_Table_Columns;
 
 // Exit if accessed directly.
@@ -88,6 +89,14 @@ class Admin {
 	private Module_Manager $module_manager;
 
 	/**
+	 * Setup_Wizard instance
+	 *
+	 * @since 1.0.0
+	 * @var Setup_Wizard
+	 */
+	private Setup_Wizard $setup_wizard;
+
+	/**
 	 * Constructor
 	 *
 	 * @since 1.0.0
@@ -123,6 +132,10 @@ class Admin {
 	public function boot(): void {
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+
+		// Initialize Setup_Wizard.
+		$this->setup_wizard = new Setup_Wizard( $this->options, $this->module_manager );
+		$this->setup_wizard->init();
 
 		// Initialize Log_Viewer (Requirement 7.1).
 		$this->log_viewer = new Log_Viewer( $this->options );

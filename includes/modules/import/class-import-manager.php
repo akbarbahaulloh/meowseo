@@ -88,6 +88,51 @@ class Import_Manager {
 	}
 
 	/**
+	 * Initiate a new import job.
+	 *
+	 * @param string $plugin_slug Plugin slug to import from.
+	 * @return string|false Import ID on success, false on failure.
+	 */
+	public function initiate_import( string $plugin_slug ): string|false {
+		$importer = $this->get_importer( $plugin_slug );
+		if ( ! $importer ) {
+			return false;
+		}
+
+		$import_id = uniqid( 'import_' );
+		$job       = array(
+			'id'           => $import_id,
+			'plugin'       => $plugin_slug,
+			'status'       => 'processing',
+			'started_at'   => time(),
+			'completed_at' => null,
+			'progress'     => array(
+				'options'   => 0,
+				'posts'     => 0,
+				'terms'     => 0,
+				'redirects' => 0,
+			),
+			'summary'      => array(
+				'options'   => 0,
+				'posts'     => 0,
+				'terms'     => 0,
+				'redirects' => 0,
+				'errors'    => 0,
+			),
+			'errors'       => array(),
+		);
+
+		set_transient( 'meowseo_import_' . $import_id, $job, DAY_IN_SECONDS );
+
+		return $import_id;
+	}
+
+	/**
+	 * Cancel an active import job.
+	 *
+	 * @param string $import_id Import ID.
+	 * @return bool True on success, false on failure.
+	 */
 	public function cancel_import( string $import_id ): bool {
 		$job = get_transient( 'meowseo_import_' . $import_id );
 

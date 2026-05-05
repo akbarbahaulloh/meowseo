@@ -90,6 +90,15 @@ class RankMath_Importer extends Base_Importer {
 	}
 
 	/**
+	 * Get plugin slug.
+	 *
+	 * @return string Plugin slug.
+	 */
+	public function get_plugin_slug(): string {
+		return 'rankmath';
+	}
+
+	/**
 	 * Check if RankMath is installed.
 	 *
 	 * Checks for RankMath option keys in the database.

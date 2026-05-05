@@ -36,10 +36,14 @@ class Yoast_Importer extends Base_Importer {
 		'_yoast_wpseo_canonical'         => '_meowseo_canonical_url',
 		'_yoast_wpseo_meta-robots-noindex'  => '_meowseo_robots_noindex',
 		'_yoast_wpseo_meta-robots-nofollow' => '_meowseo_robots_nofollow',
-		'_yoast_wpseo_opengraph-title'      => '_meowseo_og_title',
+		'_yoast_wpseo_opengraph-title'       => '_meowseo_og_title',
 		'_yoast_wpseo_opengraph-description' => '_meowseo_og_description',
-		'_yoast_wpseo_twitter-title'        => '_meowseo_twitter_title',
-		'_yoast_wpseo_twitter-description'  => '_meowseo_twitter_description',
+		'_yoast_wpseo_opengraph-image'       => '_meowseo_og_image',
+		'_yoast_wpseo_twitter-title'         => '_meowseo_twitter_title',
+		'_yoast_wpseo_twitter-description'   => '_meowseo_twitter_description',
+		'_yoast_wpseo_twitter-image'         => '_meowseo_twitter_image',
+		'_yoast_wpseo_is_cornerstone'        => '_meowseo_pillar_content',
+		'_yoast_wpseo_primary_category'      => '_meowseo_primary_term',
 	);
 
 	/**
@@ -89,6 +93,15 @@ class Yoast_Importer extends Base_Importer {
 	 */
 	public function get_plugin_name(): string {
 		return 'Yoast SEO';
+	}
+
+	/**
+	 * Get plugin slug.
+	 *
+	 * @return string Plugin slug.
+	 */
+	public function get_plugin_slug(): string {
+		return 'yoast';
 	}
 
 	/**
@@ -340,6 +353,14 @@ class Yoast_Importer extends Base_Importer {
 			'%%posttype%%'     => '{post_type}',
 			'%%id%%'           => '{post_id}',
 			'%%excerpt%%'      => '{excerpt}',
+			'%%category_description%%' => '{term_description}',
+			'%%tag_description%%'      => '{term_description}',
+			'%%term_description%%'     => '{term_description}',
+			'%%searchphrase%%'         => '{search_phrase}',
+			'%%currenttime%%'          => '{current_time}',
+			'%%currentdate%%'          => '{current_date}',
+			'%%currentmonth%%'         => '{current_month}',
+			'%%currentyear%%'          => '{current_year}',
 		);
 
 		// Replace Yoast variables with MeowSEO variables.

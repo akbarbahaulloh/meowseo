@@ -59,6 +59,11 @@ class Installer {
 
 		// Flush rewrite rules.
 		flush_rewrite_rules();
+
+		// Set flag for Setup Wizard if it's a fresh install.
+		if ( ! get_option( 'meowseo_setup_complete' ) ) {
+			set_transient( 'meowseo_setup_wizard_pending', 1, 60 * 10 ); // 10 minutes.
+		}
 	}
 
 	/**
