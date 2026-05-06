@@ -86,6 +86,40 @@ Control how AI crawlers interact with your site:
 
 ### WooCommerce Module
 - **Product SEO**: Automated product schema and enhanced metadata management for WooCommerce stores.
+- **Sitemap Integration**: Automatically includes products, categories, and tags in XML sitemaps.
+
+### Instant Indexing (MeowIndex)
+- **Google Indexing API**: Submit your pages to Google for instant crawling and indexing.
+- **Batch Submission**: Submit multiple URLs at once.
+- **Auto-Submission**: Automatically submits posts when they are published or updated.
+
+### Local SEO (Locations)
+- **Multi-Location Support**: Manage multiple physical locations with dedicated Schema.org markup.
+- **KML File Generation**: Automatic generation of KML files for Google Maps integration.
+- **Store Locator**: Shortcodes for displaying location information and maps.
+
+### Advanced Content Tools
+- **Bulk Editor**: Quickly edit SEO titles and descriptions for hundreds of posts at once.
+- **Image SEO**: Automatically generates ALT text and title attributes for images based on patterns.
+- **Orphaned Content**: Identifies posts that have no internal links pointing to them.
+- **Cornerstone Content**: Mark and prioritize your most important pillar pages.
+- **Admin Bar Stats**: Quick SEO overview and actions directly from the WordPress admin bar.
+
+### Analytics & Reporting
+- **Google Analytics 4**: Integrated GA4 reporting directly in your WordPress dashboard.
+- **Search Console Sync**: Comprehensive performance data (clicks, impressions) integrated with your content.
+
+### Administration & Scale
+- **Role Manager**: Control which user roles have access to specific MeowSEO features and settings.
+- **Multilingual Support**: Fully compatible with WPML and Polylang for international SEO.
+- **Multisite Ready**: Network-wide settings management and module control for WordPress Multisite.
+- **Keyword Synonyms**: Optimize your content for related terms and synonyms to increase topical authority.
+- **WP-CLI Support**: Manage sitemaps, redirects, and run health checks via the command line.
+- **GitHub Automatic Updates**: Get the latest features and security patches directly from GitHub.
+
+### Extra SEO Tools
+- **Breadcrumbs**: Customizable breadcrumb navigation for both users and search engines (Schema.org).
+- **SEO Health Check**: Built-in diagnostics to identify configuration issues and performance bottlenecks.
 
 ## REST API & Headless
 
