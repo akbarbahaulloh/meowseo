@@ -1,0 +1,158 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, json
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-progress
+        working-directory: .claude/worktrees/reverent-beaver-c7065a
+      
+      - name: Install Node dependencies
+        run: npm ci
+      
+      - name: Run PHP tests
+        run: composer test
+        working-directory: .claude/worktrees/reverent-beaver-c7065a
+      
+      - name: Run JavaScript tests
+        run: npm test
+      
+      - name: Verify all tests passed
+        run: echo "✅ All tests passed for release"
+
+  build-release:
+    name: Build Release
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, json
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          composer install --prefer-dist --no-progress
+          npm ci
+      
+      - name: Build assets
+        run: npm run build
+      
+      - name: Install production dependencies only
+        run: composer install --no-dev --optimize-autoloader
+      
+      - name: Create release directory
+        run: |
+          mkdir -p meowseo-release
+          
+          # Copy files (exclude dev files)
+          rsync -av --progress . meowseo-release \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.claude' \
+            --exclude='tests' \
+            --exclude='node_modules' \
+            --exclude='src' \
+            --exclude='*.log' \
+            --exclude='*.md' \
+            --exclude='phpunit.xml' \
+            --exclude='.phpunit.result.cache' \
+            --exclude='jest.config.js' \
+            --exclude='composer.json' \
+            --exclude='composer.lock' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='webpack.config.js' \
+            --exclude='tsconfig.json' \
+            --exclude='.vscode' \
+            --exclude='.idea' \
+            --exclude='build-release.ps1' \
+            --exclude='build-release.sh' \
+            --exclude='cleanup-root.ps1' \
+            --exclude='run-tests.sh' \
+            --exclude='docs/archive'
+          
+          # Copy README.md (keep this one)
+          cp README.md meowseo-release/
+      
+      - name: Create ZIP
+        run: |
+          cd meowseo-release
+          zip -r ../meowseo.zip . -q
+          cd ..
+          ls -lh meowseo.zip
+      
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: meowseo.zip
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## MeowSEO ${{ steps.get_version.outputs.VERSION }}
+            
+            ### Installation
+            1. Download `meowseo.zip`
+            2. Upload to WordPress via Plugins > Add New > Upload
+            3. Activate the plugin
+            
+            ### What's Included
+            - ✅ Built assets (ready to use)
+            - ✅ Production dependencies only
+            - ✅ All plugin features
+            
+            ### Requirements
+            - PHP 8.0 or higher
+            - WordPress 6.0 or higher
+            
+            ### Changelog
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Reinstall dev dependencies
+        run: composer install
+      
+      - name: Release complete
+        run: |
+          echo "✅ Release ${{ steps.get_version.outputs.VERSION }} created successfully"
+          echo "📦 Download: https://github.com/${{ github.repository }}/releases/tag/${{ steps.get_version.outputs.VERSION }}"

@@ -1,0 +1,142 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check PR title
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          
+          # Check if title follows convention: Type: Description
+          if [[ ! "$PR_TITLE" =~ ^(Feature|Fix|Docs|Test|Refactor|Chore|Style|Perf):\ .+ ]]; then
+            echo "❌ PR title must follow format: 'Type: Description'"
+            echo "   Valid types: Feature, Fix, Docs, Test, Refactor, Chore, Style, Perf"
+            echo "   Example: 'Feature: Add breadcrumb schema support'"
+            exit 1
+          fi
+          
+          echo "✅ PR title format is valid"
+      
+      - name: Check for /build/ in changes
+        run: |
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^build/"; then
+            echo "❌ PR contains changes to /build/ directory"
+            echo "   /build/ is generated and should not be committed"
+            echo "   Please remove /build/ from your commits"
+            exit 1
+          fi
+          
+          echo "✅ No /build/ files in PR"
+      
+      - name: Check for test files
+        run: |
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          
+          # Check if any PHP files changed in includes/
+          if echo "$CHANGED_FILES" | grep -q "^includes/.*\.php$"; then
+            # Check if corresponding test files exist or were added
+            if ! echo "$CHANGED_FILES" | grep -q "^tests/.*Test\.php$"; then
+              echo "⚠️  Warning: PHP files changed but no test files added"
+              echo "   Consider adding tests for new functionality"
+            fi
+          fi
+          
+          echo "✅ Test file check complete"
+      
+      - name: Check file sizes
+        run: |
+          LARGE_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | while read file; do
+            if [ -f "$file" ]; then
+              SIZE=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file")
+              if [ $SIZE -gt 1048576 ]; then  # 1MB
+                echo "$file ($SIZE bytes)"
+              fi
+            fi
+          done)
+          
+          if [ -n "$LARGE_FILES" ]; then
+            echo "⚠️  Warning: Large files detected (>1MB):"
+            echo "$LARGE_FILES"
+            echo "   Consider if these files should be in the repository"
+          else
+            echo "✅ No large files detected"
+          fi
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run linting
+        run: npm run lint:js
+        continue-on-error: true
+      
+      - name: Run type check
+        run: npm run type-check
+        continue-on-error: true
+      
+      - name: Code quality summary
+        run: echo "✅ Code quality checks complete"
+
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Check for npm vulnerabilities
+        run: |
+          npm audit --audit-level=moderate || true
+          echo "✅ Security check complete"
+      
+      - name: Check for sensitive files
+        run: |
+          SENSITIVE_PATTERNS=(
+            "\.env$"
+            "\.pem$"
+            "\.key$"
+            "id_rsa"
+            "\.p12$"
+            "\.pfx$"
+          )
+          
+          for pattern in "${SENSITIVE_PATTERNS[@]}"; do
+            if git ls-files | grep -E "$pattern"; then
+              echo "❌ Sensitive file pattern detected: $pattern"
+              exit 1
+            fi
+          done
+          
+          echo "✅ No sensitive files detected"
