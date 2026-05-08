@@ -64,6 +64,52 @@ chmod +x build-release.sh
 # Output: meowseo.zip (siap upload)
 ```
 
+## ⚠️ Penting: Build Assets
+
+### Masalah
+`/build/` ada di `.gitignore`, jadi setelah `git clone` plugin **tidak bisa langsung dipakai**.
+
+### Solusi 1: Development Setup (Recommended)
+```bash
+# 1. Clone repo
+git clone https://github.com/your/meowseo.git
+cd meowseo
+
+# 2. Install dependencies
+npm install
+composer install
+
+# 3. Build assets (PENTING!)
+npm run build
+
+# 4. Sekarang plugin siap dipakai
+```
+
+### Solusi 2: Download Pre-built Release
+```bash
+# Download dari GitHub Releases (sudah include /build/)
+# https://github.com/your/meowseo/releases
+
+# Extract & activate di WordPress
+```
+
+### Solusi 3: Commit /build/ (Tidak Recommended)
+Kalau mau `/build/` di-commit ke Git, hapus dari `.gitignore`:
+```bash
+# Edit .gitignore, hapus baris:
+# /build/
+
+# Lalu commit build files
+npm run build
+git add build/
+git commit -m "Add build files"
+```
+
+**Tapi ini TIDAK recommended** karena:
+- ❌ Git repo jadi besar
+- ❌ Merge conflicts di build files
+- ❌ Commit noise
+
 ## 🔧 Apa yang Dilakukan Script?
 
 1. ✅ Run semua tests (PHP + JavaScript)
@@ -126,18 +172,24 @@ meowseo.zip
 
 ### Development (Sehari-hari):
 ```bash
-# 1. Clone repo (ada tests)
+# 1. Clone repo (TIDAK ada /build/)
 git clone https://github.com/your/meowseo.git
+cd meowseo
 
 # 2. Install dependencies
 composer install
 npm install
 
-# 3. Develop & test
+# 3. Build assets (PENTING!)
+npm run build
+
+# 4. Develop & test
 # ... edit code ...
+npm run build  # Build lagi kalau edit JS/CSS
 composer test  # ✅ Test!
 
-# 4. Commit
+# 5. Commit (JANGAN commit /build/)
+git add .
 git commit -m "Add feature"
 git push
 ```
@@ -150,11 +202,11 @@ composer test && npm test
 # 2. Update version & changelog
 # ... edit files ...
 
-# 3. Build release
+# 3. Build release (script akan build assets otomatis)
 .\build-release.ps1
 
-# 4. Upload meowseo.zip
-# Upload ke WordPress.org atau GitHub
+# 4. Upload meowseo.zip ke GitHub Releases
+# User download ZIP ini (sudah include /build/)
 ```
 
 ## ❓ FAQ

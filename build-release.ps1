@@ -60,7 +60,10 @@ $excludePatterns = @(
     '.vscode',
     '.idea',
     'build-release.ps1',
-    'build-release.sh'
+    'build-release.sh',
+    'cleanup-root.ps1',
+    'run-tests.sh',
+    'docs\archive'
 )
 
 # Copy all files except excluded

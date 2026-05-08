@@ -21,12 +21,35 @@ A modular, enterprise-grade WordPress SEO plugin optimized for Google Discover, 
 
 ## Installation
 
-### Standard Installation
+### For Users (Production)
 
-1. Download the plugin ZIP file or clone this repository.
-2. Upload to `/wp-content/plugins/meowseo/` or install via WordPress admin.
-3. Activate the plugin through the 'Plugins' menu in WordPress.
-4. The **Setup Wizard** will automatically launch to guide your configuration.
+1. Download the latest release ZIP from [GitHub Releases](https://github.com/your/meowseo/releases)
+2. Upload to `/wp-content/plugins/meowseo/` or install via WordPress admin
+3. Activate the plugin through the 'Plugins' menu in WordPress
+4. The **Setup Wizard** will automatically launch to guide your configuration
+
+### For Developers (Development)
+
+⚠️ **Important**: `/build/` directory is not committed to Git. You must build assets before the plugin will work.
+
+```bash
+# 1. Clone repository
+git clone https://github.com/your/meowseo.git
+cd meowseo
+
+# 2. Install dependencies
+composer install
+npm install
+
+# 3. Build assets (REQUIRED!)
+npm run build
+
+# 4. Run tests to verify
+composer test
+npm test
+```
+
+See [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) for detailed development instructions.
 
 ### Composer Installation
 
