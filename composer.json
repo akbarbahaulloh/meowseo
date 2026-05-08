@@ -23,7 +23,9 @@
         }
     },
     "scripts": {
-        "test": "@php .claude/worktrees/reverent-beaver-c7065a/vendor/bin/phpunit -c .claude/worktrees/reverent-beaver-c7065a/phpunit.xml",
-        "test:filter": "@php .claude/worktrees/reverent-beaver-c7065a/vendor/bin/phpunit -c .claude/worktrees/reverent-beaver-c7065a/phpunit.xml --filter"
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage/php",
+        "test:filter": "phpunit --filter",
+        "lint": "echo 'PHP linting not configured yet'"
     }
 }

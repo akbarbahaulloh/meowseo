@@ -14,13 +14,12 @@ yarn-error.log*
 
 # Test coverage reports
 coverage/
+.phpunit.result.cache
 
-# Test artifacts
-*.test.js
-*.test.ts
-*.test.tsx
-**/__tests__/
-tests/
+# Test artifacts - ONLY ignore manual test files in root
+/test-*.php
+/debug-*.php
+/force-*.php
 
 # Development documentation (checkpoint/task/sprint reports)
 CHECKPOINT_*.md

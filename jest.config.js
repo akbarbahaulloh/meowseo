@@ -1,5 +1,5 @@
 /**
- * Jest configuration for MeowSEO (Root).
+ * Jest configuration for MeowSEO.
  *
  * @see https://jestjs.io/docs/configuration
  */

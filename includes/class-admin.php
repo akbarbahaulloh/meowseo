@@ -302,7 +302,7 @@ class Admin {
 			add_action( "load-$import_page", array( $this, 'add_import_screen_options' ) );
 		}
 
-		// 7. Tools - Utilities (last)
+		// 7. Tools - Utilities
 		add_submenu_page(
 			'meowseo',
 			__( 'Tools', 'meowseo' ),
@@ -310,6 +310,16 @@ class Admin {
 			'manage_options',
 			'meowseo-tools',
 			array( $this, 'render_tools_page' )
+		);
+
+		// 8. Updates - GitHub update configuration
+		add_submenu_page(
+			'meowseo',
+			__( 'Updates', 'meowseo' ),
+			__( 'Updates', 'meowseo' ),
+			'manage_options',
+			'meowseo-updates',
+			array( $this, 'render_update_settings_page' )
 		);
 	}
 
@@ -514,6 +524,85 @@ class Admin {
 			<?php $this->get_tools_manager()->render_tools_page(); ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render the GitHub update settings page.
+	 *
+	 * @return void
+	 */
+	public function render_update_settings_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'meowseo' ) );
+		}
+
+		/** @var \MeowSEO\Updater\GitHub_Updater|null $updater */
+		$updater = $GLOBALS['meowseo_updater'] ?? null;
+
+		// Handle form actions.
+		if ( isset( $_POST['meowseo_update_action'] ) ) {
+			$update_action = sanitize_key( $_POST['meowseo_update_action'] );
+
+			if ( 'save_settings' === $update_action ) {
+				check_admin_referer( 'meowseo_save_update_settings', 'meowseo_update_settings_nonce' );
+
+				// Save branch.
+				$branch = sanitize_key( $_POST['meowseo_update_branch'] ?? 'main' );
+				if ( ! in_array( $branch, array( 'main', 'master', 'develop' ), true ) ) {
+					$branch = 'main';
+				}
+				update_option( 'meowseo_update_branch', $branch );
+
+				// Save token only if a new value was provided.
+				$raw_token = sanitize_text_field( $_POST['meowseo_github_token'] ?? '' );
+				if ( ! empty( $raw_token ) ) {
+					$encrypted = \MeowSEO\Updater\GitHub_Updater::encrypt_token( $raw_token );
+					update_option( 'meowseo_github_token', $encrypted );
+				}
+
+				if ( $updater ) {
+					$updater->clear_cache();
+				}
+
+				wp_redirect( add_query_arg( 'updated', '1', menu_page_url( 'meowseo-updates', false ) ) );
+				exit;
+			}
+
+			if ( 'clear_cache' === $update_action ) {
+				check_admin_referer( 'meowseo_clear_update_cache', 'meowseo_cache_nonce' );
+				if ( $updater ) {
+					$updater->clear_cache();
+				}
+				wp_redirect( add_query_arg( 'cache_cleared', '1', menu_page_url( 'meowseo-updates', false ) ) );
+				exit;
+			}
+
+			if ( 'check_now' === $update_action ) {
+				check_admin_referer( 'meowseo_check_update_now', 'meowseo_check_nonce' );
+				if ( $updater ) {
+					$updater->clear_cache();
+				}
+				// Trigger WordPress update check.
+				delete_site_transient( 'update_plugins' );
+				wp_update_plugins();
+				wp_redirect( menu_page_url( 'meowseo-updates', false ) );
+				exit;
+			}
+		}
+
+		// Gather display data.
+		$installed_sha  = get_option( 'meowseo_installed_sha', '' );
+		$latest_commit  = $updater ? $updater->get_latest_commit() : false;
+		$latest_sha     = $latest_commit ? $latest_commit->sha : '';
+		$update_available = ! empty( $latest_sha ) && $latest_sha !== $installed_sha;
+		$has_token      = $updater ? $updater->has_token() : ! empty( get_option( 'meowseo_github_token', '' ) );
+		$branch         = get_option( 'meowseo_update_branch', 'main' );
+
+		$token_placeholder  = $has_token ? __( '••••••••••••  (token saved — enter a new value to replace)', 'meowseo' ) : __( 'Paste your GitHub PAT here', 'meowseo' );
+		$current_version    = defined( 'MEOWSEO_VERSION' ) ? MEOWSEO_VERSION : '1.0.0';
+		$nonce              = wp_create_nonce( 'meowseo_save_update_settings' );
+
+		include MEOWSEO_PATH . 'includes/admin/views/update-settings.php';
 	}
 
 	/**
