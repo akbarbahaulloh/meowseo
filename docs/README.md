@@ -18,7 +18,12 @@ Complete documentation for developers, users, and contributors.
 
 ### For Users
 - [Feature Status](../FEATURE_STATUS.md) - Current feature status
-- [Beta Features](../BETA_FEATURES_SUMMARY.md) - Beta features overview
+
+### Project Documentation
+- [Development Setup](development/) - Development environment setup
+- [Release Guide](release/) - Release process and build scripts
+- [Testing Guide](testing/) - Testing documentation and coverage
+- [Project Summaries](summaries/) - Major milestones and implementations
 
 ---
 
@@ -31,6 +36,26 @@ docs/
 ├── developer/                   # Developer documentation
 │   ├── GETTING_STARTED.md       # Setup guide
 │   └── TROUBLESHOOTING.md       # Common issues
+│
+├── development/                 # Development setup & guides
+│   ├── DEVELOPMENT_SETUP.md     # Complete setup guide
+│   └── DEVELOPER_DOCS_COMPLETE.md
+│
+├── release/                     # Release documentation
+│   ├── RELEASE_GUIDE.md         # Release process (English)
+│   ├── PANDUAN_RELEASE.md       # Release process (Indonesian)
+│   └── BUILD_ASSETS_SOLUTION.md # Build strategy
+│
+├── testing/                     # Testing documentation
+│   ├── QUICK_TEST_GUIDE.md      # Quick test reference
+│   ├── README_TESTING.md        # Testing overview
+│   └── ...                      # Test summaries
+│
+├── summaries/                   # Project summaries
+│   ├── BETA_FEATURES_SUMMARY.md # Beta features
+│   ├── CI_CD_SUMMARY.md         # CI/CD implementation
+│   ├── FINAL_COMMIT_STATUS.md   # Latest status
+│   └── ...                      # Other summaries
 │
 ├── api/                         # API documentation
 │   ├── REST_API.md              # REST API reference
