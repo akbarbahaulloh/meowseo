@@ -24,7 +24,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           extensions: mbstring, xml, ctype, json, openssl
-          coverage: xdebug
+          coverage: none
       
       - name: Validate composer.json
         run: composer validate --strict
@@ -38,17 +38,16 @@ jobs:
             ${{ runner.os }}-php-${{ matrix.php }}-composer-
       
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest
+        run: composer install --prefer-dist --no-progress
       
       - name: Run PHPUnit tests
-        run: ./vendor/bin/phpunit --coverage-clover coverage.xml
+        run: composer test
       
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage.xml
-          flags: php
-          name: php-${{ matrix.php }}
+      - name: Check test results
+        if: failure()
+        run: |
+          echo "❌ PHP tests failed on PHP ${{ matrix.php }}"
+          exit 1
 
   javascript-tests:
     name: JavaScript Tests (Node ${{ matrix.node }})
@@ -72,48 +71,13 @@ jobs:
         run: npm ci
       
       - name: Run Jest tests
-        run: npm test -- --coverage --maxWorkers=2
+        run: npm test
       
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/lcov.info
-          flags: javascript
-          name: node-${{ matrix.node }}
-
-  code-quality:
-    name: Code Quality Checks
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install PHP dependencies
-        run: composer install --prefer-dist --no-progress
-      
-      - name: Install JS dependencies
-        run: npm ci
-      
-      - name: Run PHP linting
-        run: composer lint || true
-      
-      - name: Run JavaScript linting
-        run: npm run lint:js || true
-      
-      - name: Run TypeScript type checking
-        run: npm run type-check || true
+      - name: Check test results
+        if: failure()
+        run: |
+          echo "❌ JavaScript tests failed on Node ${{ matrix.node }}"
+          exit 1
 
   test-summary:
     name: Test Summary
@@ -124,9 +88,12 @@ jobs:
     steps:
       - name: Check test results
         run: |
-          if [ "${{ needs.php-tests.result }}" == "failure" ] || [ "${{ needs.javascript-tests.result }}" == "failure" ]; then
-            echo "Tests failed!"
-            exit 1
+          if [ "${{ needs.php-tests.result }}" == "success" ] && [ "${{ needs.javascript-tests.result }}" == "success" ]; then
+            echo "✅ All tests passed!"
+            exit 0
           else
-            echo "All tests passed!"
+            echo "❌ Some tests failed"
+            echo "PHP Tests: ${{ needs.php-tests.result }}"
+            echo "JavaScript Tests: ${{ needs.javascript-tests.result }}"
+            exit 1
           fi

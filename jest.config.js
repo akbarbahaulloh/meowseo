@@ -51,11 +51,22 @@ module.exports = {
 		},
 	},
 	
-	// Ignore patterns
+	// CRITICAL: Ignore worktree to prevent Haste Map collisions
 	testPathIgnorePatterns: [
 		'/node_modules/',
 		'/vendor/',
 		'/build/',
+		'/.claude/',  // Ignore entire .claude directory
+	],
+	
+	// CRITICAL: Exclude worktree from module resolution
+	modulePathIgnorePatterns: [
+		'<rootDir>/.claude/',
+	],
+	
+	// CRITICAL: Watch ignore to prevent file watching issues
+	watchPathIgnorePatterns: [
+		'<rootDir>/.claude/',
 	],
 	
 	// Verbose output

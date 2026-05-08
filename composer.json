@@ -25,6 +25,7 @@
     "scripts": {
         "test": "phpunit",
         "test:coverage": "phpunit --coverage-html coverage/php",
+        "test:filter": "phpunit --filter",
         "lint": "echo 'PHP linting not configured yet'"
     }
 }
