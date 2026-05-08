@@ -16,7 +16,7 @@ A modular, enterprise-grade WordPress SEO plugin optimized for Google Discover, 
 - **Yoast & Rank Math Migration**: Seamless, one-click data migration with real-time batch processing.
 - **Performance First**: Database-level operations, Object Cache integration, and zero memory bloat.
 - **Headless Ready**: Full REST API and WPGraphQL support for decoupled frontends.
-- **AI-Powered Modules**: Content Refresh suggestions and AI Bot management.
+- **AI-Powered Modules**: Content Refresh suggestions (🚧 Beta) and AI Bot management (🚧 Beta).
 - **Security Hardened**: Nonce verification, capability checks, and encrypted credentials.
 
 ## Installation
@@ -89,15 +89,20 @@ High-performance XML sitemap generation:
 - **Auto-Invalidation**: Automatically regenerates when content is updated.
 - **Image Support**: Includes featured images in sitemaps for better image search visibility.
 
-### AI Content Refresh
+### AI Content Refresh (🚧 Beta)
 Revitalize your old content with AI-powered insights:
-- **Stale Content Detection**: Identifies posts that haven't been updated and are losing traffic.
-- **AI Suggestions**: Provides automated suggestions for improving titles and descriptions.
+- **Stale Content Detection**: Identifies posts that haven't been updated and are losing traffic. (🚧 Planned)
+- **AI Suggestions**: Provides automated suggestions for improving titles and descriptions. (🚧 Planned)
 
-### AI Bot Manager
+**Status**: Beta - Concept phase. Basic detection works, AI suggestions in development.
+
+### AI Bot Manager (🚧 Beta)
 Control how AI crawlers interact with your site:
-- **Bot Blocking**: Block common AI bots (GPTBot, etc.) to protect your content.
-- **Redirection**: Redirect AI crawlers to specific landing pages or legal notices.
+- **Bot Blocking**: Block common AI bots (GPTBot, etc.) to protect your content. (🚧 In Progress)
+- **Redirection**: Redirect AI crawlers to specific landing pages or legal notices. (🚧 In Progress)
+
+**Status**: Beta - Basic bot detection works, advanced features in development.  
+**Workaround**: Use `.htaccess` or server-level bot blocking for production use.
 
 ### Redirection & 404 Monitor
 - **Redirection Manager**: Easy management of 301, 302, 307, and 410 redirects.
