@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MeowSEO
- * Plugin URI: https://github.com/akbarbahaulloh/meowseo
+ * Plugin URI: https://github.com/pustekno/meowseo
  * Description: A modular WordPress SEO plugin optimized for Google Discover, AI Overviews, and headless WordPress deployments.
  * Version: 1.0.0-50969fe
  * Requires at least: 6.0

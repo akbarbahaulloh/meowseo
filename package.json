@@ -10,7 +10,9 @@
     "format:js": "wp-scripts format src",
     "type-check": "tsc --noEmit",
     "test": "wp-scripts test-unit-js --passWithNoTests",
-    "test:watch": "wp-scripts test-unit-js --watch"
+    "test:watch": "wp-scripts test-unit-js --watch",
+    "test:coverage": "wp-scripts test-unit-js --coverage",
+    "test:all": "npm test && composer test"
   },
   "keywords": [
     "wordpress",

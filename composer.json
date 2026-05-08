@@ -21,5 +21,10 @@
         "psr-4": {
             "MeowSEO\\Tests\\": "tests/"
         }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage/php",
+        "lint": "echo 'PHP linting not configured yet'"
     }
 }
